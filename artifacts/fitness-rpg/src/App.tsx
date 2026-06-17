@@ -100,20 +100,19 @@ const clerkAppearance = {
   },
 };
 
-function OnboardingGuard() {
-  const [location, navigate] = useLocation();
-  useEffect(() => {
-    if (location !== "/onboarding" && location !== "/setup" && !hasCompletedOnboarding()) {
-      navigate("/onboarding");
-    } else if (location !== "/setup" && location !== "/onboarding" && hasCompletedOnboarding() && !hasCompletedSetup()) {
-      navigate("/setup");
-    }
-  }, []);
-  return null;
-}
-
 function AppRoutes() {
   const [location] = useLocation();
+
+  const onboarded = hasCompletedOnboarding();
+  const setup = hasCompletedSetup();
+
+  if (!onboarded && location !== "/onboarding" && location !== "/setup") {
+    return <Redirect to="/onboarding" />;
+  }
+
+  if (onboarded && !setup && location !== "/setup") {
+    return <Redirect to="/setup" />;
+  }
 
   if (location === "/onboarding") {
     return <Onboarding />;
@@ -125,7 +124,6 @@ function AppRoutes() {
 
   return (
     <MainLayout>
-      <OnboardingGuard />
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/nutrition" component={Nutrition} />
