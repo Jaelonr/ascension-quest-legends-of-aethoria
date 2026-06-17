@@ -142,7 +142,7 @@ export default function Settings() {
     setSetting("security", "biometricEnabled", enabled);
   };
 
-  const appVersion = "1.0.0";
+  const appVersion = __APP_VERSION__;
 
   return (
     <div className="space-y-5 animate-in fade-in duration-500 pb-10">
