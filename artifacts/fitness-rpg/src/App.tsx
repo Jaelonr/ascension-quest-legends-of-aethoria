@@ -18,6 +18,7 @@ import Planner from "@/pages/planner";
 import Raids from "@/pages/raids";
 import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
+import Program from "@/pages/program";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ function Router() {
         <Route path="/nutrition" component={Nutrition} />
         <Route path="/training" component={Training} />
         <Route path="/training/planner" component={Planner} />
+        <Route path="/training/program" component={Program} />
         <Route path="/training/session/:id" component={ActiveSession} />
         <Route path="/equipment" component={Equipment} />
         <Route path="/skills" component={Skills} />

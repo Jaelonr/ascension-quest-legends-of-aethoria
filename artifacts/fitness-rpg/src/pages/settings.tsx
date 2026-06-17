@@ -433,6 +433,15 @@ export default function Settings() {
           </SettingRow>
         </CardContent>
       </Card>
+
+      {/* Save Button */}
+      <Button
+        className="w-full gap-2 h-12 text-base font-bold shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
+        onClick={() => toast({ title: "✓ Settings saved", description: "Your preferences have been applied." })}
+      >
+        <Check className="w-4 h-4" />
+        Save Settings
+      </Button>
     </div>
   );
 }

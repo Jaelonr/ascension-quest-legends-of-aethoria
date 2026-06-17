@@ -280,7 +280,7 @@ export async function getOrCreatePlayer() {
     mp: 100,
     maxMp: 100,
     gold: 500,
-    freeStatPoints: 5,
+    freeStatPoints: 0,
     streakDays: 0,
     activeTitle: "The Awakened",
     xpMultiplier: 100,

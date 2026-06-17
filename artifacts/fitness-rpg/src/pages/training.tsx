@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Play, Wand2 } from "lucide-react";
+import { Dumbbell, Play, Wand2, CalendarDays } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,20 +43,36 @@ export default function Training() {
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       <PageHeader title="Training Grounds" subtitle="Select a battle template" />
 
-      {/* Planner Banner */}
-      <button
-        onClick={() => navigate("/training/planner")}
-        className="w-full p-4 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center gap-4 hover:border-primary/50 hover:from-primary/20 transition-all group"
-      >
-        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30 group-hover:bg-primary/30 transition-colors">
-          <Wand2 className="w-5 h-5 text-primary" />
-        </div>
-        <div className="text-left flex-1">
-          <div className="font-bold text-sm text-foreground">Workout Planner</div>
-          <div className="text-xs text-muted-foreground">Generate an equipment-aware plan for any goal</div>
-        </div>
-        <div className="text-primary text-xs font-mono">→</div>
-      </button>
+      {/* Quick action banners */}
+      <div className="space-y-2">
+        <button
+          onClick={() => navigate("/training/program")}
+          className="w-full p-4 rounded-xl border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 to-transparent flex items-center gap-4 hover:border-yellow-500/50 hover:from-yellow-500/20 transition-all group"
+        >
+          <div className="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center border border-yellow-500/30 group-hover:bg-yellow-500/30 transition-colors">
+            <CalendarDays className="w-5 h-5 text-yellow-400" />
+          </div>
+          <div className="text-left flex-1">
+            <div className="font-bold text-sm text-foreground">8-Week Program</div>
+            <div className="text-xs text-muted-foreground">Progressive strength + combat training plan</div>
+          </div>
+          <div className="text-yellow-400 text-xs font-mono">→</div>
+        </button>
+
+        <button
+          onClick={() => navigate("/training/planner")}
+          className="w-full p-4 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center gap-4 hover:border-primary/50 hover:from-primary/20 transition-all group"
+        >
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30 group-hover:bg-primary/30 transition-colors">
+            <Wand2 className="w-5 h-5 text-primary" />
+          </div>
+          <div className="text-left flex-1">
+            <div className="font-bold text-sm text-foreground">Workout Planner</div>
+            <div className="text-xs text-muted-foreground">Generate an equipment-aware plan for any goal</div>
+          </div>
+          <div className="text-primary text-xs font-mono">→</div>
+        </button>
+      </div>
 
       {/* Templates */}
       <div className="space-y-3">

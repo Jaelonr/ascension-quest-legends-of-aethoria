@@ -44,8 +44,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     autoLockTimeout: 5,
   },
   units: {
-    weight: "kg",
-    distance: "km",
+    weight: "lbs",
+    distance: "mi",
   },
   appearance: {
     accentColor: "cyan",
