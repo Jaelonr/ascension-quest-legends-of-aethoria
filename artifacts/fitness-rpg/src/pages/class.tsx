@@ -27,7 +27,7 @@ export default function ClassPage() {
     );
   }
 
-  const storedClassId = getStoredBaseClass();
+  const storedClassId = (player.baseClass ?? getStoredBaseClass()) as BaseClassId | null;
   const baseClassId: BaseClassId = storedClassId ?? "warrior";
   const baseClass = getBaseClass(baseClassId);
   const currentEvo = getCurrentEvolution(baseClassId, player.level);

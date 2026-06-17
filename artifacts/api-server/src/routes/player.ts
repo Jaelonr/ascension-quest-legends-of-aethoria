@@ -7,7 +7,7 @@ import {
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import {
-  getOrCreatePlayer, buildPlayerResponse, xpForLevel, rankForLevel, applyXpEvent
+  getOrCreatePlayer, buildPlayerResponse, xpForLevel, rankForLevel, applyXpEvent, getClassXpMultiplier
 } from "../progression";
 
 const router = Router();
@@ -41,17 +41,18 @@ router.patch("/player", async (req, res) => {
 
 router.post("/player/setup", async (req, res) => {
   try {
-    const { name, statBonuses, equipmentIds } = req.body as {
+    const { name, statBonuses, equipmentIds, baseClass } = req.body as {
       name: string;
       statBonuses: { strength: number; agility: number; stamina: number; vitality: number; discipline: number; sense: number };
       equipmentIds: number[];
+      baseClass?: string;
     };
     const { player, stats } = await getOrCreatePlayer(req.userId);
     if (!stats) return res.status(400).json({ error: "Player stats not found" });
 
-    // Update name
+    // Update name + class + mark setup complete
     await db.update(playerTable)
-      .set({ name: name?.trim() || player.name, updatedAt: new Date() })
+      .set({ name: name?.trim() || player.name, baseClass: baseClass ?? player.baseClass, setupCompleted: true, updatedAt: new Date() })
       .where(eq(playerTable.id, player.id));
 
     // Add stat bonuses directly (bypasses freeStatPoints — this is a one-time setup grant)
@@ -275,12 +276,13 @@ router.post("/player/prestige", async (req, res) => {
 router.post("/player/change-class", async (req, res) => {
   try {
     const COST = 5000;
+    const { baseClass } = req.body as { baseClass?: string };
     const { player, stats } = await getOrCreatePlayer(req.userId);
     if (player.gold < COST) {
       return res.status(400).json({ error: `Not enough gold. Class change costs ${COST.toLocaleString()} gold.` });
     }
     const [updated] = await db.update(playerTable)
-      .set({ gold: player.gold - COST, updatedAt: new Date() })
+      .set({ gold: player.gold - COST, baseClass: baseClass ?? player.baseClass, updatedAt: new Date() })
       .where(eq(playerTable.id, player.id))
       .returning();
     res.json({ success: true, player: buildPlayerResponse(updated, stats), goldSpent: COST });

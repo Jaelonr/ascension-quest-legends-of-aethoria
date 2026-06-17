@@ -29,6 +29,8 @@ export const playerTable = pgTable("player", {
   prestigeLevel: integer("prestige_level").notNull().default(0),
   prestigeCount: integer("prestige_count").notNull().default(0),
   xpMultiplier: integer("xp_multiplier").notNull().default(100),
+  baseClass: text("base_class"),
+  setupCompleted: boolean("setup_completed").notNull().default(false),
   lastActivityDate: text("last_activity_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

@@ -346,6 +346,7 @@ export default function CharacterSetup() {
         name: hunterName.trim() || "Hunter",
         statBonuses: bonuses,
         equipmentIds: selectedEquipmentIds(),
+        baseClass: classId,
         goal: goalObj?.goalStr ?? "",
       },
     });

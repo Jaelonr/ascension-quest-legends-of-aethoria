@@ -51,7 +51,7 @@ export default function Dashboard() {
   const nextBoss = getNextBoss(player.level);
   const worldDanger = getWorldDanger(player.level);
 
-  const storedClassId = getStoredBaseClass();
+  const storedClassId = (player.baseClass ?? getStoredBaseClass()) as ReturnType<typeof getStoredBaseClass>;
   const playerClass = storedClassId ? getBaseClass(storedClassId) : null;
   const playerEvo = storedClassId ? getCurrentEvolution(storedClassId, player.level) : null;
   

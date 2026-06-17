@@ -21,6 +21,16 @@ Must only export from `./generated/api` (not `./generated/types`) since the type
 
 **Why:** Achievement auto-triggers, rank-up detection, and XP multipliers all need consistent state. Duplicating logic caused missed achievement grants.
 
+## Class XP multipliers (server-side)
+
+`getClassXpMultiplier(baseClass, category)` in `progression.ts` returns a 1.15x bonus for the class's specialty category. Applied inside `applyXpEvent` after the prestige multiplier. Classes:
+- warrior/berserker: strength + hypertrophy
+- ranger/rogue: conditioning + striking
+- monk: recovery + flexibility + rehabilitation
+- tactician: flat 1.05x on all categories
+
+**Why:** Class must affect server-side XP so it can't be faked from the frontend.
+
 ## Achievement check system
 
 `check_key` maps to player counters (`total_workouts`, `total_prs`, `total_quests`, `streak_days`, `gold`, `level`, `skills_unlocked`). The progression engine checks these automatically inside `applyXpEvent` after every XP grant. If an achievement doesn't have `check_key` + `check_threshold` set in the DB, it won't auto-trigger.
@@ -45,20 +55,37 @@ Story state lives entirely in `src/hooks/use-story.ts` (client-side, no backend)
 - `rpg_class_base_v1` — assigned base class id (e.g. "warrior")
 - Onboarding guard in `AppRoutes`: no onboarding key → /onboarding; no setup key → /setup; else main app
 
-## Class system
+## Onboarding trigger fix (server-authoritative)
 
-All class data lives in `src/hooks/use-class.ts` (client-side only, no DB). Key design:
-- 6 base classes: warrior, berserker, ranger, rogue, monk, tactician — assigned by scoring questionnaire stat bonuses against class stat weights
-- Each has 6 evolution tiers unlocking at Lv 1/15/30/50/70/90 with 3 abilities each (passive/active)
-- 6 Apex hybrid classes unlock at Lv 80 — each blends 2 base class trees
-- Class page at /class shows evolution timeline; class name appears on dashboard under player name (clickable → /class)
+`player.setupCompleted` (boolean, DB column) is set to `true` by `POST /api/player/setup`. `PlayerSetupSync` component (in `App.tsx`, inside `ProtectedShell`) fetches player data on sign-in; if `setupCompleted` is false, clears localStorage onboarding keys and redirects to `/onboarding`. Runs once per `player.id` per session using a ref guard.
 
-**Why client-only:** Class is deterministic from questionnaire stats and level — no DB column needed. `storeBaseClass()` writes to localStorage after setup, `getStoredBaseClass()` reads it everywhere.
+**Why:** localStorage-only check broke for new devices/browsers. Server flag is the authority; localStorage is just a UI optimization.
 
-Arc and boss progression are computed from player level (from the existing API). No extra DB columns needed — level is the proxy for world progress. World danger = `getWorldDanger(level)`.
+## Class system (now server-side)
 
-**Why:** Keeping story state client-only avoids a DB migration. The story is deterministic from level so it never desynchronizes.
+`baseClass` text column on `playerTable` stores the active class ID. Set by `POST /api/player/setup` (initial) and `POST /api/player/change-class` (reclass, costs 5000 gold). Class data/evolutions still live in `src/hooks/use-class.ts` (client-only, deterministic). Dashboard and class page prefer `player.baseClass` from API, fall back to localStorage.
+
+**Why:** localStorage-only class was invisible to the server, so XP multipliers couldn't be applied correctly.
+
+## Level-up detection
+
+`useLevelUpDetector` hook in `src/hooks/use-level-up.ts` compares `player.level` previous vs current using a ref. Fires `LevelUpOverlay` when level increases. Wired into `MainLayout` via `LevelUpWatcher` component so it fires from any page after any mutation that grants XP. The overlay renders as a `z-[200]` fixed overlay.
+
+## Active session page
+
+Rebuilt from 182-line stub to a full set-by-set tracker:
+- Exercises come from `session.templateExercises` (added to GET `/training/sessions/:id` response by joining template)
+- Per-exercise expandable cards with planned sets, logged sets list, inline form
+- Form pre-fills from last logged set for that exercise
+- PR badge fires when `set.isPr` is true
+- Rest timer (90s) auto-starts after each logged set
+- Session elapsed timer counts up from `session.startedAt`
+- End-of-session `SessionSummary` full-screen overlay shows XP, gold, duration, PRs
 
 ## Player initial state
 
 New players start with: level 1, all stats at 1, freeStatPoints 0, gold 500. The `freeStatPoints: 10` in player routes is intentional — it only applies on prestige (resets to lv1 with a bonus).
+
+## Arc and boss progression
+
+Computed from player level (from the existing API). No extra DB columns needed — level is the proxy for world progress. World danger = `getWorldDanger(level)`.

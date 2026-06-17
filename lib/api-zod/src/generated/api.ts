@@ -44,6 +44,8 @@ export const GetDashboardSummaryResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 }),
   "dailyQuest": zod.object({
@@ -133,6 +135,8 @@ export const GetPlayerResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 
@@ -168,6 +172,8 @@ export const UpdatePlayerResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 
@@ -186,6 +192,7 @@ export const SetupPlayerBody = zod.object({
   "sense": zod.number()
 }),
   "equipmentIds": zod.array(zod.number()),
+  "baseClass": zod.string().optional(),
   "goal": zod.string().optional()
 })
 
@@ -213,6 +220,8 @@ export const SetupPlayerResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 
@@ -255,6 +264,8 @@ export const AllocateStatsResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 
@@ -288,6 +299,8 @@ export const ChangeClassResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 }).optional(),
   "goldSpent": zod.number().optional()
@@ -327,6 +340,8 @@ export const RespecPlayerResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 }).optional(),
   "pointsReturned": zod.number().optional()
@@ -385,6 +400,8 @@ export const EquipTitleResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 
@@ -813,7 +830,14 @@ export const GetWorkoutSessionsResponseItem = zod.object({
   "notes": zod.string().nullish(),
   "startedAt": zod.string(),
   "completedAt": zod.string().nullish(),
-  "durationMinutes": zod.number().nullish()
+  "durationMinutes": zod.number().nullish(),
+  "templateExercises": zod.array(zod.object({
+  "exerciseId": zod.number().optional(),
+  "name": zod.string().optional(),
+  "sets": zod.number().optional(),
+  "reps": zod.string().optional(),
+  "muscleGroup": zod.string().optional()
+})).optional()
 })
 export const GetWorkoutSessionsResponse = zod.array(GetWorkoutSessionsResponseItem)
 
@@ -859,7 +883,14 @@ export const GetWorkoutSessionResponse = zod.object({
   "notes": zod.string().nullish(),
   "startedAt": zod.string(),
   "completedAt": zod.string().nullish(),
-  "durationMinutes": zod.number().nullish()
+  "durationMinutes": zod.number().nullish(),
+  "templateExercises": zod.array(zod.object({
+  "exerciseId": zod.number().optional(),
+  "name": zod.string().optional(),
+  "sets": zod.number().optional(),
+  "reps": zod.string().optional(),
+  "muscleGroup": zod.string().optional()
+})).optional()
 })
 
 
@@ -900,7 +931,14 @@ export const UpdateWorkoutSessionResponse = zod.object({
   "notes": zod.string().nullish(),
   "startedAt": zod.string(),
   "completedAt": zod.string().nullish(),
-  "durationMinutes": zod.number().nullish()
+  "durationMinutes": zod.number().nullish(),
+  "templateExercises": zod.array(zod.object({
+  "exerciseId": zod.number().optional(),
+  "name": zod.string().optional(),
+  "sets": zod.number().optional(),
+  "reps": zod.string().optional(),
+  "muscleGroup": zod.string().optional()
+})).optional()
 })
 
 
@@ -1290,6 +1328,8 @@ export const ClaimQuestRewardResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 })
@@ -1345,6 +1385,8 @@ export const UseInventoryItemResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 }),
   "bonusReward": zod.string().nullish()
@@ -1404,6 +1446,8 @@ export const PurchaseStoreItemResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 })
@@ -1847,6 +1891,8 @@ export const ClaimBossRaidRewardResponse = zod.object({
 }),
   "activeTitle": zod.string().nullable(),
   "penaltyQuestActive": zod.boolean().optional(),
+  "baseClass": zod.string().nullish(),
+  "setupCompleted": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 })

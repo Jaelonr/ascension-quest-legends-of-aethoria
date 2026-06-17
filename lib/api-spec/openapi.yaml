@@ -1391,6 +1391,10 @@ components:
           type: ["string", "null"]
         penaltyQuestActive:
           type: boolean
+        baseClass:
+          type: ["string", "null"]
+        setupCompleted:
+          type: boolean
         createdAt:
           type: string
 
@@ -1423,6 +1427,8 @@ components:
           type: array
           items:
             type: integer
+        baseClass:
+          type: string
         goal:
           type: string
 
@@ -1872,6 +1878,21 @@ components:
           type: ["string", "null"]
         durationMinutes:
           type: ["integer", "null"]
+        templateExercises:
+          type: array
+          items:
+            type: object
+            properties:
+              exerciseId:
+                type: integer
+              name:
+                type: string
+              sets:
+                type: integer
+              reps:
+                type: string
+              muscleGroup:
+                type: string
 
     WorkoutSessionInput:
       type: object

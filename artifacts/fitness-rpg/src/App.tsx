@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { dark } from "@clerk/themes";
 import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
@@ -28,7 +28,8 @@ import Onboarding from "@/pages/onboarding";
 import CharacterSetup from "@/pages/character-setup";
 import ClassPage from "@/pages/class";
 import Landing from "@/pages/landing";
-import { hasCompletedOnboarding, hasCompletedSetup } from "@/hooks/use-story";
+import { hasCompletedOnboarding, hasCompletedSetup, clearOnboardingAndSetup } from "@/hooks/use-story";
+import { useGetPlayer } from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
 
@@ -163,11 +164,30 @@ function SignUpPage() {
   );
 }
 
+function PlayerSetupSync() {
+  const { user } = useUser();
+  const { data: player } = useGetPlayer({ query: { queryKey: ["/api/player"], enabled: !!user } });
+  const [, setLocation] = useLocation();
+  const syncedForRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!player || syncedForRef.current === player.id) return;
+    syncedForRef.current = player.id;
+    if (!player.setupCompleted) {
+      clearOnboardingAndSetup();
+      setLocation("/onboarding");
+    }
+  }, [player?.id, player?.setupCompleted]);
+
+  return null;
+}
+
 function ProtectedShell() {
   const [location] = useLocation();
   return (
     <>
       <Show when="signed-in">
+        <PlayerSetupSync />
         <AppRoutes />
       </Show>
       <Show when="signed-out">

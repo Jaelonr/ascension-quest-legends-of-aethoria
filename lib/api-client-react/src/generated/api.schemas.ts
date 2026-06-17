@@ -49,6 +49,9 @@ export interface Player {
   /** @nullable */
   activeTitle: string | null;
   penaltyQuestActive?: boolean;
+  /** @nullable */
+  baseClass?: string | null;
+  setupCompleted?: boolean;
   createdAt: string;
 }
 
@@ -184,6 +187,7 @@ export interface PlayerSetupInput {
   name: string;
   statBonuses: PlayerStats;
   equipmentIds: number[];
+  baseClass?: string;
   goal?: string;
 }
 
@@ -530,6 +534,14 @@ export const WorkoutSessionStatus = {
   abandoned: 'abandoned',
 } as const;
 
+export type WorkoutSessionTemplateExercisesItem = {
+  exerciseId?: number;
+  name?: string;
+  sets?: number;
+  reps?: string;
+  muscleGroup?: string;
+};
+
 export type WorkoutSetWeightUnit = typeof WorkoutSetWeightUnit[keyof typeof WorkoutSetWeightUnit];
 
 
@@ -573,6 +585,7 @@ export interface WorkoutSession {
   completedAt?: string | null;
   /** @nullable */
   durationMinutes?: number | null;
+  templateExercises?: WorkoutSessionTemplateExercisesItem[];
 }
 
 export interface WorkoutSessionInput {

@@ -26,6 +26,22 @@ export function rankForLevel(level: number): "E" | "D" | "C" | "B" | "A" | "S" |
   return "E";
 }
 
+const CLASS_XP_BONUSES: Record<string, string[]> = {
+  warrior:    ["strength", "hypertrophy"],
+  berserker:  ["strength", "hypertrophy", "conditioning"],
+  ranger:     ["conditioning", "striking"],
+  rogue:      ["conditioning", "striking"],
+  monk:       ["recovery", "flexibility", "rehabilitation"],
+  tactician:  [],
+};
+
+export function getClassXpMultiplier(baseClass: string | null | undefined, category: string): number {
+  if (!baseClass) return 1.0;
+  if (baseClass === "tactician") return 1.05;
+  const bonusCategories = CLASS_XP_BONUSES[baseClass] ?? [];
+  return bonusCategories.includes(category) ? 1.15 : 1.0;
+}
+
 export function buildPlayerResponse(player: any, stats: any) {
   const xpNeeded = xpForLevel(player.level + 1);
   return {
@@ -51,6 +67,8 @@ export function buildPlayerResponse(player: any, stats: any) {
     totalPrs: player.totalPrs || 0,
     prestigeLevel: player.prestigeLevel || 0,
     xpMultiplier: player.xpMultiplier || 100,
+    baseClass: player.baseClass ?? null,
+    setupCompleted: player.setupCompleted ?? false,
     createdAt: player.createdAt.toISOString(),
     stats: stats ? {
       strength: stats.strength,
@@ -85,9 +103,10 @@ export async function applyXpEvent(
   const [player] = await db.select().from(playerTable).where(eq(playerTable.id, playerId));
   const [stats] = await db.select().from(playerStatsTable).where(eq(playerStatsTable.playerId, playerId));
 
-  // Apply XP multiplier from prestige/boosts
-  const multiplier = (player.xpMultiplier || 100) / 100;
-  const xpAwarded = Math.round(baseXp * multiplier);
+  // Apply XP multiplier from prestige/boosts + class-specific category bonus
+  const baseMultiplier = (player.xpMultiplier || 100) / 100;
+  const classBonus = getClassXpMultiplier(player.baseClass, category);
+  const xpAwarded = Math.round(baseXp * baseMultiplier * classBonus);
 
   // Record in history
   await db.insert(xpHistoryTable).values({

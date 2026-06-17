@@ -149,11 +149,17 @@ router.get("/training/sessions/:id", async (req, res) => {
     const [session] = await db.select().from(workoutSessionsTable).where(eq(workoutSessionsTable.id, id));
     if (!session) return res.status(404).json({ error: "Session not found" });
     const sets = await db.select().from(workoutSetsTable).where(eq(workoutSetsTable.sessionId, id)).orderBy(workoutSetsTable.createdAt);
+    let templateExercises: Array<{ exerciseId: number; name: string; sets: number; reps: string; muscleGroup?: string }> = [];
+    if (session.templateId) {
+      const [template] = await db.select().from(workoutTemplatesTable).where(eq(workoutTemplatesTable.id, session.templateId));
+      if (template) templateExercises = (template.exercises as any[]) || [];
+    }
     res.json({
       ...session,
       startedAt: session.startedAt.toISOString(),
       completedAt: session.completedAt?.toISOString() || null,
       sets: sets.map(ws => ({ ...ws, createdAt: ws.createdAt.toISOString() })),
+      templateExercises,
     });
   } catch (err) {
     req.log.error(err);
