@@ -35,4 +35,18 @@ Raids unlock based on `triggerCondition` field: `streak_7`, `streak_30`, `rank_D
 
 ## Frontend routing
 
-7-item bottom nav: Status, Nutrition, Training, Quests, Raids, Store, Records. Planner is a sub-route of Training (`/training/planner`), not a nav item. Raids is its own top-level page (`/raids`).
+8-item bottom nav: Status, Nutrition, Training, Quests, Raids, World, Records, Profile. Planner and Program are sub-routes of Training. World page is the Isekai story/map at `/world`.
+
+## Isekai story system
+
+Story state lives entirely in `src/hooks/use-story.ts` (client-side, no backend). Two localStorage keys:
+- `rpg_onboarding_v2` — whether the user has seen the cinematic intro
+- Onboarding guard in `AppRoutes` redirects to `/onboarding` if key unset
+
+Arc and boss progression are computed from player level (from the existing API). No extra DB columns needed — level is the proxy for world progress. World danger = `getWorldDanger(level)`.
+
+**Why:** Keeping story state client-only avoids a DB migration. The story is deterministic from level so it never desynchronizes.
+
+## Player initial state
+
+New players start with: level 1, all stats at 1, freeStatPoints 0, gold 500. The `freeStatPoints: 10` in player routes is intentional — it only applies on prestige (resets to lv1 with a bonus).

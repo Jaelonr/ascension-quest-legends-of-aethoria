@@ -7,15 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Swords, Flame, Target, Shield, Plus, Minus } from "lucide-react";
+import { Swords, Flame, Target, Shield, Plus, Minus, Globe, Skull, ChevronRight } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { getArcForLevel, getNextBoss, getWorldDanger } from "@/hooks/use-story";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { data: summary, isLoading, error } = useGetDashboardSummary();
   const allocateStats = useAllocateStats();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const [allocations, setAllocations] = useState<PlayerStats>({
     strength: 0, agility: 0, stamina: 0, vitality: 0, discipline: 0, sense: 0
@@ -41,6 +45,10 @@ export default function Dashboard() {
   }
 
   const { player, dailyQuest, nutrition, workoutRecommendation } = summary;
+
+  const currentArc = getArcForLevel(player.level);
+  const nextBoss = getNextBoss(player.level);
+  const worldDanger = getWorldDanger(player.level);
   
   const totalAllocated = Object.values(allocations).reduce((a, b) => a + b, 0);
   const remainingPoints = player.freeStatPoints - totalAllocated;
@@ -162,6 +170,51 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* World Status Card */}
+      <button
+        onClick={() => navigate("/world")}
+        className="w-full text-left rounded-xl border border-red-900/40 bg-gradient-to-r from-red-950/30 to-black/20 overflow-hidden hover:border-red-700/50 hover:from-red-950/40 transition-all group"
+      >
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-red-400" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-red-400">Aethoria — World Status</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </div>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className={cn("text-xs font-mono font-bold", currentArc.color)}>{currentArc.name}</p>
+              <p className="text-[10px] text-muted-foreground">{currentArc.region}</p>
+            </div>
+            <div className="text-right">
+              <p className={cn(
+                "text-xl font-mono font-bold",
+                worldDanger >= 70 ? "text-red-400" : worldDanger >= 40 ? "text-orange-400" : "text-green-400"
+              )}>{worldDanger}%</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">World Danger</p>
+            </div>
+          </div>
+          {/* Danger bar */}
+          <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                worldDanger >= 70 ? "bg-red-500" : worldDanger >= 40 ? "bg-orange-500" : "bg-green-500"
+              )}
+              style={{ width: `${worldDanger}%` }}
+            />
+          </div>
+          {nextBoss && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <Skull className="w-3 h-3 text-orange-400" />
+              <span className="text-[10px] text-muted-foreground">Next: <span className="text-orange-400 font-bold">{nextBoss.name}</span> at Lv {nextBoss.levelRequired}</span>
+            </div>
+          )}
+        </div>
+      </button>
 
       {/* Daily Quest */}
       {dailyQuest && (
