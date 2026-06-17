@@ -185,10 +185,14 @@ export default function World() {
                     )} />
                   )}
 
-                  <div className={cn(
-                    "relative z-10 flex items-start gap-3 py-3 px-2 rounded-xl transition-all",
-                    isCurrentArc ? "bg-primary/5 border border-primary/20" : "border border-transparent"
-                  )}>
+                  <div
+                    className={cn(
+                      "relative z-10 flex items-start gap-3 py-3 px-2 rounded-xl transition-all",
+                      isCurrentArc ? "bg-primary/5 border border-primary/20" : "border border-transparent",
+                      arc.id === 0 && "cursor-pointer hover:bg-primary/10 hover:border-primary/30 active:scale-[0.98]"
+                    )}
+                    onClick={arc.id === 0 ? () => navigate("/onboarding") : undefined}
+                  >
                     {/* Node */}
                     <div className={cn(
                       "w-10 h-10 rounded-full border-2 flex items-center justify-center shrink-0 font-mono font-bold text-xs",

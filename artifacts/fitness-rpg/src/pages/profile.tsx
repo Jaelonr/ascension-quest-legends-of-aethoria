@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useClerk } from "@clerk/react";
 import { useGetBiometrics, useUpdateBiometrics } from "@workspace/api-client-react";
 import { useSettings } from "@/hooks/use-settings";
 import { PageHeader } from "@/components/shared/page-header";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Dumbbell, Scale, Ruler, Activity, Save, ChevronRight, Info, Settings } from "lucide-react";
+import { Dumbbell, Scale, Ruler, Activity, Save, ChevronRight, Info, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 
@@ -90,6 +91,7 @@ function numOrNull(s: string): number | null {
 }
 
 export default function Profile() {
+  const { signOut } = useClerk();
   const { data, isLoading } = useGetBiometrics();
   const update = useUpdateBiometrics();
   const { settings } = useSettings();
@@ -389,6 +391,15 @@ export default function Profile() {
         <Save className="w-4 h-4 mr-2" />
         {update.isPending ? "Saving..." : dirty ? "Save Profile" : "Profile Saved ✓"}
       </Button>
+
+      {/* Sign Out */}
+      <button
+        onClick={() => signOut({ redirectUrl: "/" })}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-900/40 bg-red-950/10 text-red-400/80 hover:bg-red-950/20 hover:border-red-700/50 hover:text-red-300 transition-all text-sm font-mono"
+      >
+        <LogOut className="w-4 h-4" />
+        Sign Out
+      </button>
     </div>
   );
 }
