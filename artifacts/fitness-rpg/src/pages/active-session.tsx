@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useSoundEngine } from "@/hooks/use-sound-engine";
+import { useCountUp } from "@/hooks/use-count-up";
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -43,7 +45,22 @@ function SessionSummary({
   onReturn: () => void;
 }) {
   const [shown, setShown] = useState(false);
-  useEffect(() => { setTimeout(() => setShown(true), 80); }, []);
+  const { playSound } = useSoundEngine();
+  const animatedXp = useCountUp(data.xpEarned, 1200, 400);
+  const animatedGold = useCountUp(data.goldEarned, 1200, 500);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShown(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (shown) {
+      const t = setTimeout(() => playSound("workout-complete"), 200);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [shown]);
 
   return (
     <div
@@ -68,12 +85,12 @@ function SessionSummary({
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="bg-cyan-500/10 border border-cyan-400/30 rounded-2xl p-4">
             <Zap className="w-5 h-5 text-cyan-400 mx-auto mb-2" />
-            <div className="text-3xl font-black text-cyan-400">+{data.xpEarned}</div>
+            <div className="text-3xl font-black text-cyan-400">+{animatedXp}</div>
             <div className="text-[11px] text-muted-foreground mt-1">XP Earned</div>
           </div>
           <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-2xl p-4">
             <Coins className="w-5 h-5 text-yellow-400 mx-auto mb-2" />
-            <div className="text-3xl font-black text-yellow-400">+{data.goldEarned}</div>
+            <div className="text-3xl font-black text-yellow-400">+{animatedGold}</div>
             <div className="text-[11px] text-muted-foreground mt-1">Gold Earned</div>
           </div>
         </div>
@@ -113,6 +130,7 @@ export default function ActiveSession() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { playSound } = useSoundEngine();
 
   const [openExId, setOpenExId] = useState<number | null>(null);
   const [weight, setWeight] = useState("45");
@@ -212,6 +230,7 @@ export default function ActiveSession() {
       },
       {
         onSuccess: (newSet) => {
+          playSound("set-logged");
           setRestTimer(90);
           setOpenExId(null);
           queryClient.invalidateQueries({ queryKey: ["/api/workouts/sessions", sessionId] });

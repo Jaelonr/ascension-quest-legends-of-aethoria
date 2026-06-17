@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGetDashboardSummary, useAllocateStats, PlayerStats } from "@workspace/api-client-react";
+import { useCountUp } from "@/hooks/use-count-up";
 import { DailyRewardCard } from "@/components/daily-reward";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatBar } from "@/components/shared/stat-bar";
@@ -15,6 +16,11 @@ import { useLocation } from "wouter";
 import { getArcForLevel, getNextBoss, getWorldDanger } from "@/hooks/use-story";
 import { getStoredBaseClass, getBaseClass, getCurrentEvolution } from "@/hooks/use-class";
 import { cn } from "@/lib/utils";
+
+function AnimatedStat({ value }: { value: number }) {
+  const animated = useCountUp(value, 900, 100);
+  return <span className="text-sm font-mono font-bold">{animated}</span>;
+}
 
 export default function Dashboard() {
   const { data: summary, isLoading, error } = useGetDashboardSummary();
@@ -177,7 +183,7 @@ export default function Dashboard() {
               {Object.entries(player.stats).map(([stat, value]) => (
                 <div key={stat} className="flex flex-col items-center">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.substring(0,3)}</span>
-                  <span className="text-sm font-mono font-bold">{value}</span>
+                  <AnimatedStat value={value as number} />
                 </div>
               ))}
             </div>

@@ -23,6 +23,9 @@ export interface AppSettings {
     reducedMotion: boolean;
     compactMode: boolean;
   };
+  sounds: {
+    enabled: boolean;
+  };
   privacy: {
     analyticsEnabled: boolean;
     crashReports: boolean;
@@ -52,6 +55,9 @@ const DEFAULT_SETTINGS: AppSettings = {
     reducedMotion: false,
     compactMode: false,
   },
+  sounds: {
+    enabled: true,
+  },
   privacy: {
     analyticsEnabled: true,
     crashReports: true,
@@ -70,6 +76,7 @@ function loadSettings(): AppSettings {
       security: { ...DEFAULT_SETTINGS.security, ...parsed.security },
       units: { ...DEFAULT_SETTINGS.units, ...parsed.units },
       appearance: { ...DEFAULT_SETTINGS.appearance, ...parsed.appearance },
+      sounds: { ...DEFAULT_SETTINGS.sounds, ...parsed.sounds },
       privacy: { ...DEFAULT_SETTINGS.privacy, ...parsed.privacy },
     };
   } catch {

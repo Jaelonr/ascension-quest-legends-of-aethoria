@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { LevelUpInfo } from "@/hooks/use-level-up";
 import { Button } from "@/components/ui/button";
 import { Sparkles, TrendingUp, Star, Zap } from "lucide-react";
+import { useCountUp } from "@/hooks/use-count-up";
+import { useSoundEngine } from "@/hooks/use-sound-engine";
 
 interface Props {
   info: LevelUpInfo;
@@ -30,12 +32,19 @@ const RANK_GLOW: Record<string, string> = {
 
 export function LevelUpOverlay({ info, onDismiss }: Props) {
   const [phase, setPhase] = useState<"in" | "show" | "rank">("in");
+  const { playSound } = useSoundEngine();
+  const animatedLevel = useCountUp(info.newLevel, 900, 200);
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("show"), 100);
     const t2 = setTimeout(() => info.rankedUp && setPhase("rank"), 1200);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [info.rankedUp]);
+
+  useEffect(() => {
+    const t = setTimeout(() => playSound("level-up"), 150);
+    return () => clearTimeout(t);
+  }, []);
 
   const rankColor = RANK_COLORS[info.newRank] ?? "text-cyan-400";
   const rankGlow = RANK_GLOW[info.newRank] ?? "";
@@ -92,7 +101,7 @@ export function LevelUpOverlay({ info, onDismiss }: Props) {
             transition: "all 0.3s ease",
           }}
         >
-          {info.newLevel}
+          {animatedLevel}
         </div>
 
         {info.rankedUp && (

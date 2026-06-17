@@ -16,7 +16,7 @@ import {
   Bell, Shield, Fingerprint, Smartphone, Palette,
   Scale, Download, Info, ChevronRight, Check,
   Loader2, AlertCircle, Activity, Eye, Database,
-  Moon, Zap, Clock, Swords, LogIn, LogOut, User, RefreshCw, TriangleAlert,
+  Moon, Zap, Clock, Swords, LogIn, LogOut, User, RefreshCw, TriangleAlert, Volume2,
 } from "lucide-react";
 
 function SettingRow({
@@ -451,6 +451,13 @@ export default function Settings() {
             </div>
             <p className="text-[10px] text-muted-foreground ml-11 mt-2 opacity-60">Full color engine coming in next update</p>
           </div>
+
+          <SettingRow icon={Volume2} label="Sound Effects" description="Level-up chimes, gold pings, workout fanfare" iconColor="text-cyan-400">
+            <Toggle
+              checked={settings.sounds?.enabled ?? true}
+              onChange={v => setSetting("sounds", "enabled", v)}
+            />
+          </SettingRow>
 
           <SettingRow icon={Moon} label="Reduced Motion" description="Disable animations for performance" iconColor="text-indigo-400">
             <Toggle

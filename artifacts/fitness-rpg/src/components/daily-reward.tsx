@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGetDailyReward, useClaimDailyReward } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useSoundEngine } from "@/hooks/use-sound-engine";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +20,7 @@ export function DailyRewardCard() {
   const claim = useClaimDailyReward();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { playSound } = useSoundEngine();
   const [justClaimed, setJustClaimed] = useState(false);
 
   if (isLoading || !data) return null;
@@ -30,6 +32,7 @@ export function DailyRewardCard() {
     claim.mutate(undefined, {
       onSuccess: (result) => {
         setJustClaimed(true);
+        playSound("daily-reward");
         const isMilestone = result.isMilestone;
         toast({
           title: isMilestone ? `🎉 Milestone! Day ${result.streakDay}!` : `Daily Reward Claimed!`,

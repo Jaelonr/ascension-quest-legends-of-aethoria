@@ -5,6 +5,7 @@ import { dark } from "@clerk/themes";
 import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { OfflineBanner } from "@/components/offline-banner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MainLayout } from "@/components/layout/main-layout";
 
@@ -253,6 +254,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/sign-up/*?" component={SignUpPage} />
             <Route component={ProtectedShell} />
           </Switch>
+          <OfflineBanner />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

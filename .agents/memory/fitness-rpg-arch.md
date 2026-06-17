@@ -108,6 +108,16 @@ Each task in `RAID_TEMPLATES` now has a `taskType` field:
 
 `push_subscriptions` table stores `endpoint` (UNIQUE), `p256dh`, `auth`. VAPID keys set as shared env vars `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`. Service worker at `artifacts/fitness-rpg/public/sw.js`. Registered in `main.tsx` via `navigator.serviceWorker.register('/sw.js')` on window load.
 
+## Tier 5 Polish
+
+**Animations** — `useCountUp(target, duration, delay)` hook uses `requestAnimationFrame` + ease-out cubic. Used in: dashboard stat grid (`AnimatedStat` wrapper component), level-up overlay (level number rolls up on mount), session summary (XP + Gold count up from 0 with staggered delay).
+
+**Sound engine** — `useSoundEngine()` returns `playSound(type)`. Uses Web Audio API synthesis (no files, no deps). 7 sound types: `level-up`, `gold`, `daily-reward`, `workout-complete`, `boss-defeated`, `set-logged`, `claim`. Respects `settings.sounds.enabled` (default true) and `settings.appearance.reducedMotion`. AudioContext created lazily on first call to avoid "suspended context" browser restriction. Toggle in Settings → Appearance → Sound Effects.
+
+**Offline mode** — `useOfflineSync()` wraps `navigator.onLine` + `online`/`offline` events. Queues failed mutations to IndexedDB (`fitness-rpg-offline` DB, `pending` store). Auto-syncs queue on reconnect. `OfflineBanner` component shows orange strip when offline, green "Back online" after reconnect. Banner only shows on offline→online transition (tracked via `prevOnlineRef`), not on initial mount.
+
+**Service worker** — Updated `public/sw.js` with app shell caching (cache-first for static assets, navigation fallback to `/index.html`). Old caches cleaned on activate.
+
 ## Active session page
 
 Rebuilt to full set-by-set tracker: template exercises from `session.templateExercises`, per-set PR badge, 90s rest timer, elapsed timer, end-of-session `SessionSummary` overlay.
