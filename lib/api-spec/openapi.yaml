@@ -167,6 +167,22 @@ paths:
                   pointsReturned:
                     type: integer
 
+  /player/reset:
+    post:
+      operationId: resetPlayer
+      tags: [player]
+      summary: Reset all player progress and return to character creation
+      responses:
+        "200":
+          description: Player reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
   /player/titles:
     get:
       operationId: getPlayerTitles

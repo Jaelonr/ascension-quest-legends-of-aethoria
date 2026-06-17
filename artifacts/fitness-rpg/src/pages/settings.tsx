@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth, useClerk } from "@clerk/react";
+import { useResetPlayer } from "@workspace/api-client-react";
+import { clearOnboardingAndSetup } from "@/hooks/use-story";
+import { useLocation } from "wouter";
 import { useSettings } from "@/hooks/use-settings";
 import { useBiometric } from "@/hooks/use-biometric";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -13,7 +16,7 @@ import {
   Bell, Shield, Fingerprint, Smartphone, Palette,
   Scale, Download, Info, ChevronRight, Check,
   Loader2, AlertCircle, Activity, Eye, Database,
-  Moon, Zap, Clock, Swords, LogIn, LogOut, User,
+  Moon, Zap, Clock, Swords, LogIn, LogOut, User, RefreshCw, TriangleAlert,
 } from "lucide-react";
 
 function SettingRow({
@@ -96,6 +99,16 @@ const REMINDER_TIMES = [
 export default function Settings() {
   const { isSignedIn } = useAuth();
   const { signOut, openSignIn } = useClerk();
+  const [, navigate] = useLocation();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const resetPlayer = useResetPlayer({
+    mutation: {
+      onSuccess: () => {
+        clearOnboardingAndSetup();
+        navigate("/onboarding");
+      },
+    },
+  });
   const { settings, setSetting } = useSettings();
   const { isSupported: biometricSupported, isRegistered, register, deregister } = useBiometric();
   const { isSupported: notifSupported, permission, requestPermission, sendNotification, scheduleReminder, cancelReminders } = useNotifications();
@@ -154,7 +167,7 @@ export default function Settings() {
       {/* Account */}
       <SectionHeader title="Account" icon={User} />
       <Card className="border-border/50 bg-card/50">
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
           {isSignedIn ? (
             <button
               onClick={() => signOut({ redirectUrl: "/" })}
@@ -171,6 +184,49 @@ export default function Settings() {
               <LogIn className="w-4 h-4" />
               Sign In
             </button>
+          )}
+
+          {/* Recreate Character */}
+          {!confirmReset ? (
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-amber-950/20 border border-amber-800/30 text-amber-500/80 hover:bg-amber-950/40 hover:border-amber-700/50 hover:text-amber-400 transition-all text-sm font-semibold"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Recreate Character
+            </button>
+          ) : (
+            <div className="rounded-xl border border-amber-700/50 bg-amber-950/20 p-4 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <TriangleAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-300">Reset all progress?</p>
+                  <p className="text-[11px] text-amber-500/80 mt-0.5 leading-relaxed">
+                    Your level, gold, stats, inventory, and achievements will be wiped. You'll restart character creation from the beginning.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmReset(false)}
+                  className="flex-1 py-2 rounded-lg border border-border/50 bg-black/20 text-muted-foreground text-sm font-medium hover:bg-black/40 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => resetPlayer.mutate()}
+                  disabled={resetPlayer.isPending}
+                  className="flex-1 py-2 rounded-lg bg-amber-700/30 border border-amber-600/50 text-amber-300 text-sm font-semibold hover:bg-amber-700/50 transition-all disabled:opacity-60 flex items-center justify-center gap-1.5"
+                >
+                  {resetPlayer.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  )}
+                  Yes, reset
+                </button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -356,4 +356,45 @@ router.post("/player/respec", async (req, res) => {
   }
 });
 
+router.post("/player/reset", async (req, res) => {
+  try {
+    const { player } = await getOrCreatePlayer(req.userId);
+
+    // Reset player to default values
+    await db.update(playerTable).set({
+      name: "Hunter",
+      level: 1,
+      xp: 0,
+      gold: 500,
+      hp: 100,
+      maxHp: 100,
+      freeStatPoints: 0,
+      xpMultiplier: 100,
+      updatedAt: new Date(),
+    }).where(eq(playerTable.id, player.id));
+
+    // Reset stats to base 5s
+    await db.update(playerStatsTable).set({
+      strength: 5, agility: 5, stamina: 5,
+      vitality: 5, discipline: 5, sense: 5,
+      updatedAt: new Date(),
+    }).where(eq(playerStatsTable.playerId, player.id));
+
+    // Clear inventory
+    await db.delete(playerInventoryTable).where(eq(playerInventoryTable.playerId, player.id));
+
+    // Reset equipment to unowned
+    await db.update(equipmentTable).set({ owned: false });
+
+    // Clear achievements and titles
+    await db.delete(playerAchievementsTable).where(eq(playerAchievementsTable.playerId, player.id));
+    await db.delete(playerTitlesTable).where(eq(playerTitlesTable.playerId, player.id));
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Failed to reset player" });
+  }
+});
+
 export default router;

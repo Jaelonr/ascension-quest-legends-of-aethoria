@@ -239,3 +239,12 @@ export function markSetupComplete(): void {
     // ignore
   }
 }
+
+export function clearOnboardingAndSetup(): void {
+  try {
+    localStorage.removeItem(ONBOARDING_KEY);
+    localStorage.removeItem(SETUP_KEY);
+  } catch {
+    // ignore
+  }
+}

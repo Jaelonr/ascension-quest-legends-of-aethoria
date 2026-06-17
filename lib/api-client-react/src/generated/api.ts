@@ -61,6 +61,7 @@ import type {
   RaidClaimResult,
   RaidTemplate,
   RankProgressEntry,
+  ResetPlayer200,
   RespecPlayer200,
   RespecPlayerBody,
   SavePlanRequest,
@@ -685,6 +686,76 @@ export const useRespecPlayer = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getRespecPlayerMutationOptions(options));
+    }
+
+export const getResetPlayerUrl = () => {
+
+
+
+
+  return `/api/player/reset`
+}
+
+/**
+ * @summary Reset all player progress and return to character creation
+ */
+export const resetPlayer = async ( options?: RequestInit): Promise<ResetPlayer200> => {
+
+  return customFetch<ResetPlayer200>(getResetPlayerUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getResetPlayerMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPlayer>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetPlayer>>, TError,void, TContext> => {
+
+const mutationKey = ['resetPlayer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetPlayer>>, void> = () => {
+
+
+          return  resetPlayer(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetPlayerMutationResult = NonNullable<Awaited<ReturnType<typeof resetPlayer>>>
+
+    export type ResetPlayerMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reset all player progress and return to character creation
+ */
+export const useResetPlayer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPlayer>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetPlayer>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getResetPlayerMutationOptions(options));
     }
 
 export const getGetPlayerTitlesUrl = () => {

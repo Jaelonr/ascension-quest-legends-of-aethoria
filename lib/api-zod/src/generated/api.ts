@@ -334,6 +334,14 @@ export const RespecPlayerResponse = zod.object({
 
 
 /**
+ * @summary Reset all player progress and return to character creation
+ */
+export const ResetPlayerResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
  * @summary Get earned titles
  */
 export const GetPlayerTitlesResponseItem = zod.object({

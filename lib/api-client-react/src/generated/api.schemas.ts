@@ -1156,6 +1156,10 @@ export type RespecPlayer200 = {
   pointsReturned?: number;
 };
 
+export type ResetPlayer200 = {
+  success?: boolean;
+};
+
 export type GetNutritionLogsParams = {
 date?: string;
 };
