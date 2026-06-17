@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/inventory", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const items = await db.select({
       id: playerInventoryTable.id,
       itemId: playerInventoryTable.itemId,
@@ -33,7 +33,7 @@ router.get("/inventory", async (req, res) => {
 router.post("/inventory/:id/use", async (req, res) => {
   try {
     const inventoryId = parseInt(req.params.id);
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [item] = await db.select({
       inv: playerInventoryTable,
@@ -109,7 +109,7 @@ router.get("/store/items", async (req, res) => {
 router.post("/store/purchase", async (req, res) => {
   try {
     const { itemId, quantity = 1 } = req.body;
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [item] = await db.select().from(storeItemsTable).where(eq(storeItemsTable.id, itemId));
     if (!item) return res.status(404).json({ error: "Item not found" });

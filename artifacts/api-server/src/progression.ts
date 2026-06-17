@@ -263,14 +263,16 @@ async function grantTitleIfExists(playerId: number, titleName: string, newTitles
   }
 }
 
-export async function getOrCreatePlayer() {
-  const existing = await db.select().from(playerTable).limit(1);
+export async function getOrCreatePlayer(clerkId: string) {
+  const existing = await db.select().from(playerTable)
+    .where(eq(playerTable.clerkId, clerkId)).limit(1);
   if (existing.length > 0) {
     const player = existing[0];
     const stats = await db.select().from(playerStatsTable).where(eq(playerStatsTable.playerId, player.id)).limit(1);
     return { player, stats: stats[0] || null };
   }
   const [player] = await db.insert(playerTable).values({
+    clerkId,
     name: "Hunter",
     level: 1,
     rank: "E",

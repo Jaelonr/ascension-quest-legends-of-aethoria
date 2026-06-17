@@ -15,7 +15,7 @@ export { getOrCreatePlayer, buildPlayerResponse, xpForLevel, rankForLevel };
 
 router.get("/player", async (req, res) => {
   try {
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
     res.json(buildPlayerResponse(player, stats));
   } catch (err) {
     req.log.error(err);
@@ -26,7 +26,7 @@ router.get("/player", async (req, res) => {
 router.patch("/player", async (req, res) => {
   try {
     const { name } = req.body;
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
     const [updated] = await db.update(playerTable)
       .set({ name: name || player.name, updatedAt: new Date() })
       .where(eq(playerTable.id, player.id))
@@ -45,7 +45,7 @@ router.post("/player/setup", async (req, res) => {
       statBonuses: { strength: number; agility: number; stamina: number; vitality: number; discipline: number; sense: number };
       equipmentIds: number[];
     };
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
     if (!stats) return res.status(400).json({ error: "Player stats not found" });
 
     // Update name
@@ -82,12 +82,12 @@ router.post("/player/setup", async (req, res) => {
     if (Array.isArray(equipmentIds) && equipmentIds.length > 0) {
       for (const id of equipmentIds) {
         await db.update(equipmentTable)
-          .set({ owned: true, updatedAt: new Date() })
+          .set({ owned: true })
           .where(eq(equipmentTable.id, id));
       }
     }
 
-    const { player: finalPlayer, stats: finalStats } = await getOrCreatePlayer();
+    const { player: finalPlayer, stats: finalStats } = await getOrCreatePlayer(req.userId);
     res.json(buildPlayerResponse(finalPlayer, finalStats));
   } catch (err) {
     req.log.error(err);
@@ -98,7 +98,7 @@ router.post("/player/setup", async (req, res) => {
 router.post("/player/allocate-stats", async (req, res) => {
   try {
     const { allocations } = req.body;
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
     if (!stats) return res.status(400).json({ error: "Player stats not found" });
 
     const total = Object.values(allocations as Record<string, number>).reduce((a: number, b: number) => a + b, 0);
@@ -137,7 +137,7 @@ router.post("/player/allocate-stats", async (req, res) => {
 
 router.get("/player/titles", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const earned = await db.select({
       id: titlesTable.id,
       name: titlesTable.name,
@@ -159,7 +159,7 @@ router.get("/player/titles", async (req, res) => {
 router.post("/player/titles/:id/equip", async (req, res) => {
   try {
     const titleId = parseInt(req.params.id);
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
 
     await db.update(playerTitlesTable).set({ equipped: false })
       .where(eq(playerTitlesTable.playerId, player.id));
@@ -180,7 +180,7 @@ router.post("/player/titles/:id/equip", async (req, res) => {
 
 router.get("/player/achievements", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const all = await db.select().from(achievementsTable);
     const unlocked = await db.select().from(playerAchievementsTable)
       .where(eq(playerAchievementsTable.playerId, player.id));
@@ -206,7 +206,7 @@ router.get("/player/achievements", async (req, res) => {
 router.post("/player/grant-xp", async (req, res) => {
   try {
     const { amount, source, category } = req.body;
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const result = await applyXpEvent(
       player.id, amount, source, category || "general",
       new Date().toISOString().split("T")[0]
@@ -223,7 +223,7 @@ router.post("/player/grant-xp", async (req, res) => {
 
 router.post("/player/prestige", async (req, res) => {
   try {
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
     if (player.level < 100) {
       return res.status(400).json({ error: "Must be Level 100 (National-Level) to prestige" });
     }

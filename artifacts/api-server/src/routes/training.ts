@@ -107,7 +107,7 @@ router.delete("/training/templates/:id", async (req, res) => {
 
 router.get("/training/sessions", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const limit = parseInt(req.query.limit as string) || 20;
     const sessions = await db.select().from(workoutSessionsTable)
       .where(eq(workoutSessionsTable.playerId, player.id))
@@ -131,7 +131,7 @@ router.get("/training/sessions", async (req, res) => {
 
 router.post("/training/sessions", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const { name, templateId, notes } = req.body;
     const [session] = await db.insert(workoutSessionsTable)
       .values({ playerId: player.id, name, templateId, notes, status: "active" })
@@ -164,7 +164,7 @@ router.get("/training/sessions/:id", async (req, res) => {
 router.patch("/training/sessions/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
     const { status, notes, completedAt } = req.body;
 
     const updates: Record<string, any> = {};
@@ -273,7 +273,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
     const [updated] = await db.update(workoutSessionsTable).set(updates).where(eq(workoutSessionsTable.id, id)).returning();
     const sets = await db.select().from(workoutSetsTable).where(eq(workoutSetsTable.sessionId, id));
 
-    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer();
+    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer(req.userId);
 
     res.json({
       session: {
@@ -301,7 +301,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
 router.post("/training/sessions/:id/sets", async (req, res) => {
   try {
     const sessionId = parseInt(req.params.id);
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const { exerciseId, setNumber, reps, weight, weightUnit, rpe, notes } = req.body;
 
     const [exercise] = await db.select().from(exercisesTable).where(eq(exercisesTable.id, exerciseId));
@@ -367,7 +367,7 @@ router.delete("/training/sessions/:id/sets/:setId", async (req, res) => {
 
 router.get("/training/prs", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const prs = await db.select().from(personalRecordsTable)
       .where(eq(personalRecordsTable.playerId, player.id))
       .orderBy(desc(personalRecordsTable.achievedAt));

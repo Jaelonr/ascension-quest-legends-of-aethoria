@@ -11,7 +11,7 @@ const router = Router();
 
 router.get("/analytics/overview", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
 
     const totalWorkouts = await db.select({ count: sql<number>`count(*)` })
       .from(workoutSessionsTable)
@@ -67,7 +67,7 @@ router.get("/analytics/overview", async (req, res) => {
 
 router.get("/analytics/volume", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const weeks = parseInt(req.query.weeks as string) || 4;
 
     const weeksAgo = new Date();
@@ -118,7 +118,7 @@ router.get("/analytics/volume", async (req, res) => {
 
 router.get("/analytics/xp", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const history = await db.select().from(xpHistoryTable)
       .where(eq(xpHistoryTable.playerId, player.id));
 
@@ -142,7 +142,7 @@ router.get("/analytics/xp", async (req, res) => {
 
 router.get("/analytics/rank-progress", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const history = await db.select().from(xpHistoryTable)
       .where(eq(xpHistoryTable.playerId, player.id))
       .orderBy(xpHistoryTable.createdAt);

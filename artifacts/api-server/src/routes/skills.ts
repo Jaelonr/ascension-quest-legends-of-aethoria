@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/skills/trees", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const trees = await db.select().from(skillTreesTable).orderBy(skillTreesTable.id);
     const nodes = await db.select().from(skillNodesTable).orderBy(skillNodesTable.tier);
     const unlockedNodes = await db.select().from(playerSkillNodesTable)
@@ -49,7 +49,7 @@ router.get("/skills/trees", async (req, res) => {
 router.post("/skills/nodes/:id/unlock", async (req, res) => {
   try {
     const nodeId = parseInt(req.params.id);
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [node] = await db.select().from(skillNodesTable).where(eq(skillNodesTable.id, nodeId));
     if (!node) return res.status(404).json({ error: "Skill node not found" });
@@ -108,7 +108,7 @@ router.post("/skills/nodes/:id/unlock", async (req, res) => {
       new Date().toISOString().split("T")[0]
     );
 
-    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer();
+    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer(req.userId);
 
     res.json({
       node: {

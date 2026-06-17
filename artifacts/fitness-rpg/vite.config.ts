@@ -37,7 +37,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    tailwindcss(),
+    tailwindcss({ optimize: false }),
     runtimeErrorOverlay(),
     VitePWA({
       registerType: "autoUpdate",

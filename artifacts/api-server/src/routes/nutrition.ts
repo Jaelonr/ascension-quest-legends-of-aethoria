@@ -14,7 +14,7 @@ function getTodayStr() {
 
 router.get("/nutrition/targets", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const targets = await db.select().from(nutritionTargetsTable)
       .where(eq(nutritionTargetsTable.playerId, player.id)).limit(1);
     if (targets.length === 0) {
@@ -32,7 +32,7 @@ router.get("/nutrition/targets", async (req, res) => {
 
 router.patch("/nutrition/targets", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const { calories, protein, carbs, fat } = req.body;
     const existing = await db.select().from(nutritionTargetsTable)
       .where(eq(nutritionTargetsTable.playerId, player.id)).limit(1);
@@ -55,7 +55,7 @@ router.patch("/nutrition/targets", async (req, res) => {
 
 router.get("/nutrition/today", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const today = getTodayStr();
     const entries = await db.select().from(nutritionLogsTable)
       .where(and(eq(nutritionLogsTable.playerId, player.id), eq(nutritionLogsTable.date, today)))
@@ -93,7 +93,7 @@ router.get("/nutrition/today", async (req, res) => {
 
 router.get("/nutrition/logs", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const date = (req.query.date as string) || getTodayStr();
     const logs = await db.select().from(nutritionLogsTable)
       .where(and(eq(nutritionLogsTable.playerId, player.id), eq(nutritionLogsTable.date, date)))
@@ -107,7 +107,7 @@ router.get("/nutrition/logs", async (req, res) => {
 
 router.post("/nutrition/logs", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const { date, mealName, calories, protein, carbs, fat, mealType, notes } = req.body;
     const [log] = await db.insert(nutritionLogsTable).values({
       playerId: player.id,
@@ -151,7 +151,7 @@ router.delete("/nutrition/logs/:id", async (req, res) => {
 
 router.get("/nutrition/meals/saved", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const meals = await db.select().from(savedMealsTable)
       .where(eq(savedMealsTable.playerId, player.id));
     res.json(meals);
@@ -163,7 +163,7 @@ router.get("/nutrition/meals/saved", async (req, res) => {
 
 router.post("/nutrition/meals/saved", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const { name, calories, protein, carbs, fat, mealType } = req.body;
     const [meal] = await db.insert(savedMealsTable)
       .values({ playerId: player.id, name, calories, protein, carbs, fat, mealType })
@@ -188,7 +188,7 @@ router.delete("/nutrition/meals/saved/:id", async (req, res) => {
 
 router.post("/nutrition/copy-yesterday", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split("T")[0];
@@ -223,7 +223,7 @@ router.post("/nutrition/copy-yesterday", async (req, res) => {
 
 router.get("/nutrition/weekly-averages", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const days: string[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -268,7 +268,7 @@ router.get("/nutrition/weekly-averages", async (req, res) => {
 
 router.get("/nutrition/weight", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const entries = await db.select().from(weightEntriesTable)
       .where(eq(weightEntriesTable.playerId, player.id))
       .orderBy(desc(weightEntriesTable.date));
@@ -281,7 +281,7 @@ router.get("/nutrition/weight", async (req, res) => {
 
 router.post("/nutrition/weight", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const { weight, date, unit, notes } = req.body;
     const [entry] = await db.insert(weightEntriesTable)
       .values({ playerId: player.id, weight, date, unit: unit || "lbs", notes })

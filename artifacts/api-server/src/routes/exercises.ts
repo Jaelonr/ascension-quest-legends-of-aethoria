@@ -38,7 +38,7 @@ router.post("/exercises/search-ai", async (req, res) => {
   }
 
   // Load player biometrics for weight context
-  const { player } = await getOrCreatePlayer();
+  const { player } = await getOrCreatePlayer(req.userId);
   const [bio] = await db.select().from(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, player.id));
 
   try {

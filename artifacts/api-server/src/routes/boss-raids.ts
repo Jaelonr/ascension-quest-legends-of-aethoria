@@ -162,7 +162,7 @@ function serializeRaid(raid: any) {
 
 router.get("/boss-raids", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const raids = await db.select().from(bossRaidsTable)
       .where(eq(bossRaidsTable.playerId, player.id));
 
@@ -184,7 +184,7 @@ router.get("/boss-raids", async (req, res) => {
 
 router.get("/boss-raids/available", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const existingRaids = await db.select().from(bossRaidsTable)
       .where(eq(bossRaidsTable.playerId, player.id));
 
@@ -221,7 +221,7 @@ router.get("/boss-raids/available", async (req, res) => {
 router.post("/boss-raids/start", async (req, res) => {
   try {
     const { templateTitle } = req.body;
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
 
     const template = RAID_TEMPLATES.find(t => t.title === templateTitle);
     if (!template) return res.status(404).json({ error: "Raid template not found" });
@@ -311,7 +311,7 @@ router.patch("/boss-raids/:id/task", async (req, res) => {
 router.post("/boss-raids/:id/claim", async (req, res) => {
   try {
     const raidId = parseInt(req.params.id);
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [raid] = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.id, raidId));
     if (!raid) return res.status(404).json({ error: "Raid not found" });
@@ -352,7 +352,7 @@ router.post("/boss-raids/:id/claim", async (req, res) => {
       }
     }
 
-    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer();
+    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer(req.userId);
 
     res.json({
       xpEarned: xpResult.totalXpAwarded,

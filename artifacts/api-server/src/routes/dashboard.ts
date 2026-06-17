@@ -22,7 +22,7 @@ function getTomorrowStr() {
 
 router.get("/dashboard/summary", async (req, res) => {
   try {
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
     const today = getTodayStr();
 
     // Nutrition today

@@ -7,6 +7,7 @@ export const rarityEnum = pgEnum("rarity", ["common", "uncommon", "rare", "epic"
 
 export const playerTable = pgTable("player", {
   id: serial("id").primaryKey(),
+  clerkId: text("clerk_id").unique(),
   name: text("name").notNull().default("Hunter"),
   level: integer("level").notNull().default(1),
   rank: rankEnum("rank").notNull().default("E"),

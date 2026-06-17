@@ -1,4 +1,5 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { getAuth } from "@clerk/express";
 import healthRouter from "./health";
 import playerRouter from "./player";
 import nutritionRouter from "./nutrition";
@@ -16,7 +17,19 @@ import exercisesRouter from "./exercises";
 
 const router: IRouter = Router();
 
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const auth = getAuth(req);
+  const userId = auth?.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  req.userId = userId;
+  next();
+}
+
 router.use(healthRouter);
+router.use(requireAuth);
 router.use(playerRouter);
 router.use(nutritionRouter);
 router.use(equipmentRouter);

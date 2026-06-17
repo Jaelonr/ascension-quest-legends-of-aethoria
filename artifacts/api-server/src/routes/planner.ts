@@ -192,7 +192,7 @@ function buildSubstitutes(exercise: any, all: any[], availableEquipmentIds: Set<
 
 router.post("/training/planner/generate", async (req, res) => {
   try {
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
     const {
       goal,
       excludeEquipmentIds = [],

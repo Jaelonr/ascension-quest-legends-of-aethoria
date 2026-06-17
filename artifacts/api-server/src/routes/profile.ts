@@ -9,7 +9,7 @@ const router = Router();
 // GET /profile/biometrics
 router.get("/profile/biometrics", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const rows = await db.select().from(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, player.id));
     if (rows.length === 0) {
       // Return empty biometrics object
@@ -48,7 +48,7 @@ router.get("/profile/biometrics", async (req, res) => {
 // PUT /profile/biometrics
 router.put("/profile/biometrics", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const {
       heightCm,
       weightKg,

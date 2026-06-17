@@ -127,7 +127,7 @@ async function ensureWeeklyQuest(playerId: number) {
 
 router.get("/quests/daily", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const quest = await ensureDailyQuest(player.id);
     res.json(await buildQuestResponse(quest));
   } catch (err) {
@@ -138,7 +138,7 @@ router.get("/quests/daily", async (req, res) => {
 
 router.get("/quests", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const { type, status } = req.query;
 
     await ensureDailyQuest(player.id);
@@ -198,7 +198,7 @@ router.post("/quests/:id/complete-task", async (req, res) => {
 router.post("/quests/:id/claim", async (req, res) => {
   try {
     const questId = parseInt(req.params.id);
-    const { player, stats } = await getOrCreatePlayer();
+    const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [quest] = await db.select().from(questsTable).where(eq(questsTable.id, questId));
     if (!quest) return res.status(404).json({ error: "Quest not found" });
@@ -223,7 +223,7 @@ router.post("/quests/:id/claim", async (req, res) => {
       new Date().toISOString().split("T")[0]
     );
 
-    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer();
+    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer(req.userId);
 
     res.json({
       xpEarned: xpResult.totalXpAwarded,
@@ -248,7 +248,7 @@ router.post("/quests/:id/claim", async (req, res) => {
 // Create custom quest
 router.post("/quests", async (req, res) => {
   try {
-    const { player } = await getOrCreatePlayer();
+    const { player } = await getOrCreatePlayer(req.userId);
     const { title, description, type, xpReward, goldReward, bonusStatPoints, difficulty, expiresAt, tasks } = req.body;
     const [quest] = await db.insert(questsTable).values({
       playerId: player.id,
