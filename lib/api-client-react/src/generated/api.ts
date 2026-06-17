@@ -50,6 +50,7 @@ import type {
   Player,
   PlayerBiometrics,
   PlayerBiometricsUpdate,
+  PlayerSetupInput,
   PlayerUpdate,
   PurchaseInput,
   PurchaseResult,
@@ -398,6 +399,77 @@ export const useUpdatePlayer = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdatePlayerMutationOptions(options));
+    }
+
+export const getSetupPlayerUrl = () => {
+
+
+
+
+  return `/api/player/setup`
+}
+
+/**
+ * @summary Initial character setup — sets name, stat bonuses, and unlocks equipment
+ */
+export const setupPlayer = async (playerSetupInput: PlayerSetupInput, options?: RequestInit): Promise<Player> => {
+
+  return customFetch<Player>(getSetupPlayerUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      playerSetupInput,)
+  }
+);}
+
+
+
+
+export const getSetupPlayerMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupPlayer>>, TError,{data: BodyType<PlayerSetupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setupPlayer>>, TError,{data: BodyType<PlayerSetupInput>}, TContext> => {
+
+const mutationKey = ['setupPlayer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setupPlayer>>, {data: BodyType<PlayerSetupInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setupPlayer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetupPlayerMutationResult = NonNullable<Awaited<ReturnType<typeof setupPlayer>>>
+    export type SetupPlayerMutationBody = BodyType<PlayerSetupInput>
+    export type SetupPlayerMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Initial character setup — sets name, stat bonuses, and unlocks equipment
+ */
+export const useSetupPlayer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupPlayer>>, TError,{data: BodyType<PlayerSetupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setupPlayer>>,
+        TError,
+        {data: BodyType<PlayerSetupInput>},
+        TContext
+      > => {
+      return useMutation(getSetupPlayerMutationOptions(options));
     }
 
 export const getAllocateStatsUrl = () => {

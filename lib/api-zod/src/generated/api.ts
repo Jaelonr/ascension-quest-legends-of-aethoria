@@ -173,6 +173,51 @@ export const UpdatePlayerResponse = zod.object({
 
 
 /**
+ * @summary Initial character setup — sets name, stat bonuses, and unlocks equipment
+ */
+export const SetupPlayerBody = zod.object({
+  "name": zod.string(),
+  "statBonuses": zod.object({
+  "strength": zod.number(),
+  "agility": zod.number(),
+  "stamina": zod.number(),
+  "vitality": zod.number(),
+  "discipline": zod.number(),
+  "sense": zod.number()
+}),
+  "equipmentIds": zod.array(zod.number()),
+  "goal": zod.string().optional()
+})
+
+export const SetupPlayerResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "level": zod.number(),
+  "rank": zod.enum(['E', 'D', 'C', 'B', 'A', 'S', 'National-Level']),
+  "xp": zod.number(),
+  "xpToNextLevel": zod.number(),
+  "hp": zod.number(),
+  "maxHp": zod.number(),
+  "mp": zod.number(),
+  "maxMp": zod.number(),
+  "gold": zod.number(),
+  "freeStatPoints": zod.number(),
+  "streakDays": zod.number().optional(),
+  "stats": zod.object({
+  "strength": zod.number(),
+  "agility": zod.number(),
+  "stamina": zod.number(),
+  "vitality": zod.number(),
+  "discipline": zod.number(),
+  "sense": zod.number()
+}),
+  "activeTitle": zod.string().nullable(),
+  "penaltyQuestActive": zod.boolean().optional(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Allocate free stat points
  */
 export const AllocateStatsBody = zod.object({

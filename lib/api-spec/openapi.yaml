@@ -78,6 +78,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Player"
 
+  /player/setup:
+    post:
+      operationId: setupPlayer
+      tags: [player]
+      summary: Initial character setup — sets name, stat bonuses, and unlocks equipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerSetupInput"
+      responses:
+        "200":
+          description: Player after setup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
   /player/allocate-stats:
     post:
       operationId: allocateStats
@@ -1324,6 +1343,21 @@ components:
           type: integer
         sense:
           type: integer
+
+    PlayerSetupInput:
+      type: object
+      required: [name, statBonuses, equipmentIds]
+      properties:
+        name:
+          type: string
+        statBonuses:
+          $ref: "#/components/schemas/PlayerStats"
+        equipmentIds:
+          type: array
+          items:
+            type: integer
+        goal:
+          type: string
 
     PlayerUpdate:
       type: object

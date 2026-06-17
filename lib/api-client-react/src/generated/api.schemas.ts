@@ -180,6 +180,13 @@ export interface DashboardSummary {
   lastWorkoutDaysAgo?: number | null;
 }
 
+export interface PlayerSetupInput {
+  name: string;
+  statBonuses: PlayerStats;
+  equipmentIds: number[];
+  goal?: string;
+}
+
 export interface PlayerUpdate {
   name?: string;
 }

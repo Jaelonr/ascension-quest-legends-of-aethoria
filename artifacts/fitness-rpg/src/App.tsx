@@ -22,15 +22,18 @@ import Settings from "@/pages/settings";
 import Program from "@/pages/program";
 import World from "@/pages/world";
 import Onboarding from "@/pages/onboarding";
-import { hasCompletedOnboarding } from "@/hooks/use-story";
+import CharacterSetup from "@/pages/character-setup";
+import { hasCompletedOnboarding, hasCompletedSetup } from "@/hooks/use-story";
 
 const queryClient = new QueryClient();
 
 function OnboardingGuard() {
   const [location, navigate] = useLocation();
   useEffect(() => {
-    if (location !== "/onboarding" && !hasCompletedOnboarding()) {
+    if (location !== "/onboarding" && location !== "/setup" && !hasCompletedOnboarding()) {
       navigate("/onboarding");
+    } else if (location !== "/setup" && location !== "/onboarding" && hasCompletedOnboarding() && !hasCompletedSetup()) {
+      navigate("/setup");
     }
   }, []);
   return null;
@@ -41,6 +44,10 @@ function AppRoutes() {
 
   if (location === "/onboarding") {
     return <Onboarding />;
+  }
+
+  if (location === "/setup") {
+    return <CharacterSetup />;
   }
 
   return (
@@ -62,7 +69,6 @@ function AppRoutes() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/profile" component={Profile} />
         <Route path="/settings" component={Settings} />
-        <Route path="/onboarding" component={Onboarding} />
         <Route component={NotFound} />
       </Switch>
     </MainLayout>

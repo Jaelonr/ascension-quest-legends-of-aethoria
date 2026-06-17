@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import {
   playerTable, playerStatsTable, titlesTable, playerTitlesTable,
-  achievementsTable, playerAchievementsTable
+  achievementsTable, playerAchievementsTable, equipmentTable
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import {
@@ -35,6 +35,63 @@ router.patch("/player", async (req, res) => {
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to update player" });
+  }
+});
+
+router.post("/player/setup", async (req, res) => {
+  try {
+    const { name, statBonuses, equipmentIds } = req.body as {
+      name: string;
+      statBonuses: { strength: number; agility: number; stamina: number; vitality: number; discipline: number; sense: number };
+      equipmentIds: number[];
+    };
+    const { player, stats } = await getOrCreatePlayer();
+    if (!stats) return res.status(400).json({ error: "Player stats not found" });
+
+    // Update name
+    await db.update(playerTable)
+      .set({ name: name?.trim() || player.name, updatedAt: new Date() })
+      .where(eq(playerTable.id, player.id));
+
+    // Add stat bonuses directly (bypasses freeStatPoints — this is a one-time setup grant)
+    const str = statBonuses?.strength || 0;
+    const agi = statBonuses?.agility || 0;
+    const sta = statBonuses?.stamina || 0;
+    const vit = statBonuses?.vitality || 0;
+    const dis = statBonuses?.discipline || 0;
+    const sen = statBonuses?.sense || 0;
+
+    const [updatedStats] = await db.update(playerStatsTable).set({
+      strength: stats.strength + str,
+      agility: stats.agility + agi,
+      stamina: stats.stamina + sta,
+      vitality: stats.vitality + vit,
+      discipline: stats.discipline + dis,
+      sense: stats.sense + sen,
+      updatedAt: new Date(),
+    }).where(eq(playerStatsTable.playerId, player.id)).returning();
+
+    const newMaxHp = 100 + (updatedStats.vitality - 5) * 10 + player.level * 5;
+    await db.update(playerTable).set({
+      maxHp: newMaxHp,
+      hp: Math.min(player.hp, newMaxHp),
+      updatedAt: new Date(),
+    }).where(eq(playerTable.id, player.id));
+
+    // Unlock selected equipment
+    if (Array.isArray(equipmentIds) && equipmentIds.length > 0) {
+      for (const id of equipmentIds) {
+        await db.update(equipmentTable)
+          .set({ owned: true, updatedAt: new Date() })
+          .where(eq(equipmentTable.id, id));
+      }
+    }
+
+    const { player: finalPlayer, stats: finalStats } = await getOrCreatePlayer();
+    res.json(buildPlayerResponse(finalPlayer, finalStats));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Failed to setup player" });
   }
 });
 

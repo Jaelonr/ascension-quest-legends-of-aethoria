@@ -93,12 +93,12 @@ export default function Onboarding() {
   const finish = () => {
     markOnboardingComplete();
     setExiting(true);
-    setTimeout(() => navigate("/"), 700);
+    setTimeout(() => navigate("/setup"), 700);
   };
 
   const skip = () => {
     markOnboardingComplete();
-    navigate("/");
+    navigate("/setup");
   };
 
   const bgClass =

@@ -206,6 +206,7 @@ export function getDefeatedBosses(level: number): StoryBoss[] {
 }
 
 const ONBOARDING_KEY = "rpg_onboarding_v2";
+const SETUP_KEY = "rpg_setup_v1";
 
 export function hasCompletedOnboarding(): boolean {
   try {
@@ -218,6 +219,22 @@ export function hasCompletedOnboarding(): boolean {
 export function markOnboardingComplete(): void {
   try {
     localStorage.setItem(ONBOARDING_KEY, "true");
+  } catch {
+    // ignore
+  }
+}
+
+export function hasCompletedSetup(): boolean {
+  try {
+    return localStorage.getItem(SETUP_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function markSetupComplete(): void {
+  try {
+    localStorage.setItem(SETUP_KEY, "true");
   } catch {
     // ignore
   }
