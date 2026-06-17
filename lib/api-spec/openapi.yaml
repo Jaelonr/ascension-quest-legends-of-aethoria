@@ -1487,6 +1487,23 @@ components:
           type: integer
         fat:
           type: integer
+        sex:
+          type: string
+          enum: [male, female]
+          nullable: true
+        ageYears:
+          type: integer
+          nullable: true
+        activityLevel:
+          type: string
+          enum: [sedentary, light, moderate, active, very_active]
+          nullable: true
+        weightGoal:
+          type: string
+          enum: [lose, maintain, gain]
+          nullable: true
+        autoCalc:
+          type: boolean
 
     DailyNutritionSummary:
       type: object

@@ -411,7 +411,12 @@ export const GetNutritionTargetsResponse = zod.object({
   "calories": zod.number(),
   "protein": zod.number(),
   "carbs": zod.number(),
-  "fat": zod.number()
+  "fat": zod.number(),
+  "sex": zod.enum(['male', 'female']).nullish(),
+  "ageYears": zod.number().nullish(),
+  "activityLevel": zod.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']).nullish(),
+  "weightGoal": zod.enum(['lose', 'maintain', 'gain']).nullish(),
+  "autoCalc": zod.boolean().optional()
 })
 
 
@@ -422,14 +427,24 @@ export const UpdateNutritionTargetsBody = zod.object({
   "calories": zod.number(),
   "protein": zod.number(),
   "carbs": zod.number(),
-  "fat": zod.number()
+  "fat": zod.number(),
+  "sex": zod.enum(['male', 'female']).nullish(),
+  "ageYears": zod.number().nullish(),
+  "activityLevel": zod.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']).nullish(),
+  "weightGoal": zod.enum(['lose', 'maintain', 'gain']).nullish(),
+  "autoCalc": zod.boolean().optional()
 })
 
 export const UpdateNutritionTargetsResponse = zod.object({
   "calories": zod.number(),
   "protein": zod.number(),
   "carbs": zod.number(),
-  "fat": zod.number()
+  "fat": zod.number(),
+  "sex": zod.enum(['male', 'female']).nullish(),
+  "ageYears": zod.number().nullish(),
+  "activityLevel": zod.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']).nullish(),
+  "weightGoal": zod.enum(['lose', 'maintain', 'gain']).nullish(),
+  "autoCalc": zod.boolean().optional()
 })
 
 

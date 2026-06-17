@@ -5,6 +5,9 @@ import { playerTable } from "./player";
 
 export const mealTypeEnum = pgEnum("meal_type", ["breakfast", "lunch", "dinner", "snack", "pre_workout", "post_workout"]);
 export const weightUnitEnum = pgEnum("weight_unit", ["lbs", "kg"]);
+export const sexEnum = pgEnum("sex", ["male", "female"]);
+export const activityLevelEnum = pgEnum("activity_level", ["sedentary", "light", "moderate", "active", "very_active"]);
+export const weightGoalEnum = pgEnum("weight_goal", ["lose", "maintain", "gain"]);
 
 export const nutritionTargetsTable = pgTable("nutrition_targets", {
   id: serial("id").primaryKey(),
@@ -13,6 +16,11 @@ export const nutritionTargetsTable = pgTable("nutrition_targets", {
   protein: integer("protein").notNull().default(180),
   carbs: integer("carbs").notNull().default(250),
   fat: integer("fat").notNull().default(80),
+  sex: sexEnum("sex"),
+  ageYears: integer("age_years"),
+  activityLevel: activityLevelEnum("activity_level"),
+  weightGoal: weightGoalEnum("weight_goal"),
+  autoCalc: boolean("auto_calc").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

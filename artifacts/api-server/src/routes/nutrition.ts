@@ -1,10 +1,45 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import {
-  nutritionLogsTable, nutritionTargetsTable, savedMealsTable, weightEntriesTable
+  nutritionLogsTable, nutritionTargetsTable, savedMealsTable, weightEntriesTable, playerBiometricsTable
 } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { getOrCreatePlayer } from "./player";
+
+const ACTIVITY_MULTIPLIERS: Record<string, number> = {
+  sedentary: 1.2,
+  light: 1.375,
+  moderate: 1.55,
+  active: 1.725,
+  very_active: 1.9,
+};
+
+const GOAL_ADJUSTMENTS: Record<string, number> = {
+  lose: -500,
+  maintain: 0,
+  gain: 300,
+};
+
+function calcTargets(params: {
+  sex: "male" | "female";
+  ageYears: number;
+  heightCm: number;
+  weightKg: number;
+  activityLevel: string;
+  weightGoal: string;
+}) {
+  const { sex, ageYears, heightCm, weightKg, activityLevel, weightGoal } = params;
+  const bmr =
+    sex === "male"
+      ? 10 * weightKg + 6.25 * heightCm - 5 * ageYears + 5
+      : 10 * weightKg + 6.25 * heightCm - 5 * ageYears - 161;
+  const tdee = bmr * (ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.55);
+  const calories = Math.round(tdee + (GOAL_ADJUSTMENTS[weightGoal] ?? 0));
+  const protein = Math.round(weightKg * 2.2 / 5) * 5;
+  const fat = Math.round((calories * 0.25) / 9 / 5) * 5;
+  const carbs = Math.round((calories - protein * 4 - fat * 9) / 4 / 5) * 5;
+  return { calories, protein: Math.max(protein, 80), carbs: Math.max(carbs, 50), fat: Math.max(fat, 30) };
+}
 
 const router = Router();
 
@@ -33,17 +68,56 @@ router.get("/nutrition/targets", async (req, res) => {
 router.patch("/nutrition/targets", async (req, res) => {
   try {
     const { player } = await getOrCreatePlayer(req.userId);
-    const { calories, protein, carbs, fat } = req.body;
+    const { calories, protein, carbs, fat, sex, ageYears, activityLevel, weightGoal } = req.body as {
+      calories?: number; protein?: number; carbs?: number; fat?: number;
+      sex?: "male" | "female"; ageYears?: number;
+      activityLevel?: string; weightGoal?: string;
+    };
+
+    let resolvedCalories = calories;
+    let resolvedProtein = protein;
+    let resolvedCarbs = carbs;
+    let resolvedFat = fat;
+    let autoCalc = false;
+
+    if (sex && ageYears && activityLevel && weightGoal) {
+      const biometrics = await db.select().from(playerBiometricsTable)
+        .where(eq(playerBiometricsTable.playerId, player.id)).limit(1);
+      const bio = biometrics[0];
+      if (bio?.heightCm && bio?.weightKg) {
+        const calc = calcTargets({ sex, ageYears, heightCm: bio.heightCm, weightKg: bio.weightKg, activityLevel, weightGoal });
+        resolvedCalories = calc.calories;
+        resolvedProtein = calc.protein;
+        resolvedCarbs = calc.carbs;
+        resolvedFat = calc.fat;
+        autoCalc = true;
+      }
+    }
+
     const existing = await db.select().from(nutritionTargetsTable)
       .where(eq(nutritionTargetsTable.playerId, player.id)).limit(1);
+
+    const values = {
+      ...(resolvedCalories !== undefined && { calories: resolvedCalories }),
+      ...(resolvedProtein !== undefined && { protein: resolvedProtein }),
+      ...(resolvedCarbs !== undefined && { carbs: resolvedCarbs }),
+      ...(resolvedFat !== undefined && { fat: resolvedFat }),
+      ...(sex !== undefined && { sex }),
+      ...(ageYears !== undefined && { ageYears }),
+      ...(activityLevel !== undefined && { activityLevel: activityLevel as "sedentary" | "light" | "moderate" | "active" | "very_active" }),
+      ...(weightGoal !== undefined && { weightGoal: weightGoal as "lose" | "maintain" | "gain" }),
+      autoCalc,
+      updatedAt: new Date(),
+    };
+
     if (existing.length === 0) {
       const [created] = await db.insert(nutritionTargetsTable)
-        .values({ playerId: player.id, calories, protein, carbs, fat })
+        .values({ playerId: player.id, calories: resolvedCalories ?? 2500, protein: resolvedProtein ?? 180, carbs: resolvedCarbs ?? 250, fat: resolvedFat ?? 80, ...values })
         .returning();
       return res.json(created);
     }
     const [updated] = await db.update(nutritionTargetsTable)
-      .set({ calories, protein, carbs, fat, updatedAt: new Date() })
+      .set(values)
       .where(eq(nutritionTargetsTable.playerId, player.id))
       .returning();
     res.json(updated);

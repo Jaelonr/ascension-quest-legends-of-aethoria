@@ -225,11 +225,44 @@ export interface Achievement {
   unlocked?: boolean;
 }
 
+export type NutritionTargetsSex = typeof NutritionTargetsSex[keyof typeof NutritionTargetsSex] | null;
+
+
+export const NutritionTargetsSex = {
+  male: 'male',
+  female: 'female',
+} as const;
+
+export type NutritionTargetsActivityLevel = typeof NutritionTargetsActivityLevel[keyof typeof NutritionTargetsActivityLevel] | null;
+
+
+export const NutritionTargetsActivityLevel = {
+  sedentary: 'sedentary',
+  light: 'light',
+  moderate: 'moderate',
+  active: 'active',
+  very_active: 'very_active',
+} as const;
+
+export type NutritionTargetsWeightGoal = typeof NutritionTargetsWeightGoal[keyof typeof NutritionTargetsWeightGoal] | null;
+
+
+export const NutritionTargetsWeightGoal = {
+  lose: 'lose',
+  maintain: 'maintain',
+  gain: 'gain',
+} as const;
+
 export interface NutritionTargets {
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
+  sex?: NutritionTargetsSex;
+  ageYears?: number | null;
+  activityLevel?: NutritionTargetsActivityLevel;
+  weightGoal?: NutritionTargetsWeightGoal;
+  autoCalc?: boolean;
 }
 
 export type NutritionLogInputMealType = typeof NutritionLogInputMealType[keyof typeof NutritionLogInputMealType];

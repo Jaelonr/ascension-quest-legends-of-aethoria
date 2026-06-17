@@ -5,6 +5,7 @@ import {
   useGetNutritionLogs,
   useCreateNutritionLog,
   useDeleteNutritionLog,
+  useUpdateNutritionTargets,
 } from "@workspace/api-client-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatBar } from "@/components/shared/stat-bar";
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, Apple, Plus, X, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Target, Apple, Plus, X, Loader2, ChevronDown, ChevronUp, Calculator, Sparkles, Link } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,20 @@ const QUICK_ADDS = [
   { name: "Salmon + Veg", mealType: "dinner", calories: 420, protein: 40, carbs: 18, fat: 18 },
 ];
 
+const ACTIVITY_LEVELS = [
+  { id: "sedentary", label: "Sedentary", desc: "Desk job, little exercise" },
+  { id: "light", label: "Light", desc: "1–3 workouts/week" },
+  { id: "moderate", label: "Moderate", desc: "3–5 workouts/week" },
+  { id: "active", label: "Active", desc: "6–7 workouts/week" },
+  { id: "very_active", label: "Very Active", desc: "Twice a day" },
+] as const;
+
+const WEIGHT_GOALS = [
+  { id: "lose", label: "Lose Weight", desc: "−500 kcal deficit" },
+  { id: "maintain", label: "Maintain", desc: "TDEE" },
+  { id: "gain", label: "Gain Muscle", desc: "+300 kcal surplus" },
+] as const;
+
 const defaultForm = () => ({
   mealName: "",
   mealType: "lunch" as string,
@@ -43,6 +58,187 @@ const defaultForm = () => ({
   carbs: "",
   fat: "",
 });
+
+function CalorieGoalCard({
+  targets,
+  onSaved,
+}: {
+  targets: { sex?: string | null; ageYears?: number | null; activityLevel?: string | null; weightGoal?: string | null; autoCalc?: boolean };
+  onSaved: () => void;
+}) {
+  const { toast } = useToast();
+  const updateTargets = useUpdateNutritionTargets();
+  const [open, setOpen] = useState(!targets.autoCalc);
+
+  const [sex, setSex] = useState<"male" | "female" | "">(
+    (targets.sex as "male" | "female") ?? ""
+  );
+  const [age, setAge] = useState(targets.ageYears?.toString() ?? "");
+  const [activity, setActivity] = useState(targets.activityLevel ?? "");
+  const [goal, setGoal] = useState(targets.weightGoal ?? "");
+
+  const allFilled = sex && age && activity && goal;
+
+  const handleSave = () => {
+    if (!sex || !age || !activity || !goal) {
+      toast({ title: "Fill in all fields to calculate your goal", variant: "destructive" });
+      return;
+    }
+    const ageNum = parseInt(age);
+    if (isNaN(ageNum) || ageNum < 10 || ageNum > 100) {
+      toast({ title: "Enter a valid age (10–100)", variant: "destructive" });
+      return;
+    }
+    updateTargets.mutate(
+      { data: { sex, ageYears: ageNum, activityLevel: activity, weightGoal: goal } as Parameters<typeof updateTargets.mutate>[0]["data"] },
+      {
+        onSuccess: (data) => {
+          onSaved();
+          setOpen(false);
+          if ((data as { autoCalc?: boolean }).autoCalc) {
+            toast({ title: "Calorie goal updated!", description: `${(data as { calories: number }).calories} kcal · calculated from your stats.` });
+          } else {
+            toast({ title: "Preferences saved", description: "Add height & weight in your Hunter Profile for an exact calculation." });
+          }
+        },
+        onError: () => toast({ title: "Failed to save goal", variant: "destructive" }),
+      }
+    );
+  };
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-3 p-4 hover:bg-white/3 transition-all"
+      >
+        <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center shrink-0">
+          <Calculator className="w-4 h-4 text-green-400" />
+        </div>
+        <div className="flex-1 text-left">
+          <div className="text-sm font-bold text-foreground">Calorie Goal</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            {targets.autoCalc
+              ? <span className="flex items-center gap-1 text-green-400"><Sparkles className="w-3 h-3" /> Calculated from your stats</span>
+              : "Set sex, age, activity & goal"}
+          </div>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="h-px bg-border/30" />
+
+          {/* Sex */}
+          <div>
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">Sex</div>
+            <div className="flex gap-2">
+              {(["male", "female"] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSex(s)}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg border text-sm font-semibold transition-all capitalize",
+                    sex === s
+                      ? "border-primary bg-primary/20 text-primary"
+                      : "border-border/50 text-muted-foreground hover:border-primary/40"
+                  )}
+                >
+                  {s === "male" ? "♂ Male" : "♀ Female"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Age */}
+          <div>
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">Age</div>
+            <Input
+              type="number"
+              min="10"
+              max="100"
+              value={age}
+              onChange={e => setAge(e.target.value)}
+              placeholder="e.g. 28"
+              className="bg-black/30 border-border/50 h-9 text-sm font-mono"
+            />
+          </div>
+
+          {/* Activity Level */}
+          <div>
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">Activity Level</div>
+            <div className="space-y-1.5">
+              {ACTIVITY_LEVELS.map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => setActivity(a.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all",
+                    activity === a.id
+                      ? "border-primary bg-primary/10"
+                      : "border-border/40 hover:border-primary/30 hover:bg-white/3"
+                  )}
+                >
+                  <div className={cn(
+                    "w-2 h-2 rounded-full shrink-0",
+                    activity === a.id ? "bg-primary" : "bg-border/60"
+                  )} />
+                  <div>
+                    <div className={cn("text-sm font-semibold", activity === a.id ? "text-primary" : "text-foreground")}>{a.label}</div>
+                    <div className="text-[10px] text-muted-foreground">{a.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Weight Goal */}
+          <div>
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">Goal</div>
+            <div className="grid grid-cols-3 gap-2">
+              {WEIGHT_GOALS.map(g => (
+                <button
+                  key={g.id}
+                  onClick={() => setGoal(g.id)}
+                  className={cn(
+                    "py-2.5 px-2 rounded-lg border text-center transition-all",
+                    goal === g.id
+                      ? "border-primary bg-primary/20"
+                      : "border-border/40 hover:border-primary/30"
+                  )}
+                >
+                  <div className={cn("text-xs font-bold", goal === g.id ? "text-primary" : "text-foreground")}>{g.label}</div>
+                  <div className="text-[9px] text-muted-foreground mt-0.5">{g.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Height/Weight note */}
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-black/20 border border-border/30">
+            <Link className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Calories are calculated using your height & weight from your{" "}
+              <span className="text-foreground font-medium">Hunter Profile</span>. Set those first for an exact result.
+            </p>
+          </div>
+
+          <Button
+            className="w-full gap-2"
+            onClick={handleSave}
+            disabled={!allFilled || updateTargets.isPending}
+          >
+            {updateTargets.isPending
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Calculator className="w-4 h-4" />}
+            Calculate & Save Goal
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Nutrition() {
   const { data: today, isLoading: isLoadingToday } = useGetTodayNutrition();
@@ -61,6 +257,11 @@ export default function Nutrition() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/nutrition/today"] });
     queryClient.invalidateQueries({ queryKey: ["/api/nutrition/logs"] });
+  };
+
+  const invalidateTargets = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/nutrition/targets"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/nutrition/today"] });
   };
 
   const handleSubmit = () => {
@@ -156,8 +357,22 @@ export default function Nutrition() {
             <StatBar label={`Carbs  ${today.totalCarbs}g / ${targets.carbs}g`} value={today.totalCarbs} max={targets.carbs} colorClass="bg-orange-500" />
             <StatBar label={`Fat  ${today.totalFat}g / ${targets.fat}g`} value={today.totalFat} max={targets.fat} colorClass="bg-red-500" />
           </div>
+          {targets.autoCalc && (
+            <div className="flex items-center gap-1.5 pt-1">
+              <Sparkles className="w-3 h-3 text-green-400" />
+              <span className="text-[10px] font-mono text-green-400">
+                {targets.calories} kcal · {
+                  targets.weightGoal === "lose" ? "Fat Loss" :
+                  targets.weightGoal === "gain" ? "Muscle Gain" : "Maintenance"
+                } goal
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Calorie Goal Setup */}
+      <CalorieGoalCard targets={targets} onSaved={invalidateTargets} />
 
       {/* Log Food toggle */}
       <button
