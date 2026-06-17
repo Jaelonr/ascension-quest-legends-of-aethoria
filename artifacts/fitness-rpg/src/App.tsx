@@ -14,6 +14,8 @@ import Skills from "@/pages/skills";
 import Quests from "@/pages/quests";
 import Inventory from "@/pages/inventory";
 import Analytics from "@/pages/analytics";
+import Planner from "@/pages/planner";
+import Raids from "@/pages/raids";
 
 const queryClient = new QueryClient();
 
@@ -24,10 +26,12 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/nutrition" component={Nutrition} />
         <Route path="/training" component={Training} />
+        <Route path="/training/planner" component={Planner} />
         <Route path="/training/session/:id" component={ActiveSession} />
         <Route path="/equipment" component={Equipment} />
         <Route path="/skills" component={Skills} />
         <Route path="/quests" component={Quests} />
+        <Route path="/raids" component={Raids} />
         <Route path="/inventory" component={Inventory} />
         <Route path="/analytics" component={Analytics} />
         <Route component={NotFound} />

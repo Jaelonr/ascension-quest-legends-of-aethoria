@@ -22,6 +22,7 @@ import type {
 import type {
   Achievement,
   AnalyticsOverview,
+  BossRaid,
   CopyMealsResult,
   DailyNutritionSummary,
   DashboardSummary,
@@ -29,6 +30,7 @@ import type {
   EquipmentInput,
   EquipmentUpdate,
   Exercise,
+  GeneratedPlan,
   GetExercisesParams,
   GetNutritionLogsParams,
   GetQuestsParams,
@@ -42,6 +44,7 @@ import type {
   NutritionLogUpdate,
   NutritionTargets,
   PersonalRecord,
+  PlannerRequest,
   Player,
   PlayerUpdate,
   PurchaseInput,
@@ -49,14 +52,19 @@ import type {
   Quest,
   QuestClaimResult,
   QuestTaskCompletion,
+  RaidClaimResult,
+  RaidTemplate,
   RankProgressEntry,
+  SavePlanRequest,
   SavedMeal,
   SavedMealInput,
   SkillNode,
   SkillTree,
+  StartBossRaidBody,
   StatAllocation,
   StoreItem,
   Title,
+  UpdateBossRaidTaskBody,
   UseItemResult,
   WeeklyNutritionAverages,
   WeightEntry,
@@ -4193,4 +4201,590 @@ export function useGetRankProgress<TData = Awaited<ReturnType<typeof getRankProg
 
 
 
+
+export const getGenerateWorkoutPlanUrl = () => {
+
+
+
+
+  return `/api/training/planner/generate`
+}
+
+/**
+ * @summary Generate an equipment-aware workout plan
+ */
+export const generateWorkoutPlan = async (plannerRequest: PlannerRequest, options?: RequestInit): Promise<GeneratedPlan> => {
+
+  return customFetch<GeneratedPlan>(getGenerateWorkoutPlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      plannerRequest,)
+  }
+);}
+
+
+
+
+export const getGenerateWorkoutPlanMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateWorkoutPlan>>, TError,{data: BodyType<PlannerRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateWorkoutPlan>>, TError,{data: BodyType<PlannerRequest>}, TContext> => {
+
+const mutationKey = ['generateWorkoutPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateWorkoutPlan>>, {data: BodyType<PlannerRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateWorkoutPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateWorkoutPlanMutationResult = NonNullable<Awaited<ReturnType<typeof generateWorkoutPlan>>>
+    export type GenerateWorkoutPlanMutationBody = BodyType<PlannerRequest>
+    export type GenerateWorkoutPlanMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Generate an equipment-aware workout plan
+ */
+export const useGenerateWorkoutPlan = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateWorkoutPlan>>, TError,{data: BodyType<PlannerRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateWorkoutPlan>>,
+        TError,
+        {data: BodyType<PlannerRequest>},
+        TContext
+      > => {
+      return useMutation(getGenerateWorkoutPlanMutationOptions(options));
+    }
+
+export const getSavePlanAsTemplateUrl = () => {
+
+
+
+
+  return `/api/training/planner/save`
+}
+
+/**
+ * @summary Save a generated plan as a workout template
+ */
+export const savePlanAsTemplate = async (savePlanRequest: SavePlanRequest, options?: RequestInit): Promise<WorkoutTemplate> => {
+
+  return customFetch<WorkoutTemplate>(getSavePlanAsTemplateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      savePlanRequest,)
+  }
+);}
+
+
+
+
+export const getSavePlanAsTemplateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePlanAsTemplate>>, TError,{data: BodyType<SavePlanRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof savePlanAsTemplate>>, TError,{data: BodyType<SavePlanRequest>}, TContext> => {
+
+const mutationKey = ['savePlanAsTemplate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof savePlanAsTemplate>>, {data: BodyType<SavePlanRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  savePlanAsTemplate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SavePlanAsTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof savePlanAsTemplate>>>
+    export type SavePlanAsTemplateMutationBody = BodyType<SavePlanRequest>
+    export type SavePlanAsTemplateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Save a generated plan as a workout template
+ */
+export const useSavePlanAsTemplate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePlanAsTemplate>>, TError,{data: BodyType<SavePlanRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof savePlanAsTemplate>>,
+        TError,
+        {data: BodyType<SavePlanRequest>},
+        TContext
+      > => {
+      return useMutation(getSavePlanAsTemplateMutationOptions(options));
+    }
+
+export const getGetBossRaidsUrl = () => {
+
+
+
+
+  return `/api/boss-raids`
+}
+
+/**
+ * @summary Get all player boss raids
+ */
+export const getBossRaids = async ( options?: RequestInit): Promise<BossRaid[]> => {
+
+  return customFetch<BossRaid[]>(getGetBossRaidsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBossRaidsQueryKey = () => {
+    return [
+    `/api/boss-raids`
+    ] as const;
+    }
+
+
+export const getGetBossRaidsQueryOptions = <TData = Awaited<ReturnType<typeof getBossRaids>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBossRaids>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBossRaidsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBossRaids>>> = ({ signal }) => getBossRaids({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBossRaids>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBossRaidsQueryResult = NonNullable<Awaited<ReturnType<typeof getBossRaids>>>
+export type GetBossRaidsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all player boss raids
+ */
+
+export function useGetBossRaids<TData = Awaited<ReturnType<typeof getBossRaids>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBossRaids>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBossRaidsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetAvailableBossRaidsUrl = () => {
+
+
+
+
+  return `/api/boss-raids/available`
+}
+
+/**
+ * @summary Get available raid templates for the player
+ */
+export const getAvailableBossRaids = async ( options?: RequestInit): Promise<RaidTemplate[]> => {
+
+  return customFetch<RaidTemplate[]>(getGetAvailableBossRaidsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAvailableBossRaidsQueryKey = () => {
+    return [
+    `/api/boss-raids/available`
+    ] as const;
+    }
+
+
+export const getGetAvailableBossRaidsQueryOptions = <TData = Awaited<ReturnType<typeof getAvailableBossRaids>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAvailableBossRaids>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAvailableBossRaidsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAvailableBossRaids>>> = ({ signal }) => getAvailableBossRaids({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAvailableBossRaids>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAvailableBossRaidsQueryResult = NonNullable<Awaited<ReturnType<typeof getAvailableBossRaids>>>
+export type GetAvailableBossRaidsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get available raid templates for the player
+ */
+
+export function useGetAvailableBossRaids<TData = Awaited<ReturnType<typeof getAvailableBossRaids>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAvailableBossRaids>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAvailableBossRaidsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getStartBossRaidUrl = () => {
+
+
+
+
+  return `/api/boss-raids/start`
+}
+
+/**
+ * @summary Start a boss raid
+ */
+export const startBossRaid = async (startBossRaidBody: StartBossRaidBody, options?: RequestInit): Promise<BossRaid> => {
+
+  return customFetch<BossRaid>(getStartBossRaidUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      startBossRaidBody,)
+  }
+);}
+
+
+
+
+export const getStartBossRaidMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startBossRaid>>, TError,{data: BodyType<StartBossRaidBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startBossRaid>>, TError,{data: BodyType<StartBossRaidBody>}, TContext> => {
+
+const mutationKey = ['startBossRaid'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startBossRaid>>, {data: BodyType<StartBossRaidBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  startBossRaid(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartBossRaidMutationResult = NonNullable<Awaited<ReturnType<typeof startBossRaid>>>
+    export type StartBossRaidMutationBody = BodyType<StartBossRaidBody>
+    export type StartBossRaidMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Start a boss raid
+ */
+export const useStartBossRaid = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startBossRaid>>, TError,{data: BodyType<StartBossRaidBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startBossRaid>>,
+        TError,
+        {data: BodyType<StartBossRaidBody>},
+        TContext
+      > => {
+      return useMutation(getStartBossRaidMutationOptions(options));
+    }
+
+export const getGetBossRaidUrl = (id: number,) => {
+
+
+
+
+  return `/api/boss-raids/${id}`
+}
+
+/**
+ * @summary Get a specific boss raid
+ */
+export const getBossRaid = async (id: number, options?: RequestInit): Promise<BossRaid> => {
+
+  return customFetch<BossRaid>(getGetBossRaidUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBossRaidQueryKey = (id: number,) => {
+    return [
+    `/api/boss-raids/${id}`
+    ] as const;
+    }
+
+
+export const getGetBossRaidQueryOptions = <TData = Awaited<ReturnType<typeof getBossRaid>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBossRaid>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBossRaidQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBossRaid>>> = ({ signal }) => getBossRaid(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBossRaid>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBossRaidQueryResult = NonNullable<Awaited<ReturnType<typeof getBossRaid>>>
+export type GetBossRaidQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a specific boss raid
+ */
+
+export function useGetBossRaid<TData = Awaited<ReturnType<typeof getBossRaid>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBossRaid>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBossRaidQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateBossRaidTaskUrl = (id: number,) => {
+
+
+
+
+  return `/api/boss-raids/${id}/task`
+}
+
+/**
+ * @summary Update a raid task progress
+ */
+export const updateBossRaidTask = async (id: number,
+    updateBossRaidTaskBody: UpdateBossRaidTaskBody, options?: RequestInit): Promise<BossRaid> => {
+
+  return customFetch<BossRaid>(getUpdateBossRaidTaskUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateBossRaidTaskBody,)
+  }
+);}
+
+
+
+
+export const getUpdateBossRaidTaskMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBossRaidTask>>, TError,{id: number;data: BodyType<UpdateBossRaidTaskBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBossRaidTask>>, TError,{id: number;data: BodyType<UpdateBossRaidTaskBody>}, TContext> => {
+
+const mutationKey = ['updateBossRaidTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBossRaidTask>>, {id: number;data: BodyType<UpdateBossRaidTaskBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateBossRaidTask(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBossRaidTaskMutationResult = NonNullable<Awaited<ReturnType<typeof updateBossRaidTask>>>
+    export type UpdateBossRaidTaskMutationBody = BodyType<UpdateBossRaidTaskBody>
+    export type UpdateBossRaidTaskMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a raid task progress
+ */
+export const useUpdateBossRaidTask = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBossRaidTask>>, TError,{id: number;data: BodyType<UpdateBossRaidTaskBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBossRaidTask>>,
+        TError,
+        {id: number;data: BodyType<UpdateBossRaidTaskBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateBossRaidTaskMutationOptions(options));
+    }
+
+export const getClaimBossRaidRewardUrl = (id: number,) => {
+
+
+
+
+  return `/api/boss-raids/${id}/claim`
+}
+
+/**
+ * @summary Claim a completed boss raid reward
+ */
+export const claimBossRaidReward = async (id: number, options?: RequestInit): Promise<RaidClaimResult> => {
+
+  return customFetch<RaidClaimResult>(getClaimBossRaidRewardUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getClaimBossRaidRewardMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimBossRaidReward>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof claimBossRaidReward>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['claimBossRaidReward'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof claimBossRaidReward>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  claimBossRaidReward(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClaimBossRaidRewardMutationResult = NonNullable<Awaited<ReturnType<typeof claimBossRaidReward>>>
+
+    export type ClaimBossRaidRewardMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Claim a completed boss raid reward
+ */
+export const useClaimBossRaidReward = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimBossRaidReward>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof claimBossRaidReward>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getClaimBossRaidRewardMutationOptions(options));
+    }
 

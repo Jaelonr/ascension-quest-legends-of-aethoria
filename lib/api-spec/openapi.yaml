@@ -990,6 +990,170 @@ paths:
                 items:
                   $ref: "#/components/schemas/RankProgressEntry"
 
+  # ─── PLANNER ────────────────────────────────────────────────────────────────
+  /training/planner/generate:
+    post:
+      operationId: generateWorkoutPlan
+      tags: [training]
+      summary: Generate an equipment-aware workout plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlannerRequest"
+      responses:
+        "200":
+          description: Generated workout plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedPlan"
+
+  /training/planner/save:
+    post:
+      operationId: savePlanAsTemplate
+      tags: [training]
+      summary: Save a generated plan as a workout template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavePlanRequest"
+      responses:
+        "201":
+          description: Saved template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkoutTemplate"
+
+  # ─── BOSS RAIDS ─────────────────────────────────────────────────────────────
+  /boss-raids:
+    get:
+      operationId: getBossRaids
+      tags: [quests]
+      summary: Get all player boss raids
+      responses:
+        "200":
+          description: List of boss raids
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BossRaid"
+
+  /boss-raids/available:
+    get:
+      operationId: getAvailableBossRaids
+      tags: [quests]
+      summary: Get available raid templates for the player
+      responses:
+        "200":
+          description: Available raid templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RaidTemplate"
+
+  /boss-raids/start:
+    post:
+      operationId: startBossRaid
+      tags: [quests]
+      summary: Start a boss raid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [templateTitle]
+              properties:
+                templateTitle:
+                  type: string
+      responses:
+        "201":
+          description: Started raid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BossRaid"
+
+  /boss-raids/{id}:
+    get:
+      operationId: getBossRaid
+      tags: [quests]
+      summary: Get a specific boss raid
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Boss raid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BossRaid"
+
+  /boss-raids/{id}/task:
+    patch:
+      operationId: updateBossRaidTask
+      tags: [quests]
+      summary: Update a raid task progress
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [taskId]
+              properties:
+                taskId:
+                  type: string
+                currentValue:
+                  type: ["number", "null"]
+                completed:
+                  type: ["boolean", "null"]
+      responses:
+        "200":
+          description: Updated raid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BossRaid"
+
+  /boss-raids/{id}/claim:
+    post:
+      operationId: claimBossRaidReward
+      tags: [quests]
+      summary: Claim a completed boss raid reward
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Claim result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RaidClaimResult"
+
 components:
   schemas:
     HealthStatus:
@@ -1939,3 +2103,253 @@ components:
           type: integer
         rank:
           type: string
+
+    # ─── PLANNER SCHEMAS ────────────────────────────────────────────────────────
+    PlannerRequest:
+      type: object
+      required: [goal]
+      properties:
+        goal:
+          type: string
+          enum: [strength, hypertrophy, conditioning, striking, recovery, back_friendly_lower]
+        excludeEquipmentIds:
+          type: array
+          items:
+            type: integer
+        rpeLimit:
+          type: ["number", "null"]
+        avoidMuscleGroups:
+          type: array
+          items:
+            type: string
+        customNotes:
+          type: ["string", "null"]
+
+    PlanExercise:
+      type: object
+      required: [exerciseId, exerciseName, muscleGroup, category, sets, reps, rpe, restSeconds, phase]
+      properties:
+        exerciseId:
+          type: integer
+        exerciseName:
+          type: string
+        muscleGroup:
+          type: string
+        category:
+          type: string
+        sets:
+          type: integer
+        reps:
+          type: string
+        rpe:
+          type: number
+        restSeconds:
+          type: integer
+        phase:
+          type: string
+          enum: [warmup, main, accessory, finisher]
+        notes:
+          type: ["string", "null"]
+        substitutes:
+          type: array
+          items:
+            type: object
+            properties:
+              exerciseId:
+                type: integer
+              exerciseName:
+                type: string
+              reason:
+                type: string
+
+    GeneratedPlan:
+      type: object
+      required: [planName, goal, estimatedDuration, xpPreview, totalSets, exercises]
+      properties:
+        planName:
+          type: string
+        goal:
+          type: string
+        estimatedDuration:
+          type: integer
+        xpPreview:
+          type: integer
+        totalSets:
+          type: integer
+        exercises:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanExercise"
+        rpeGuide:
+          type: object
+          properties:
+            target:
+              type: number
+            limit:
+              type: ["number", "null"]
+            note:
+              type: string
+        injuryNotes:
+          type: ["string", "null"]
+        customNotes:
+          type: ["string", "null"]
+        availableEquipmentCount:
+          type: integer
+        generatedFor:
+          type: object
+          properties:
+            level:
+              type: integer
+            rank:
+              type: string
+            stats:
+              type: object
+              properties:
+                strength:
+                  type: integer
+                stamina:
+                  type: integer
+
+    SavePlanRequest:
+      type: object
+      required: [planName, goal, exercises]
+      properties:
+        planName:
+          type: string
+        goal:
+          type: string
+        exercises:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanExercise"
+        estimatedDuration:
+          type: integer
+        xpPreview:
+          type: integer
+
+    # ─── BOSS RAID SCHEMAS ───────────────────────────────────────────────────────
+    RaidTask:
+      type: object
+      required: [id, description, completed]
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        completed:
+          type: boolean
+        currentValue:
+          type: ["number", "null"]
+        targetValue:
+          type: ["number", "null"]
+        unit:
+          type: ["string", "null"]
+
+    BossRaid:
+      type: object
+      required: [id, playerId, title, description, difficulty, status, xpReward, goldReward, tasks]
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        lore:
+          type: ["string", "null"]
+        difficulty:
+          type: string
+          enum: [E, D, C, B, A, S]
+        status:
+          type: string
+          enum: [active, completed, claimed, failed]
+        xpReward:
+          type: integer
+        goldReward:
+          type: integer
+        bonusStatPoints:
+          type: ["integer", "null"]
+        titleReward:
+          type: ["string", "null"]
+        timeLimitHours:
+          type: ["integer", "null"]
+        timeRemainingHours:
+          type: ["number", "null"]
+        isExpired:
+          type: boolean
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/RaidTask"
+        startedAt:
+          type: ["string", "null"]
+        expiresAt:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        claimedAt:
+          type: ["string", "null"]
+
+    RaidTemplate:
+      type: object
+      required: [title, description, difficulty, timeLimitHours, xpReward, goldReward, bonusStatPoints, tasks, isRepeatable, alreadyCompleted]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        lore:
+          type: string
+        difficulty:
+          type: string
+          enum: [E, D, C, B, A, S]
+        timeLimitHours:
+          type: integer
+        xpReward:
+          type: integer
+        goldReward:
+          type: integer
+        bonusStatPoints:
+          type: integer
+        titleReward:
+          type: ["string", "null"]
+        triggerCondition:
+          type: string
+        isRepeatable:
+          type: boolean
+        alreadyCompleted:
+          type: boolean
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/RaidTask"
+
+    RaidClaimResult:
+      type: object
+      required: [xpEarned, goldEarned, bonusStatPoints, leveledUp, levelsGained, rankedUp, player]
+      properties:
+        xpEarned:
+          type: integer
+        goldEarned:
+          type: integer
+        bonusStatPoints:
+          type: integer
+        leveledUp:
+          type: boolean
+        levelsGained:
+          type: integer
+        rankedUp:
+          type: boolean
+        newRank:
+          type: ["string", "null"]
+        newAchievements:
+          type: array
+          items:
+            type: object
+        titleGranted:
+          type: object
+          nullable: true
+        player:
+          $ref: "#/components/schemas/Player"

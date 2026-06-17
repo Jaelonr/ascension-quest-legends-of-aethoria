@@ -5,7 +5,22 @@ import { playerTable } from "./player";
 import { rarityEnum } from "./player";
 
 export const itemTypeEnum = pgEnum("item_type", [
-  "title", "recovery_token", "streak_shield", "workout_theme", "recipe_unlock", "deload_pass", "reward_box"
+  "title",
+  "recovery_token",
+  "streak_shield",
+  "workout_theme",
+  "recipe_unlock",
+  "deload_pass",
+  "reward_box",
+  "xp_boost",
+  "stat_boost",
+  "cosmetic",
+  "consumable",
+  "loot_crate",
+  "training_scroll",
+  "boss_key",
+  "prestige_token",
+  "equipment_skin",
 ]);
 
 export const storeItemsTable = pgTable("store_items", {
@@ -17,6 +32,8 @@ export const storeItemsTable = pgTable("store_items", {
   rarity: rarityEnum("rarity").notNull().default("common"),
   available: boolean("available").notNull().default(true),
   rankRequired: text("rank_required"),
+  levelRequired: integer("level_required"),
+  effectValue: integer("effect_value"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

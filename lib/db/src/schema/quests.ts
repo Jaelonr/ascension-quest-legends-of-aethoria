@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, real, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, real, json, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { playerTable } from "./player";
@@ -24,6 +24,7 @@ export const questsTable = pgTable("quests", {
   goldReward: integer("gold_reward").notNull().default(50),
   bonusStatPoints: integer("bonus_stat_points").notNull().default(0),
   difficulty: questDifficultyEnum("difficulty").notNull().default("E"),
+  titleReward: text("title_reward"),
   expiresAt: timestamp("expires_at"),
   completedAt: timestamp("completed_at"),
   claimedAt: timestamp("claimed_at"),
@@ -42,5 +43,35 @@ export const questTasksTable = pgTable("quest_tasks", {
   order: integer("order").notNull().default(0),
 });
 
+export const bossRaidsTable = pgTable("boss_raids", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => playerTable.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  lore: text("lore"),
+  difficulty: questDifficultyEnum("difficulty").notNull().default("D"),
+  status: questStatusEnum("status").notNull().default("active"),
+  timeLimitHours: integer("time_limit_hours").notNull().default(72),
+  xpReward: integer("xp_reward").notNull().default(500),
+  goldReward: integer("gold_reward").notNull().default(300),
+  bonusStatPoints: integer("bonus_stat_points").notNull().default(5),
+  titleReward: text("title_reward"),
+  tasks: json("tasks").$type<Array<{
+    id: string;
+    description: string;
+    completed: boolean;
+    targetValue?: number;
+    currentValue?: number;
+    unit?: string;
+  }>>().notNull().default([]),
+  triggerCondition: text("trigger_condition"),
+  isRepeatable: boolean("is_repeatable").notNull().default(false),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  completedAt: timestamp("completed_at"),
+  claimedAt: timestamp("claimed_at"),
+});
+
 export type Quest = typeof questsTable.$inferSelect;
 export type QuestTask = typeof questTasksTable.$inferSelect;
+export type BossRaid = typeof bossRaidsTable.$inferSelect;

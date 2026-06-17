@@ -22,6 +22,12 @@ export const playerTable = pgTable("player", {
   activeTitle: text("active_title"),
   penaltyQuestActive: boolean("penalty_quest_active").notNull().default(false),
   totalXpEarned: integer("total_xp_earned").notNull().default(0),
+  totalWorkouts: integer("total_workouts").notNull().default(0),
+  totalQuests: integer("total_quests").notNull().default(0),
+  totalPrs: integer("total_prs").notNull().default(0),
+  prestigeLevel: integer("prestige_level").notNull().default(0),
+  prestigeCount: integer("prestige_count").notNull().default(0),
+  xpMultiplier: integer("xp_multiplier").notNull().default(100),
   lastActivityDate: text("last_activity_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -61,6 +67,8 @@ export const achievementsTable = pgTable("achievements", {
   description: text("description").notNull(),
   category: text("category").notNull(),
   xpReward: integer("xp_reward").notNull().default(0),
+  checkKey: text("check_key"),
+  checkThreshold: integer("check_threshold"),
 });
 
 export const playerAchievementsTable = pgTable("player_achievements", {

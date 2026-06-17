@@ -1,10 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import {
-  questsTable, questTasksTable, playerTable, playerStatsTable, xpHistoryTable
-} from "@workspace/db";
+import { questsTable, questTasksTable, playerTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import { getOrCreatePlayer, buildPlayerResponse, xpForLevel, rankForLevel } from "./player";
+import { getOrCreatePlayer, buildPlayerResponse, applyXpEvent } from "../progression";
 
 const router = Router();
 
@@ -15,6 +13,13 @@ function getTodayStr() {
 function getTomorrowStr() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+function getNextWeekStr() {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
 }
@@ -45,11 +50,9 @@ async function ensureDailyQuest(playerId: number) {
 
   if (existing.length > 0) {
     const q = existing[0];
-    const qDate = q.createdAt.toISOString().split("T")[0];
-    if (qDate === today && q.status !== "failed") return q;
+    if (q.createdAt.toISOString().split("T")[0] === today && q.status !== "failed") return q;
   }
 
-  // Create today's daily quest
   const [quest] = await db.insert(questsTable).values({
     playerId,
     title: "Daily Training Protocol",
@@ -70,11 +73,55 @@ async function ensureDailyQuest(playerId: number) {
     { description: "Log at least 3 meals", order: 4 },
     { description: "Stay hydrated — drink at least 8 glasses of water", order: 5 },
   ];
+  for (const t of tasks) {
+    await db.insert(questTasksTable).values({ questId: quest.id, ...t, completed: false });
+  }
+  return quest;
+}
 
-  for (const task of tasks) {
-    await db.insert(questTasksTable).values({ questId: quest.id, ...task, completed: false });
+async function ensureWeeklyQuest(playerId: number) {
+  const now = new Date();
+  // ISO week start (Monday)
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const weekStart = new Date(now.setDate(diff));
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartStr = weekStart.toISOString().split("T")[0];
+
+  const existing = await db.select().from(questsTable)
+    .where(and(eq(questsTable.playerId, playerId), eq(questsTable.type, "weekly")))
+    .orderBy(desc(questsTable.createdAt))
+    .limit(1);
+
+  if (existing.length > 0) {
+    const q = existing[0];
+    if (q.createdAt.toISOString().split("T")[0] >= weekStartStr && q.status !== "failed") return q;
   }
 
+  const [quest] = await db.insert(questsTable).values({
+    playerId,
+    title: "Weekly Proving Grounds",
+    description: "Push your limits this week. Complete all weekly objectives for massive XP, Gold, and rare rewards.",
+    type: "weekly",
+    status: "active",
+    xpReward: 1500,
+    goldReward: 500,
+    bonusStatPoints: 8,
+    difficulty: "D",
+    expiresAt: new Date(getNextWeekStr()),
+  }).returning();
+
+  const weeklyTasks = [
+    { description: "Complete 4 workout sessions", order: 1, targetValue: 4, unit: "sessions" },
+    { description: "Hit calorie targets 5 out of 7 days", order: 2, targetValue: 5, unit: "days" },
+    { description: "Hit protein targets 5 out of 7 days", order: 3, targetValue: 5, unit: "days" },
+    { description: "Maintain streak all 7 days", order: 4, targetValue: 7, unit: "days" },
+    { description: "Set at least 2 new personal records", order: 5, targetValue: 2, unit: "PRs" },
+    { description: "Complete all 7 daily quests", order: 6, targetValue: 7, unit: "quests" },
+  ];
+  for (const t of weeklyTasks) {
+    await db.insert(questTasksTable).values({ questId: quest.id, ...t, completed: false });
+  }
   return quest;
 }
 
@@ -94,20 +141,18 @@ router.get("/quests", async (req, res) => {
     const { player } = await getOrCreatePlayer();
     const { type, status } = req.query;
 
-    // Ensure daily quest exists
     await ensureDailyQuest(player.id);
+    await ensureWeeklyQuest(player.id);
 
-    let query = db.select().from(questsTable).where(eq(questsTable.playerId, player.id));
-    const quests = await db.select().from(questsTable)
+    const all = await db.select().from(questsTable)
       .where(eq(questsTable.playerId, player.id))
       .orderBy(desc(questsTable.createdAt));
 
-    let filtered = quests;
+    let filtered = all;
     if (type) filtered = filtered.filter(q => q.type === type);
     if (status) filtered = filtered.filter(q => q.status === status);
 
-    const result = await Promise.all(filtered.map(buildQuestResponse));
-    res.json(result);
+    res.json(await Promise.all(filtered.map(buildQuestResponse)));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to get quests" });
@@ -116,8 +161,7 @@ router.get("/quests", async (req, res) => {
 
 router.get("/quests/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    const [quest] = await db.select().from(questsTable).where(eq(questsTable.id, id));
+    const [quest] = await db.select().from(questsTable).where(eq(questsTable.id, parseInt(req.params.id)));
     if (!quest) return res.status(404).json({ error: "Quest not found" });
     res.json(await buildQuestResponse(quest));
   } catch (err) {
@@ -131,17 +175,15 @@ router.post("/quests/:id/complete-task", async (req, res) => {
     const questId = parseInt(req.params.id);
     const { taskId, value } = req.body;
 
-    await db.update(questTasksTable)
-      .set({ completed: true, completedAt: new Date(), currentValue: value })
-      .where(and(eq(questTasksTable.id, taskId), eq(questTasksTable.questId, questId)));
+    await db.update(questTasksTable).set({
+      completed: true, completedAt: new Date(), currentValue: value,
+    }).where(and(eq(questTasksTable.id, taskId), eq(questTasksTable.questId, questId)));
 
-    // Check if all tasks done
     const allTasks = await db.select().from(questTasksTable).where(eq(questTasksTable.questId, questId));
     const allDone = allTasks.every(t => t.completed);
 
     if (allDone) {
-      await db.update(questsTable)
-        .set({ status: "completed", completedAt: new Date() })
+      await db.update(questsTable).set({ status: "completed", completedAt: new Date() })
         .where(eq(questsTable.id, questId));
     }
 
@@ -160,68 +202,78 @@ router.post("/quests/:id/claim", async (req, res) => {
 
     const [quest] = await db.select().from(questsTable).where(eq(questsTable.id, questId));
     if (!quest) return res.status(404).json({ error: "Quest not found" });
-    if (quest.status !== "completed") return res.status(400).json({ error: "Quest not completed" });
-    if (quest.status === "claimed") return res.status(400).json({ error: "Quest already claimed" });
+    if (quest.status !== "completed") return res.status(400).json({ error: "Quest not completed yet" });
+    if (quest.claimedAt) return res.status(400).json({ error: "Quest already claimed" });
 
-    await db.update(questsTable)
-      .set({ status: "claimed", claimedAt: new Date() })
+    await db.update(questsTable).set({ status: "claimed", claimedAt: new Date() })
       .where(eq(questsTable.id, questId));
 
-    const newXp = player.xp + quest.xpReward;
-    const newGold = player.gold + quest.goldReward;
-    const newFreeStats = player.freeStatPoints + (quest.bonusStatPoints || 0);
-    const newTotalXp = player.totalXpEarned + quest.xpReward;
+    // Grant gold + free stat points immediately
+    await db.update(playerTable).set({
+      gold: player.gold + quest.goldReward,
+      freeStatPoints: player.freeStatPoints + (quest.bonusStatPoints || 0),
+      totalQuests: (player.totalQuests || 0) + 1,
+      updatedAt: new Date(),
+    }).where(eq(playerTable.id, player.id));
 
-    // Check for level up
-    let newLevel = player.level;
-    let leveledUp = false;
-    let levelXp = newXp;
-    while (true) {
-      const xpNeeded = xpForLevel(newLevel + 1);
-      if (levelXp >= xpNeeded) {
-        levelXp -= xpNeeded;
-        newLevel++;
-        leveledUp = true;
-      } else break;
-    }
+    // Apply XP through progression engine (handles level ups)
+    const xpResult = await applyXpEvent(
+      player.id, quest.xpReward,
+      `Quest: ${quest.title}`, quest.type,
+      new Date().toISOString().split("T")[0]
+    );
 
-    const newRank = rankForLevel(newLevel);
-    const rankedUp = newRank !== player.rank;
-
-    const [updatedPlayer] = await db.update(playerTable)
-      .set({
-        xp: leveledUp ? levelXp : newXp,
-        level: newLevel,
-        rank: newRank,
-        gold: newGold,
-        freeStatPoints: newFreeStats + (leveledUp ? (newLevel - player.level) * 5 : 0),
-        totalXpEarned: newTotalXp,
-        updatedAt: new Date(),
-      })
-      .where(eq(playerTable.id, player.id))
-      .returning();
-
-    await db.insert(xpHistoryTable).values({
-      playerId: player.id,
-      amount: quest.xpReward,
-      source: `Quest: ${quest.title}`,
-      category: quest.type,
-      date: new Date().toISOString().split("T")[0],
-    });
+    const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer();
 
     res.json({
-      xpEarned: quest.xpReward,
+      xpEarned: xpResult.totalXpAwarded,
       goldEarned: quest.goldReward,
       bonusStatPoints: quest.bonusStatPoints || 0,
-      newLevel: updatedPlayer.level,
-      leveledUp,
-      newRank: rankedUp ? newRank : null,
-      rankedUp,
-      player: buildPlayerResponse(updatedPlayer, stats),
+      newLevel: freshPlayer.level,
+      leveledUp: xpResult.leveledUp,
+      levelsGained: xpResult.levelsGained,
+      newRank: xpResult.newRank,
+      rankedUp: xpResult.rankedUp,
+      newAchievements: xpResult.newAchievements,
+      newTitles: xpResult.newTitles,
+      titleReward: quest.titleReward || null,
+      player: buildPlayerResponse(freshPlayer, freshStats),
     });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to claim quest" });
+  }
+});
+
+// Create custom quest
+router.post("/quests", async (req, res) => {
+  try {
+    const { player } = await getOrCreatePlayer();
+    const { title, description, type, xpReward, goldReward, bonusStatPoints, difficulty, expiresAt, tasks } = req.body;
+    const [quest] = await db.insert(questsTable).values({
+      playerId: player.id,
+      title, description,
+      type: type || "side",
+      xpReward: xpReward || 200,
+      goldReward: goldReward || 75,
+      bonusStatPoints: bonusStatPoints || 0,
+      difficulty: difficulty || "E",
+      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+    }).returning();
+
+    if (tasks && Array.isArray(tasks)) {
+      for (const [i, t] of tasks.entries()) {
+        await db.insert(questTasksTable).values({
+          questId: quest.id, description: t.description, order: i + 1,
+          targetValue: t.targetValue, unit: t.unit, completed: false,
+        });
+      }
+    }
+
+    res.status(201).json(await buildQuestResponse(quest));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Failed to create quest" });
   }
 });
 

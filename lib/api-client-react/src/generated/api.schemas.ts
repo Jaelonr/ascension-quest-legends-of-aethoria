@@ -842,6 +842,213 @@ export interface RankProgressEntry {
   rank: string;
 }
 
+export type PlannerRequestGoal = typeof PlannerRequestGoal[keyof typeof PlannerRequestGoal];
+
+
+export const PlannerRequestGoal = {
+  strength: 'strength',
+  hypertrophy: 'hypertrophy',
+  conditioning: 'conditioning',
+  striking: 'striking',
+  recovery: 'recovery',
+  back_friendly_lower: 'back_friendly_lower',
+} as const;
+
+export interface PlannerRequest {
+  goal: PlannerRequestGoal;
+  excludeEquipmentIds?: number[];
+  /** @nullable */
+  rpeLimit?: number | null;
+  avoidMuscleGroups?: string[];
+  /** @nullable */
+  customNotes?: string | null;
+}
+
+export type PlanExercisePhase = typeof PlanExercisePhase[keyof typeof PlanExercisePhase];
+
+
+export const PlanExercisePhase = {
+  warmup: 'warmup',
+  main: 'main',
+  accessory: 'accessory',
+  finisher: 'finisher',
+} as const;
+
+export type PlanExerciseSubstitutesItem = {
+  exerciseId?: number;
+  exerciseName?: string;
+  reason?: string;
+};
+
+export interface PlanExercise {
+  exerciseId: number;
+  exerciseName: string;
+  muscleGroup: string;
+  category: string;
+  sets: number;
+  reps: string;
+  rpe: number;
+  restSeconds: number;
+  phase: PlanExercisePhase;
+  /** @nullable */
+  notes?: string | null;
+  substitutes?: PlanExerciseSubstitutesItem[];
+}
+
+export type GeneratedPlanRpeGuide = {
+  target?: number;
+  /** @nullable */
+  limit?: number | null;
+  note?: string;
+};
+
+export type GeneratedPlanGeneratedForStats = {
+  strength?: number;
+  stamina?: number;
+};
+
+export type GeneratedPlanGeneratedFor = {
+  level?: number;
+  rank?: string;
+  stats?: GeneratedPlanGeneratedForStats;
+};
+
+export interface GeneratedPlan {
+  planName: string;
+  goal: string;
+  estimatedDuration: number;
+  xpPreview: number;
+  totalSets: number;
+  exercises: PlanExercise[];
+  rpeGuide?: GeneratedPlanRpeGuide;
+  /** @nullable */
+  injuryNotes?: string | null;
+  /** @nullable */
+  customNotes?: string | null;
+  availableEquipmentCount?: number;
+  generatedFor?: GeneratedPlanGeneratedFor;
+}
+
+export interface SavePlanRequest {
+  planName: string;
+  goal: string;
+  exercises: PlanExercise[];
+  estimatedDuration?: number;
+  xpPreview?: number;
+}
+
+export interface RaidTask {
+  id: string;
+  description: string;
+  completed: boolean;
+  /** @nullable */
+  currentValue?: number | null;
+  /** @nullable */
+  targetValue?: number | null;
+  /** @nullable */
+  unit?: string | null;
+}
+
+export type BossRaidDifficulty = typeof BossRaidDifficulty[keyof typeof BossRaidDifficulty];
+
+
+export const BossRaidDifficulty = {
+  E: 'E',
+  D: 'D',
+  C: 'C',
+  B: 'B',
+  A: 'A',
+  S: 'S',
+} as const;
+
+export type BossRaidStatus = typeof BossRaidStatus[keyof typeof BossRaidStatus];
+
+
+export const BossRaidStatus = {
+  active: 'active',
+  completed: 'completed',
+  claimed: 'claimed',
+  failed: 'failed',
+} as const;
+
+export interface BossRaid {
+  id: number;
+  playerId: number;
+  title: string;
+  description: string;
+  /** @nullable */
+  lore?: string | null;
+  difficulty: BossRaidDifficulty;
+  status: BossRaidStatus;
+  xpReward: number;
+  goldReward: number;
+  /** @nullable */
+  bonusStatPoints?: number | null;
+  /** @nullable */
+  titleReward?: string | null;
+  /** @nullable */
+  timeLimitHours?: number | null;
+  /** @nullable */
+  timeRemainingHours?: number | null;
+  isExpired?: boolean;
+  tasks: RaidTask[];
+  /** @nullable */
+  startedAt?: string | null;
+  /** @nullable */
+  expiresAt?: string | null;
+  /** @nullable */
+  completedAt?: string | null;
+  /** @nullable */
+  claimedAt?: string | null;
+}
+
+export type RaidTemplateDifficulty = typeof RaidTemplateDifficulty[keyof typeof RaidTemplateDifficulty];
+
+
+export const RaidTemplateDifficulty = {
+  E: 'E',
+  D: 'D',
+  C: 'C',
+  B: 'B',
+  A: 'A',
+  S: 'S',
+} as const;
+
+export interface RaidTemplate {
+  title: string;
+  description: string;
+  lore?: string;
+  difficulty: RaidTemplateDifficulty;
+  timeLimitHours: number;
+  xpReward: number;
+  goldReward: number;
+  bonusStatPoints: number;
+  /** @nullable */
+  titleReward?: string | null;
+  triggerCondition?: string;
+  isRepeatable: boolean;
+  alreadyCompleted: boolean;
+  tasks: RaidTask[];
+}
+
+export type RaidClaimResultNewAchievementsItem = { [key: string]: unknown };
+
+export type RaidClaimResultTitleGranted = { [key: string]: unknown } | null;
+
+export interface RaidClaimResult {
+  xpEarned: number;
+  goldEarned: number;
+  bonusStatPoints: number;
+  leveledUp: boolean;
+  levelsGained: number;
+  rankedUp: boolean;
+  /** @nullable */
+  newRank?: string | null;
+  newAchievements?: RaidClaimResultNewAchievementsItem[];
+  titleGranted?: RaidClaimResultTitleGranted;
+  player: Player;
+}
+
 export type GetNutritionLogsParams = {
 date?: string;
 };
@@ -880,5 +1087,17 @@ export type GetVolumeByMuscleGroupParams = {
  * @nullable
  */
 weeks?: number | null;
+};
+
+export type StartBossRaidBody = {
+  templateTitle: string;
+};
+
+export type UpdateBossRaidTaskBody = {
+  taskId: string;
+  /** @nullable */
+  currentValue?: number | null;
+  /** @nullable */
+  completed?: boolean | null;
 };
 

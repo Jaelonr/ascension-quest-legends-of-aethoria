@@ -1336,3 +1336,284 @@ export const GetRankProgressResponseItem = zod.object({
 export const GetRankProgressResponse = zod.array(GetRankProgressResponseItem)
 
 
+/**
+ * @summary Generate an equipment-aware workout plan
+ */
+export const GenerateWorkoutPlanBody = zod.object({
+  "goal": zod.enum(['strength', 'hypertrophy', 'conditioning', 'striking', 'recovery', 'back_friendly_lower']),
+  "excludeEquipmentIds": zod.array(zod.number()).optional(),
+  "rpeLimit": zod.number().nullish(),
+  "avoidMuscleGroups": zod.array(zod.string()).optional(),
+  "customNotes": zod.string().nullish()
+})
+
+export const GenerateWorkoutPlanResponse = zod.object({
+  "planName": zod.string(),
+  "goal": zod.string(),
+  "estimatedDuration": zod.number(),
+  "xpPreview": zod.number(),
+  "totalSets": zod.number(),
+  "exercises": zod.array(zod.object({
+  "exerciseId": zod.number(),
+  "exerciseName": zod.string(),
+  "muscleGroup": zod.string(),
+  "category": zod.string(),
+  "sets": zod.number(),
+  "reps": zod.string(),
+  "rpe": zod.number(),
+  "restSeconds": zod.number(),
+  "phase": zod.enum(['warmup', 'main', 'accessory', 'finisher']),
+  "notes": zod.string().nullish(),
+  "substitutes": zod.array(zod.object({
+  "exerciseId": zod.number().optional(),
+  "exerciseName": zod.string().optional(),
+  "reason": zod.string().optional()
+})).optional()
+})),
+  "rpeGuide": zod.object({
+  "target": zod.number().optional(),
+  "limit": zod.number().nullish(),
+  "note": zod.string().optional()
+}).optional(),
+  "injuryNotes": zod.string().nullish(),
+  "customNotes": zod.string().nullish(),
+  "availableEquipmentCount": zod.number().optional(),
+  "generatedFor": zod.object({
+  "level": zod.number().optional(),
+  "rank": zod.string().optional(),
+  "stats": zod.object({
+  "strength": zod.number().optional(),
+  "stamina": zod.number().optional()
+}).optional()
+}).optional()
+})
+
+
+/**
+ * @summary Save a generated plan as a workout template
+ */
+export const SavePlanAsTemplateBody = zod.object({
+  "planName": zod.string(),
+  "goal": zod.string(),
+  "exercises": zod.array(zod.object({
+  "exerciseId": zod.number(),
+  "exerciseName": zod.string(),
+  "muscleGroup": zod.string(),
+  "category": zod.string(),
+  "sets": zod.number(),
+  "reps": zod.string(),
+  "rpe": zod.number(),
+  "restSeconds": zod.number(),
+  "phase": zod.enum(['warmup', 'main', 'accessory', 'finisher']),
+  "notes": zod.string().nullish(),
+  "substitutes": zod.array(zod.object({
+  "exerciseId": zod.number().optional(),
+  "exerciseName": zod.string().optional(),
+  "reason": zod.string().optional()
+})).optional()
+})),
+  "estimatedDuration": zod.number().optional(),
+  "xpPreview": zod.number().optional()
+})
+
+
+/**
+ * @summary Get all player boss raids
+ */
+export const GetBossRaidsResponseItem = zod.object({
+  "id": zod.number(),
+  "playerId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "lore": zod.string().nullish(),
+  "difficulty": zod.enum(['E', 'D', 'C', 'B', 'A', 'S']),
+  "status": zod.enum(['active', 'completed', 'claimed', 'failed']),
+  "xpReward": zod.number(),
+  "goldReward": zod.number(),
+  "bonusStatPoints": zod.number().nullish(),
+  "titleReward": zod.string().nullish(),
+  "timeLimitHours": zod.number().nullish(),
+  "timeRemainingHours": zod.number().nullish(),
+  "isExpired": zod.boolean().optional(),
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "description": zod.string(),
+  "completed": zod.boolean(),
+  "currentValue": zod.number().nullish(),
+  "targetValue": zod.number().nullish(),
+  "unit": zod.string().nullish()
+})),
+  "startedAt": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "claimedAt": zod.string().nullish()
+})
+export const GetBossRaidsResponse = zod.array(GetBossRaidsResponseItem)
+
+
+/**
+ * @summary Get available raid templates for the player
+ */
+export const GetAvailableBossRaidsResponseItem = zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "lore": zod.string().optional(),
+  "difficulty": zod.enum(['E', 'D', 'C', 'B', 'A', 'S']),
+  "timeLimitHours": zod.number(),
+  "xpReward": zod.number(),
+  "goldReward": zod.number(),
+  "bonusStatPoints": zod.number(),
+  "titleReward": zod.string().nullish(),
+  "triggerCondition": zod.string().optional(),
+  "isRepeatable": zod.boolean(),
+  "alreadyCompleted": zod.boolean(),
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "description": zod.string(),
+  "completed": zod.boolean(),
+  "currentValue": zod.number().nullish(),
+  "targetValue": zod.number().nullish(),
+  "unit": zod.string().nullish()
+}))
+})
+export const GetAvailableBossRaidsResponse = zod.array(GetAvailableBossRaidsResponseItem)
+
+
+/**
+ * @summary Start a boss raid
+ */
+export const StartBossRaidBody = zod.object({
+  "templateTitle": zod.string()
+})
+
+
+/**
+ * @summary Get a specific boss raid
+ */
+export const GetBossRaidParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetBossRaidResponse = zod.object({
+  "id": zod.number(),
+  "playerId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "lore": zod.string().nullish(),
+  "difficulty": zod.enum(['E', 'D', 'C', 'B', 'A', 'S']),
+  "status": zod.enum(['active', 'completed', 'claimed', 'failed']),
+  "xpReward": zod.number(),
+  "goldReward": zod.number(),
+  "bonusStatPoints": zod.number().nullish(),
+  "titleReward": zod.string().nullish(),
+  "timeLimitHours": zod.number().nullish(),
+  "timeRemainingHours": zod.number().nullish(),
+  "isExpired": zod.boolean().optional(),
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "description": zod.string(),
+  "completed": zod.boolean(),
+  "currentValue": zod.number().nullish(),
+  "targetValue": zod.number().nullish(),
+  "unit": zod.string().nullish()
+})),
+  "startedAt": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "claimedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Update a raid task progress
+ */
+export const UpdateBossRaidTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateBossRaidTaskBody = zod.object({
+  "taskId": zod.string(),
+  "currentValue": zod.number().nullish(),
+  "completed": zod.boolean().nullish()
+})
+
+export const UpdateBossRaidTaskResponse = zod.object({
+  "id": zod.number(),
+  "playerId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "lore": zod.string().nullish(),
+  "difficulty": zod.enum(['E', 'D', 'C', 'B', 'A', 'S']),
+  "status": zod.enum(['active', 'completed', 'claimed', 'failed']),
+  "xpReward": zod.number(),
+  "goldReward": zod.number(),
+  "bonusStatPoints": zod.number().nullish(),
+  "titleReward": zod.string().nullish(),
+  "timeLimitHours": zod.number().nullish(),
+  "timeRemainingHours": zod.number().nullish(),
+  "isExpired": zod.boolean().optional(),
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "description": zod.string(),
+  "completed": zod.boolean(),
+  "currentValue": zod.number().nullish(),
+  "targetValue": zod.number().nullish(),
+  "unit": zod.string().nullish()
+})),
+  "startedAt": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "completedAt": zod.string().nullish(),
+  "claimedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Claim a completed boss raid reward
+ */
+export const ClaimBossRaidRewardParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ClaimBossRaidRewardResponse = zod.object({
+  "xpEarned": zod.number(),
+  "goldEarned": zod.number(),
+  "bonusStatPoints": zod.number(),
+  "leveledUp": zod.boolean(),
+  "levelsGained": zod.number(),
+  "rankedUp": zod.boolean(),
+  "newRank": zod.string().nullish(),
+  "newAchievements": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "titleGranted": zod.object({
+
+}).passthrough().nullish(),
+  "player": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "level": zod.number(),
+  "rank": zod.enum(['E', 'D', 'C', 'B', 'A', 'S', 'National-Level']),
+  "xp": zod.number(),
+  "xpToNextLevel": zod.number(),
+  "hp": zod.number(),
+  "maxHp": zod.number(),
+  "mp": zod.number(),
+  "maxMp": zod.number(),
+  "gold": zod.number(),
+  "freeStatPoints": zod.number(),
+  "streakDays": zod.number().optional(),
+  "stats": zod.object({
+  "strength": zod.number(),
+  "agility": zod.number(),
+  "stamina": zod.number(),
+  "vitality": zod.number(),
+  "discipline": zod.number(),
+  "sense": zod.number()
+}),
+  "activeTitle": zod.string().nullable(),
+  "penaltyQuestActive": zod.boolean().optional(),
+  "createdAt": zod.string()
+})
+})
+
+
