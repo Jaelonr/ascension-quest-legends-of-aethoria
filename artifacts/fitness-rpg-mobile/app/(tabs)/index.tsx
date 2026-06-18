@@ -8,9 +8,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -69,6 +71,7 @@ function StatBar({
 export default function StatusScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const { data: summary, isLoading } = useGetDashboardSummary();
   const { data: battles } = useGetBattleLog(
@@ -264,6 +267,29 @@ export default function StatusScreen() {
         </View>
       ) : null}
 
+      {/* Battle Records nav card */}
+      <TouchableOpacity
+        onPress={() => router.push("/records" as never)}
+        activeOpacity={0.8}
+        style={[
+          styles.card,
+          styles.recordsCard,
+          { backgroundColor: colors.card, borderColor: colors.primary + "30" },
+        ]}
+      >
+        <View style={styles.recordsRow}>
+          <View>
+            <Text style={[styles.recordsTitle, { color: colors.primary }]}>
+              📊  Battle Records
+            </Text>
+            <Text style={[styles.recordsSub, { color: colors.mutedForeground }]}>
+              Stats, PRs &amp; achievements
+            </Text>
+          </View>
+          <Text style={[styles.recordsArrow, { color: colors.primary }]}>›</Text>
+        </View>
+      </TouchableOpacity>
+
       {/* Daily Quest */}
       {dailyQuest ? (
         <View
@@ -401,4 +427,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  recordsCard: { padding: 14 },
+  recordsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  recordsTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  recordsSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  recordsArrow: { fontSize: 28, lineHeight: 30 },
 });
