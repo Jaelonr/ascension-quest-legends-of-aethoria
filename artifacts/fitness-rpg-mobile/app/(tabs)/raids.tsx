@@ -218,9 +218,21 @@ function ActiveRaidCard({
       ? colors.mutedForeground
       : colors.primary;
 
-  const handleTaskUpdate = (taskId: string) => {
+  const handleTaskUpdate = (
+    taskId: string,
+    currentValue: number | null | undefined,
+    targetValue: number | null | undefined
+  ) => {
+    const isBinary = !targetValue;
     updateTask.mutate(
-      { id: raid.id, data: { taskId, completed: true } },
+      {
+        id: raid.id,
+        data: {
+          taskId,
+          currentValue: isBinary ? 1 : (currentValue ?? 0) + 1,
+          completed: isBinary ? true : undefined,
+        },
+      },
       {
         onSuccess: () =>
           qc.invalidateQueries({ queryKey: ["/api/boss-raids"] }),
@@ -399,36 +411,62 @@ function ActiveRaidCard({
                   ]}
                 >
                   <View style={s.taskTopRow}>
-                    <TouchableOpacity
-                      onPress={canTap ? () => handleTaskUpdate(task.id) : undefined}
-                      disabled={!canTap || updateTask.isPending}
-                      activeOpacity={canTap ? 0.7 : 1}
-                    >
-                      <View
+                    {/* Checkbox / +1 button / auto-icon */}
+                    {isManual && canTap && task.targetValue != null && task.targetValue > 1 ? (
+                      <TouchableOpacity
                         style={[
-                          s.taskCheckbox,
-                          task.completed
-                            ? {
-                                backgroundColor: "#22c55e",
-                                borderColor: "#22c55e",
-                              }
-                            : isManual
-                            ? { borderColor: colors.border }
-                            : {
-                                borderColor: colors.primary + "80",
-                                borderRadius: 9,
-                              },
+                          s.plusOneBtn,
+                          updateTask.isPending && { opacity: 0.5 },
                         ]}
+                        onPress={() =>
+                          handleTaskUpdate(task.id, task.currentValue, task.targetValue)
+                        }
+                        disabled={updateTask.isPending}
+                        activeOpacity={0.7}
                       >
-                        {task.completed ? (
-                          <Text style={{ fontSize: 9, color: "#fff" }}>✓</Text>
-                        ) : !isManual ? (
-                          <Text style={{ fontSize: 9, color: colors.primary }}>
-                            ⚡
-                          </Text>
-                        ) : null}
-                      </View>
-                    </TouchableOpacity>
+                        <Text style={s.plusOneBtnText}>+1</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={
+                          canTap
+                            ? () =>
+                                handleTaskUpdate(
+                                  task.id,
+                                  task.currentValue,
+                                  task.targetValue
+                                )
+                            : undefined
+                        }
+                        disabled={!canTap || updateTask.isPending}
+                        activeOpacity={canTap ? 0.7 : 1}
+                      >
+                        <View
+                          style={[
+                            s.taskCheckbox,
+                            task.completed
+                              ? {
+                                  backgroundColor: "#22c55e",
+                                  borderColor: "#22c55e",
+                                }
+                              : isManual
+                              ? { borderColor: colors.border }
+                              : {
+                                  borderColor: colors.primary + "80",
+                                  borderRadius: 9,
+                                },
+                          ]}
+                        >
+                          {task.completed ? (
+                            <Text style={{ fontSize: 9, color: "#fff" }}>✓</Text>
+                          ) : !isManual ? (
+                            <Text style={{ fontSize: 9, color: colors.primary }}>
+                              ⚡
+                            </Text>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    )}
 
                     <View style={{ flex: 1 }}>
                       <Text
@@ -536,6 +574,19 @@ function ActiveRaidCard({
   );
 }
 
+// ── Unlock requirement helper ────────────────────────────────────────────────
+
+function formatTriggerCondition(cond: string | undefined): string | null {
+  if (!cond) return null;
+  if (cond === "streak_7") return "7-day streak required";
+  if (cond === "streak_30") return "30-day streak required";
+  if (cond === "rank_D") return "Requires D-Rank+";
+  if (cond === "rank_C") return "Requires C-Rank+";
+  if (cond === "rank_B") return "Requires B-Rank+";
+  if (cond === "rank_S") return "Requires S-Rank+";
+  return "Requires D-Rank+";
+}
+
 // ── Available Raid Card ──────────────────────────────────────────────────────
 
 function AvailableRaidCard({
@@ -589,6 +640,13 @@ function AvailableRaidCard({
                 <View style={[s.statusBadge, { borderColor: "#22c55e60" }]}>
                   <Text style={[s.statusBadgeText, { color: "#22c55e" }]}>
                     REPEAT
+                  </Text>
+                </View>
+              )}
+              {formatTriggerCondition(template.triggerCondition) && (
+                <View style={[s.unlockBadge, { borderColor: "#ffbf0040" }]}>
+                  <Text style={[s.unlockBadgeText, { color: "#ffbf00" }]}>
+                    {formatTriggerCondition(template.triggerCondition)}
                   </Text>
                 </View>
               )}
@@ -1196,4 +1254,29 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   modalCloseBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#000" },
+
+  plusOneBtn: {
+    backgroundColor: "#0dcef520",
+    borderWidth: 1,
+    borderColor: "#0dcef560",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  plusOneBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#0dcef5",
+  },
+
+  unlockBadge: {
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  unlockBadgeText: { fontSize: 9, fontFamily: "Inter_500Medium" },
 });
