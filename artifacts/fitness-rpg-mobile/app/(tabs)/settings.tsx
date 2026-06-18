@@ -34,7 +34,7 @@ import { useColors } from "@/hooks/useColors";
 
 const INTENSITY_OPTIONS = [
   {
-    id: "technical",
+    id: "minimal",
     label: "Technical",
     desc: "Real fitness data. Sets, reps, numbers — no story text.",
   },
@@ -44,7 +44,7 @@ const INTENSITY_OPTIONS = [
     desc: "Mix of narrative and actual training metrics.",
   },
   {
-    id: "immersive",
+    id: "dramatic",
     label: "Immersive",
     desc: "Full fantasy language. Your workout becomes an epic.",
   },
@@ -563,7 +563,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     AsyncStorage.getItem(INTENSITY_KEY).then((val) => {
-      if (val === "technical" || val === "balanced" || val === "immersive") {
+      if (val === "minimal" || val === "balanced" || val === "dramatic") {
         setIntensity(val);
       }
     });

@@ -5,6 +5,7 @@ import {
   WorkoutSetInputWeightUnit,
   WorkoutSessionUpdateNarrativeIntensity,
 } from "@workspace/api-client-react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -174,6 +175,20 @@ export default function ActiveSessionScreen() {
   const [prFlash, setPrFlash] = useState<number | null>(null);
   const [completion, setCompletion] = useState<CompletionData | null>(null);
   const [showReplay, setShowReplay] = useState(false);
+  const [narrativeIntensity, setNarrativeIntensity] =
+    useState<WorkoutSessionUpdateNarrativeIntensity>(WorkoutSessionUpdateNarrativeIntensity.balanced);
+
+  useEffect(() => {
+    AsyncStorage.getItem("narrative_intensity").then((val) => {
+      if (
+        val === WorkoutSessionUpdateNarrativeIntensity.minimal ||
+        val === WorkoutSessionUpdateNarrativeIntensity.balanced ||
+        val === WorkoutSessionUpdateNarrativeIntensity.dramatic
+      ) {
+        setNarrativeIntensity(val as WorkoutSessionUpdateNarrativeIntensity);
+      }
+    });
+  }, []);
 
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -304,7 +319,7 @@ export default function ActiveSessionScreen() {
                 id: sessionId,
                 data: {
                   status: "completed",
-                  narrativeIntensity: WorkoutSessionUpdateNarrativeIntensity.balanced,
+                  narrativeIntensity,
                 },
               },
               {

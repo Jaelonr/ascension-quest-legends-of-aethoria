@@ -36,6 +36,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "backpack", selected: "backpack.fill" }} />
         <Label>Inventory</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="skills">
+        <Icon sf={{ default: "sparkles", selected: "sparkles" }} />
+        <Label>Skills</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <Label>Settings</Label>
@@ -146,6 +150,18 @@ function ClassicTabLayout() {
               <SymbolView name="backpack.fill" tintColor={color} size={22} />
             ) : (
               <Feather name="package" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="skills"
+        options={{
+          title: "Skills",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="sparkles" tintColor={color} size={22} />
+            ) : (
+              <Feather name="star" size={22} color={color} />
             ),
         }}
       />
