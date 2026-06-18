@@ -1,8 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useClerk } from "@clerk/expo";
 import { useGetDashboardSummary } from "@workspace/api-client-react";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -37,10 +39,26 @@ const STORAGE_KEY = "narrative_intensity";
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { signOut } = useClerk();
 
   const { data: summary, isLoading } = useGetDashboardSummary();
   const [intensity, setIntensity] = useState<IntensityId>("balanced");
   const [saving, setSaving] = useState(false);
+
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: () => signOut(),
+        },
+      ],
+    );
+  };
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((val) => {
@@ -239,6 +257,18 @@ export default function SettingsScreen() {
           "Your real-world training determines your power."
         </Text>
       </View>
+
+      {/* Sign Out */}
+      <TouchableOpacity
+        style={[
+          styles.signOutBtn,
+          { borderColor: "#ef4444" + "44", backgroundColor: "#ef4444" + "10" },
+        ]}
+        onPress={handleSignOut}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.signOutText}>Sign Out</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -316,5 +346,17 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
     paddingTop: 4,
+  },
+  signOutBtn: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  signOutText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#ef4444",
   },
 });
