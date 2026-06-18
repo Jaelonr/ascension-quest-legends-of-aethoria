@@ -227,6 +227,9 @@ export interface Achievement {
   unlockedAt: string | null;
   xpReward: number;
   unlocked?: boolean;
+  checkKey?: string | null;
+  checkThreshold?: number | null;
+  unlockCondition?: string | null;
 }
 
 export type NutritionTargetsSex = typeof NutritionTargetsSex[keyof typeof NutritionTargetsSex] | null;

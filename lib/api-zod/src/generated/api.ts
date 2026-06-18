@@ -416,7 +416,10 @@ export const GetAchievementsResponseItem = zod.object({
   "category": zod.string(),
   "unlockedAt": zod.string().nullable(),
   "xpReward": zod.number(),
-  "unlocked": zod.boolean().optional()
+  "unlocked": zod.boolean().optional(),
+  "checkKey": zod.string().nullish(),
+  "checkThreshold": zod.number().nullish(),
+  "unlockCondition": zod.string().nullish()
 })
 export const GetAchievementsResponse = zod.array(GetAchievementsResponseItem)
 

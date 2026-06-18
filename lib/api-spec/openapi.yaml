@@ -1830,6 +1830,15 @@ components:
           type: integer
         unlocked:
           type: boolean
+        checkKey:
+          type: string
+          nullable: true
+        checkThreshold:
+          type: integer
+          nullable: true
+        unlockCondition:
+          type: string
+          nullable: true
 
     # ─── NUTRITION ─────────────────────────────────────────────────────────────
     NutritionTargets:
