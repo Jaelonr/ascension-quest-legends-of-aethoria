@@ -28,6 +28,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "map", selected: "map.fill" }} />
         <Label>Quests</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="raids">
+        <Icon sf={{ default: "shield", selected: "shield.fill" }} />
+        <Label>Raids</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <Label>Settings</Label>
@@ -114,6 +118,18 @@ function ClassicTabLayout() {
               <SymbolView name="map.fill" tintColor={color} size={22} />
             ) : (
               <Feather name="map" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="raids"
+        options={{
+          title: "Raids",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="shield.fill" tintColor={color} size={22} />
+            ) : (
+              <Feather name="shield" size={22} color={color} />
             ),
         }}
       />
