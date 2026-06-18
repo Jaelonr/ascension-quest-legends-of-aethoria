@@ -4,10 +4,12 @@ import {
   useGetDashboardSummary,
   useGetBiometrics,
   useUpdateBiometrics,
+  getGetBiometricsQueryKey,
   useGetEquipment,
   useUpdateEquipment,
   type Equipment,
   type PlayerBiometrics,
+  type EquipmentUpdate,
 } from "@workspace/api-client-react";
 import React, { useEffect, useState } from "react";
 import {
@@ -174,8 +176,9 @@ function BioModal({
 
   const handleToggleEquipment = (item: Equipment) => {
     setTogglingId(item.id);
+    const eqPayload: EquipmentUpdate = { available: !item.available };
     updateEq.mutate(
-      { id: item.id, data: { available: !item.available } as any },
+      { id: item.id, data: eqPayload },
       {
         onSettled: () => {
           setTogglingId(null);
@@ -218,7 +221,7 @@ function BioModal({
       {
         onSuccess: () => {
           setDirty(false);
-          qc.invalidateQueries({ queryKey: ["/api/biometrics"] });
+          qc.invalidateQueries({ queryKey: getGetBiometricsQueryKey() });
         },
         onError: () => {
           Alert.alert("Error", "Failed to save biometrics.");
