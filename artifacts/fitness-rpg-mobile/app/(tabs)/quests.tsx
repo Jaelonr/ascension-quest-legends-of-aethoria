@@ -5,13 +5,14 @@ import {
   useClaimQuestReward,
   getGetQuestsQueryKey,
   getGetDailyQuestQueryKey,
+  customFetch,
 } from "@workspace/api-client-react";
 import type { Quest } from "@workspace/api-client-react";
+import { useMutation } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -337,6 +338,19 @@ function CampaignCard({
   const qc = useQueryClient();
   const claim = useClaimQuestReward();
 
+  const startQuest = useMutation({
+    mutationFn: () =>
+      customFetch<unknown>(`/api/guild-master/campaign-quests/${entry.id}/start`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getGetQuestsQueryKey() });
+    },
+    onError: () => {
+      Alert.alert("Error", "Could not start quest. Try again.");
+    },
+  });
+
   const chapterColor = CHAPTER_COLORS[entry.chapter] ?? colors.primary;
   const diffColor = DIFF_COLORS[entry.diff] ?? colors.primary;
   const isClaimed = dbQuest?.status === "claimed";
@@ -414,8 +428,8 @@ function CampaignCard({
             )}
           </View>
           <View style={s.rewardBlock}>
-            <Text style={s.rewardXp}>+{entry.xp}</Text>
-            <Text style={[s.rewardGold, { color: colors.mutedForeground }]}>XP</Text>
+            <Text style={s.rewardXp}>+{entry.xp} XP</Text>
+            <Text style={[s.rewardGold, { color: colors.mutedForeground }]}>+{entry.gold}g</Text>
           </View>
         </TouchableOpacity>
 
@@ -452,11 +466,18 @@ function CampaignCard({
               </View>
             )}
             {isNext && !dbQuest && (
-              <View style={s.nextQuestNote}>
-                <Text style={{ color: "#ffbf00", fontSize: 11, fontFamily: "Inter_500Medium" }}>
-                  Complete previous quests to unlock
-                </Text>
-              </View>
+              <TouchableOpacity
+                style={[s.startBtn, startQuest.isPending && { opacity: 0.6 }]}
+                onPress={() => startQuest.mutate()}
+                disabled={startQuest.isPending}
+                activeOpacity={0.8}
+              >
+                {startQuest.isPending ? (
+                  <ActivityIndicator size="small" color="#000" />
+                ) : (
+                  <Text style={s.startBtnText}>✨ Accept Mission</Text>
+                )}
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -475,7 +496,7 @@ export default function QuestsScreen() {
   const { data: allQuests, isLoading: loadingAll } = useGetQuests();
   const { data: dailyData, isLoading: loadingDaily } = useGetDailyQuest();
 
-  const dailyQuest: Quest | null = (dailyData as any)?.dailyQuest ?? null;
+  const dailyQuest: Quest | null = dailyData ?? null;
   const weeklyQuests = (allQuests ?? []).filter((q) => q.type === "weekly");
   const campaignQuests = (allQuests ?? []).filter((q) => q.type === "main");
 
@@ -782,13 +803,17 @@ const s = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.5,
   },
-  nextQuestNote: {
-    paddingVertical: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ffbf0020",
+  startBtn: {
+    backgroundColor: "#ffbf00",
     borderRadius: 8,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 6,
-    backgroundColor: "#ffbf0008",
+  },
+  startBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#000",
   },
 });
