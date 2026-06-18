@@ -56,7 +56,7 @@ router.get("/nutrition/targets", async (req, res) => {
       const [created] = await db.insert(nutritionTargetsTable)
         .values({ playerId: player.id, calories: 2500, protein: 180, carbs: 250, fat: 80 })
         .returning();
-      return res.json(created);
+      return void res.json(created);
     }
     res.json(targets[0]);
   } catch (err) {
@@ -114,7 +114,7 @@ router.patch("/nutrition/targets", async (req, res) => {
       const [created] = await db.insert(nutritionTargetsTable)
         .values({ playerId: player.id, calories: resolvedCalories ?? 2500, protein: resolvedProtein ?? 180, carbs: resolvedCarbs ?? 250, fat: resolvedFat ?? 80, ...values })
         .returning();
-      return res.json(created);
+      return void res.json(created);
     }
     const [updated] = await db.update(nutritionTargetsTable)
       .set(values)
@@ -272,7 +272,7 @@ router.post("/nutrition/copy-yesterday", async (req, res) => {
       .where(and(eq(nutritionLogsTable.playerId, player.id), eq(nutritionLogsTable.date, yesterdayStr)));
 
     if (yesterdayLogs.length === 0) {
-      return res.json({ copied: 0 });
+      return void res.json({ copied: 0 });
     }
 
     const newLogs = yesterdayLogs.map(l => ({

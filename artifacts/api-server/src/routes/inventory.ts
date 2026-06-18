@@ -43,8 +43,8 @@ router.post("/inventory/:id/use", async (req, res) => {
     .innerJoin(storeItemsTable, eq(playerInventoryTable.itemId, storeItemsTable.id))
     .where(eq(playerInventoryTable.id, inventoryId));
 
-    if (!item) return res.status(404).json({ error: "Item not found" });
-    if (item.inv.quantity <= 0) return res.status(400).json({ error: "No items remaining" });
+    if (!item) return void res.status(404).json({ error: "Item not found" });
+    if (item.inv.quantity <= 0) return void res.status(400).json({ error: "No items remaining" });
 
     let message = `Used ${item.store.name}`;
     let updatedPlayer = player;
@@ -151,12 +151,12 @@ router.post("/store/purchase", async (req, res) => {
     const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [item] = await db.select().from(storeItemsTable).where(eq(storeItemsTable.id, itemId));
-    if (!item) return res.status(404).json({ error: "Item not found" });
-    if (!item.available) return res.status(400).json({ error: "Item not available" });
+    if (!item) return void res.status(404).json({ error: "Item not found" });
+    if (!item.available) return void res.status(400).json({ error: "Item not available" });
 
     const totalCost = item.goldCost * quantity;
     if (player.gold < totalCost) {
-      return res.status(400).json({ error: "Insufficient gold" });
+      return void res.status(400).json({ error: "Insufficient gold" });
     }
 
     const [updatedPlayer] = await db.update(playerTable)

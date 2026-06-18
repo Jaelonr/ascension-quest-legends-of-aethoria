@@ -52,16 +52,16 @@ router.post("/skills/nodes/:id/unlock", async (req, res) => {
     const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [node] = await db.select().from(skillNodesTable).where(eq(skillNodesTable.id, nodeId));
-    if (!node) return res.status(404).json({ error: "Skill node not found" });
+    if (!node) return void res.status(404).json({ error: "Skill node not found" });
 
     // Already unlocked?
     const existing = await db.select().from(playerSkillNodesTable)
       .where(and(eq(playerSkillNodesTable.playerId, player.id), eq(playerSkillNodesTable.nodeId, nodeId)));
-    if (existing.length > 0) return res.status(400).json({ error: "Node already unlocked" });
+    if (existing.length > 0) return void res.status(400).json({ error: "Node already unlocked" });
 
     // XP cost check (uses total XP earned as "mastery points" — never deducted from current XP)
     if (node.xpCost > 0 && (player.totalXpEarned || 0) < node.xpCost) {
-      return res.status(400).json({
+      return void res.status(400).json({
         error: `Requires ${node.xpCost} total XP earned. You have ${player.totalXpEarned || 0}.`,
       });
     }
@@ -79,7 +79,7 @@ router.post("/skills/nodes/:id/unlock", async (req, res) => {
       };
       for (const [stat, required] of Object.entries(reqs)) {
         if ((required as number) > 0 && (statMap[stat] || 0) < (required as number)) {
-          return res.status(400).json({
+          return void res.status(400).json({
             error: `Requires ${stat} ${required}. Your ${stat}: ${statMap[stat] || 0}.`,
           });
         }
@@ -94,7 +94,7 @@ router.post("/skills/nodes/:id/unlock", async (req, res) => {
       const unlockedSet = new Set(unlocked.map(u => u.nodeId));
       const missing = prereqs.filter(id => !unlockedSet.has(id));
       if (missing.length > 0) {
-        return res.status(400).json({ error: "Prerequisites not met. Unlock earlier nodes first." });
+        return void res.status(400).json({ error: "Prerequisites not met. Unlock earlier nodes first." });
       }
     }
 

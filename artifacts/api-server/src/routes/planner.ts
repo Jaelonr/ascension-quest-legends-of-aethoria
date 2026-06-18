@@ -208,7 +208,7 @@ router.post("/training/planner/generate", async (req, res) => {
     };
 
     if (!GOAL_CONFIGS[goal]) {
-      return res.status(400).json({ error: `Unknown goal. Valid: ${Object.keys(GOAL_CONFIGS).join(", ")}` });
+      return void res.status(400).json({ error: `Unknown goal. Valid: ${Object.keys(GOAL_CONFIGS).join(", ")}` });
     }
 
     const config = GOAL_CONFIGS[goal];

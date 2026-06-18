@@ -78,7 +78,7 @@ router.get("/training/templates/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const [template] = await db.select().from(workoutTemplatesTable).where(eq(workoutTemplatesTable.id, id));
-    if (!template) return res.status(404).json({ error: "Template not found" });
+    if (!template) return void res.status(404).json({ error: "Template not found" });
     res.json({ ...template, createdAt: template.createdAt.toISOString(), exercises: template.exercises || [] });
   } catch (err) {
     req.log.error(err);
@@ -153,7 +153,7 @@ router.get("/training/sessions/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const [session] = await db.select().from(workoutSessionsTable).where(eq(workoutSessionsTable.id, id));
-    if (!session) return res.status(404).json({ error: "Session not found" });
+    if (!session) return void res.status(404).json({ error: "Session not found" });
     const sets = await db.select().from(workoutSetsTable).where(eq(workoutSetsTable.sessionId, id)).orderBy(workoutSetsTable.createdAt);
     let templateExercises: Array<{ exerciseId: number; name: string; sets: number; reps: string; muscleGroup?: string }> = [];
     if (session.templateId) {
@@ -414,7 +414,7 @@ router.post("/training/sessions/:id/sets", async (req, res) => {
     const { exerciseId, setNumber, reps, weight, weightUnit, rpe, notes } = req.body;
 
     const [exercise] = await db.select().from(exercisesTable).where(eq(exercisesTable.id, exerciseId));
-    if (!exercise) return res.status(404).json({ error: "Exercise not found" });
+    if (!exercise) return void res.status(404).json({ error: "Exercise not found" });
 
     const prs = await db.select().from(personalRecordsTable)
       .where(and(eq(personalRecordsTable.playerId, player.id), eq(personalRecordsTable.exerciseId, exerciseId)));

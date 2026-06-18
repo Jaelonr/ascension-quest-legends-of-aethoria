@@ -13,7 +13,7 @@ router.get("/profile/biometrics", async (req, res) => {
     const rows = await db.select().from(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, player.id));
     if (rows.length === 0) {
       // Return empty biometrics object
-      return res.json({
+      return void res.json({
         heightCm: null,
         weightKg: null,
         bodyFatPct: null,
@@ -27,7 +27,7 @@ router.get("/profile/biometrics", async (req, res) => {
       });
     }
     const b = rows[0]!;
-    return res.json({
+    return void res.json({
       heightCm: b.heightCm,
       weightKg: b.weightKg,
       bodyFatPct: b.bodyFatPct,
@@ -91,13 +91,13 @@ router.put("/profile/biometrics", async (req, res) => {
 
     if (existing.length === 0) {
       const [row] = await db.insert(playerBiometricsTable).values({ playerId: player.id, ...data }).returning();
-      return res.json(row);
+      return void res.json(row);
     } else {
       const [row] = await db.update(playerBiometricsTable)
         .set(data)
         .where(eq(playerBiometricsTable.playerId, player.id))
         .returning();
-      return res.json(row);
+      return void res.json(row);
     }
   } catch (err) {
     req.log.error(err);

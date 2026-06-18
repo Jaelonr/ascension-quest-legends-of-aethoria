@@ -81,7 +81,7 @@ router.get("/analytics/volume", async (req, res) => {
       ));
 
     const sessionIds = sessions.map(s => s.id);
-    if (sessionIds.length === 0) return res.json([]);
+    if (sessionIds.length === 0) return void res.json([]);
 
     const sets = await db.select({
       exerciseId: workoutSetsTable.exerciseId,

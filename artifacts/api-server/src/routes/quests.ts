@@ -162,7 +162,7 @@ router.get("/quests", async (req, res) => {
 router.get("/quests/:id", async (req, res) => {
   try {
     const [quest] = await db.select().from(questsTable).where(eq(questsTable.id, parseInt(req.params.id)));
-    if (!quest) return res.status(404).json({ error: "Quest not found" });
+    if (!quest) return void res.status(404).json({ error: "Quest not found" });
     res.json(await buildQuestResponse(quest));
   } catch (err) {
     req.log.error(err);
@@ -201,9 +201,9 @@ router.post("/quests/:id/claim", async (req, res) => {
     const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [quest] = await db.select().from(questsTable).where(eq(questsTable.id, questId));
-    if (!quest) return res.status(404).json({ error: "Quest not found" });
-    if (quest.status !== "completed") return res.status(400).json({ error: "Quest not completed yet" });
-    if (quest.claimedAt) return res.status(400).json({ error: "Quest already claimed" });
+    if (!quest) return void res.status(404).json({ error: "Quest not found" });
+    if (quest.status !== "completed") return void res.status(400).json({ error: "Quest not completed yet" });
+    if (quest.claimedAt) return void res.status(400).json({ error: "Quest already claimed" });
 
     await db.update(questsTable).set({ status: "claimed", claimedAt: new Date() })
       .where(eq(questsTable.id, questId));

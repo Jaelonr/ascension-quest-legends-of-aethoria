@@ -373,13 +373,13 @@ router.post("/boss-raids/start", async (req, res) => {
     const { player } = await getOrCreatePlayer(req.userId);
 
     const template = RAID_TEMPLATES.find(t => t.title === templateTitle);
-    if (!template) return res.status(404).json({ error: "Raid template not found" });
+    if (!template) return void res.status(404).json({ error: "Raid template not found" });
 
     const existing = await db.select().from(bossRaidsTable)
       .where(and(eq(bossRaidsTable.playerId, player.id)));
     const activeRaid = existing.find(r => r.title === template.title && (r.status === "active" || r.status === "completed"));
     if (activeRaid && !template.isRepeatable) {
-      return res.status(400).json({ error: "This raid has already been started or completed" });
+      return void res.status(400).json({ error: "This raid has already been started or completed" });
     }
 
     const expiresAt = new Date(Date.now() + template.timeLimitHours * 3600000);
@@ -414,7 +414,7 @@ router.get("/boss-raids/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const [raid] = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.id, id));
-    if (!raid) return res.status(404).json({ error: "Raid not found" });
+    if (!raid) return void res.status(404).json({ error: "Raid not found" });
     res.json(serializeRaid(raid));
   } catch (err) {
     req.log.error(err);
@@ -428,8 +428,8 @@ router.patch("/boss-raids/:id/task", async (req, res) => {
     const { taskId, currentValue, completed } = req.body;
 
     const [raid] = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.id, raidId));
-    if (!raid) return res.status(404).json({ error: "Raid not found" });
-    if (raid.status !== "active") return res.status(400).json({ error: "Raid is not active" });
+    if (!raid) return void res.status(404).json({ error: "Raid not found" });
+    if (raid.status !== "active") return void res.status(400).json({ error: "Raid is not active" });
 
     const tasks = (raid.tasks as any[]).map((t: any) => {
       if (t.id === taskId) {
@@ -463,9 +463,9 @@ router.post("/boss-raids/:id/claim", async (req, res) => {
     const { player, stats } = await getOrCreatePlayer(req.userId);
 
     const [raid] = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.id, raidId));
-    if (!raid) return res.status(404).json({ error: "Raid not found" });
-    if (raid.status !== "completed") return res.status(400).json({ error: "Raid not completed" });
-    if (raid.claimedAt) return res.status(400).json({ error: "Already claimed" });
+    if (!raid) return void res.status(404).json({ error: "Raid not found" });
+    if (raid.status !== "completed") return void res.status(400).json({ error: "Raid not completed" });
+    if (raid.claimedAt) return void res.status(400).json({ error: "Already claimed" });
 
     await db.update(bossRaidsTable).set({ status: "claimed", claimedAt: new Date() })
       .where(eq(bossRaidsTable.id, raidId));

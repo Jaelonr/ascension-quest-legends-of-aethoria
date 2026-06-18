@@ -48,7 +48,7 @@ router.post("/player/setup", async (req, res) => {
       baseClass?: string;
     };
     const { player, stats } = await getOrCreatePlayer(req.userId);
-    if (!stats) return res.status(400).json({ error: "Player stats not found" });
+    if (!stats) return void res.status(400).json({ error: "Player stats not found" });
 
     // Update name + class + mark setup complete
     await db.update(playerTable)
@@ -101,11 +101,11 @@ router.post("/player/allocate-stats", async (req, res) => {
   try {
     const { allocations } = req.body;
     const { player, stats } = await getOrCreatePlayer(req.userId);
-    if (!stats) return res.status(400).json({ error: "Player stats not found" });
+    if (!stats) return void res.status(400).json({ error: "Player stats not found" });
 
     const total = Object.values(allocations as Record<string, number>).reduce((a: number, b: number) => a + b, 0);
     if (total > player.freeStatPoints) {
-      return res.status(400).json({ error: "Not enough free stat points" });
+      return void res.status(400).json({ error: "Not enough free stat points" });
     }
 
     const [updatedStats] = await db.update(playerStatsTable).set({
@@ -227,7 +227,7 @@ router.post("/player/prestige", async (req, res) => {
   try {
     const { player, stats } = await getOrCreatePlayer(req.userId);
     if (player.level < 100) {
-      return res.status(400).json({ error: "Must be Level 100 (National-Level) to prestige" });
+      return void res.status(400).json({ error: "Must be Level 100 (National-Level) to prestige" });
     }
 
     // Reset level to 1, keep some earned bonuses, increment prestige
@@ -279,7 +279,7 @@ router.post("/player/change-class", async (req, res) => {
     const { baseClass } = req.body as { baseClass?: string };
     const { player, stats } = await getOrCreatePlayer(req.userId);
     if (player.gold < COST) {
-      return res.status(400).json({ error: `Not enough gold. Class change costs ${COST.toLocaleString()} gold.` });
+      return void res.status(400).json({ error: `Not enough gold. Class change costs ${COST.toLocaleString()} gold.` });
     }
     const [updated] = await db.update(playerTable)
       .set({ gold: player.gold - COST, baseClass: baseClass ?? player.baseClass, updatedAt: new Date() })
@@ -307,7 +307,7 @@ router.post("/player/respec", async (req, res) => {
           eq(storeItemsTable.name, "Respec Scroll"),
         ));
       if (scrolls.length === 0) {
-        return res.status(400).json({ error: "No Respec Scroll in inventory" });
+        return void res.status(400).json({ error: "No Respec Scroll in inventory" });
       }
       const scroll = scrolls[0];
       if (scroll.inv.quantity <= 1) {
@@ -319,7 +319,7 @@ router.post("/player/respec", async (req, res) => {
       }
     } else {
       if (player.gold < GOLD_COST) {
-        return res.status(400).json({ error: `Not enough gold. Respec costs ${GOLD_COST.toLocaleString()} gold.` });
+        return void res.status(400).json({ error: `Not enough gold. Respec costs ${GOLD_COST.toLocaleString()} gold.` });
       }
       await db.update(playerTable)
         .set({ gold: player.gold - GOLD_COST, updatedAt: new Date() })

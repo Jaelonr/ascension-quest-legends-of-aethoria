@@ -30,7 +30,7 @@ router.post("/armory/:id/equip", async (req, res) => {
 
     const [gear] = await db.select().from(rpgGearTable).where(eq(rpgGearTable.id, gearId));
     if (!gear || gear.playerId !== player.id) {
-      return res.status(404).json({ error: "Gear not found" });
+      return void res.status(404).json({ error: "Gear not found" });
     }
 
     const newEquipped = !gear.equipped;

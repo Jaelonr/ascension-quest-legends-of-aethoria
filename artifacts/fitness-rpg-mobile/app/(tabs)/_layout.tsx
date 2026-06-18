@@ -20,17 +20,9 @@ function NativeTabLayout() {
         <Icon sf={{ default: "figure.run", selected: "figure.run.circle.fill" }} />
         <Label>Training</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="battle-log">
-        <Icon sf={{ default: "scroll", selected: "scroll.fill" }} />
-        <Label>Battle Log</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="quests">
-        <Icon sf={{ default: "map", selected: "map.fill" }} />
-        <Label>Quests</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="raids">
-        <Icon sf={{ default: "shield", selected: "shield.fill" }} />
-        <Label>Raids</Label>
+      <NativeTabs.Trigger name="guild-hall">
+        <Icon sf={{ default: "building.columns", selected: "building.columns.fill" }} />
+        <Label>Guild Hall</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="inventory">
         <Icon sf={{ default: "backpack", selected: "backpack.fill" }} />
@@ -48,6 +40,7 @@ function NativeTabLayout() {
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <Label>Settings</Label>
       </NativeTabs.Trigger>
+
     </NativeTabs>
   );
 }
@@ -110,38 +103,14 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="battle-log"
+        name="guild-hall"
         options={{
-          title: "Battle Log",
+          title: "Guild Hall",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="scroll.fill" tintColor={color} size={22} />
+              <SymbolView name="building.columns.fill" tintColor={color} size={22} />
             ) : (
-              <Feather name="book-open" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="quests"
-        options={{
-          title: "Quests",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="map.fill" tintColor={color} size={22} />
-            ) : (
-              <Feather name="map" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="raids"
-        options={{
-          title: "Raids",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="shield.fill" tintColor={color} size={22} />
-            ) : (
-              <Feather name="shield" size={22} color={color} />
+              <Feather name="flag" size={22} color={color} />
             ),
         }}
       />
@@ -192,6 +161,20 @@ function ClassicTabLayout() {
               <Feather name="settings" size={22} color={color} />
             ),
         }}
+      />
+
+      {/* Hidden tabs — code preserved, not visible in tab bar */}
+      <Tabs.Screen
+        name="battle-log"
+        options={{ href: null, title: "Battle Log" }}
+      />
+      <Tabs.Screen
+        name="quests"
+        options={{ href: null, title: "Quests" }}
+      />
+      <Tabs.Screen
+        name="raids"
+        options={{ href: null, title: "Raids" }}
       />
     </Tabs>
   );

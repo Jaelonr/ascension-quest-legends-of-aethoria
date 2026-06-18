@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useClerk } from "@clerk/expo";
 import {
+  customFetch,
   useGetDashboardSummary,
   useGetBiometrics,
   useUpdateBiometrics,
@@ -55,11 +56,124 @@ const INTENSITY_KEY = "narrative_intensity";
 const UNIT_KEY = "unit_system";
 type UnitSystem = "metric" | "imperial";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  rack: "Rack", machine: "Machine", barbell: "Barbell",
-  free_weights: "Free Weights", striking: "Striking", mat: "Mat / Grappling",
-  bench: "Bench", cable: "Cable", cardio: "Cardio", bands: "Bands", other: "Other",
-};
+// ── Full equipment catalogue ───────────────────────────────────────────────────
+
+interface EquipmentDef { id: string; name: string; category: string; }
+
+const EQUIPMENT_CATALOGUE: { category: string; label: string; items: EquipmentDef[] }[] = [
+  {
+    category: "rack",
+    label: "Racks & Stands",
+    items: [
+      { id: "power_rack",    name: "Power Rack",          category: "rack" },
+      { id: "squat_rack",    name: "Squat Stand",          category: "rack" },
+      { id: "smith_machine", name: "Smith Machine",        category: "rack" },
+    ],
+  },
+  {
+    category: "barbell",
+    label: "Barbells & Plates",
+    items: [
+      { id: "barbell",    name: "Barbell",     category: "barbell" },
+      { id: "plates",     name: "Plates",      category: "barbell" },
+      { id: "ez_bar",     name: "EZ Bar",      category: "barbell" },
+      { id: "trap_bar",   name: "Trap Bar",    category: "barbell" },
+    ],
+  },
+  {
+    category: "free_weights",
+    label: "Free Weights",
+    items: [
+      { id: "dumbbells",            name: "Dumbbells",             category: "free_weights" },
+      { id: "adjustable_dumbbells", name: "Adjustable Dumbbells",  category: "free_weights" },
+      { id: "kettlebells",          name: "Kettlebells",           category: "free_weights" },
+      { id: "medicine_ball",        name: "Medicine Ball",         category: "free_weights" },
+      { id: "slam_ball",            name: "Slam Ball",             category: "free_weights" },
+    ],
+  },
+  {
+    category: "bench",
+    label: "Benches",
+    items: [
+      { id: "flat_bench",     name: "Flat Bench",      category: "bench" },
+      { id: "adjustable_bench", name: "Adjustable Bench", category: "bench" },
+      { id: "incline_bench",  name: "Incline Bench",   category: "bench" },
+    ],
+  },
+  {
+    category: "cable",
+    label: "Cable & Machines",
+    items: [
+      { id: "cable_machine",      name: "Cable Machine",       category: "cable" },
+      { id: "functional_trainer", name: "Functional Trainer",  category: "cable" },
+      { id: "lat_pulldown",       name: "Lat Pulldown",        category: "cable" },
+      { id: "leg_press",          name: "Leg Press",           category: "cable" },
+      { id: "hack_squat",         name: "Hack Squat Machine",  category: "cable" },
+      { id: "belt_squat",         name: "Belt Squat",          category: "cable" },
+    ],
+  },
+  {
+    category: "bodyweight",
+    label: "Bodyweight / Functional",
+    items: [
+      { id: "pull_up_bar",   name: "Pull-Up Bar",          category: "bodyweight" },
+      { id: "dip_station",   name: "Dip Station",          category: "bodyweight" },
+      { id: "resistance_bands", name: "Resistance Bands",  category: "bodyweight" },
+      { id: "trx",           name: "TRX / Suspension Trainer", category: "bodyweight" },
+      { id: "battle_ropes",  name: "Battle Ropes",         category: "bodyweight" },
+      { id: "sled",          name: "Sled",                 category: "bodyweight" },
+      { id: "foam_roller",   name: "Foam Roller",          category: "bodyweight" },
+    ],
+  },
+  {
+    category: "cardio",
+    label: "Cardio",
+    items: [
+      { id: "treadmill",      name: "Treadmill",       category: "cardio" },
+      { id: "bike",           name: "Bike",            category: "cardio" },
+      { id: "rowing_machine", name: "Rowing Machine",  category: "cardio" },
+      { id: "elliptical",     name: "Elliptical",      category: "cardio" },
+      { id: "stair_climber",  name: "Stair Climber",   category: "cardio" },
+      { id: "jump_rope",      name: "Jump Rope",       category: "cardio" },
+    ],
+  },
+  {
+    category: "striking",
+    label: "Combat & Striking",
+    items: [
+      { id: "heavy_bag",      name: "Heavy Bag",          category: "striking" },
+      { id: "fightcamp",      name: "FightCamp",          category: "striking" },
+      { id: "speed_bag",      name: "Speed Bag",          category: "striking" },
+      { id: "double_end_bag", name: "Double-End Bag",     category: "striking" },
+    ],
+  },
+  {
+    category: "mat",
+    label: "Mat & Grappling",
+    items: [
+      { id: "wrestling_mat",  name: "Wrestling Mat",   category: "mat" },
+      { id: "yoga_mat",       name: "Yoga Mat",        category: "mat" },
+    ],
+  },
+  {
+    category: "other",
+    label: "Other",
+    items: [
+      { id: "future_equipment", name: "Future Equipment (placeholder)", category: "other" },
+    ],
+  },
+];
+
+// Wearable providers ─────────────────────────────────────────────────────────
+
+const WEARABLE_PROVIDERS = [
+  { id: "apple_health",    name: "Apple Health",    platform: "iOS",     icon: "🍎", comingSoon: true },
+  { id: "health_connect",  name: "Health Connect",  platform: "Android", icon: "🤖", comingSoon: true },
+  { id: "samsung_health",  name: "Samsung Health",  platform: "Android", icon: "📱", comingSoon: true },
+  { id: "fitbit",          name: "Fitbit",          platform: "All",     icon: "⌚", comingSoon: true },
+  { id: "garmin",          name: "Garmin Connect",  platform: "All",     icon: "🏃", comingSoon: true },
+  { id: "smart_scale",     name: "Smart Scale",     platform: "All",     icon: "⚖️", comingSoon: true },
+];
 
 // ── Unit conversion helpers ───────────────────────────────────────────────────
 
@@ -128,7 +242,7 @@ function BioModal({
   colors: ReturnType<typeof useColors>;
 }) {
   const { data: bioData, isLoading: bioLoading } = useGetBiometrics();
-  const { data: equipment, isLoading: eqLoading } = useGetEquipment();
+  const { data: dbEquipment, isLoading: eqLoading, refetch: refetchEq } = useGetEquipment();
   const updateBio = useUpdateBiometrics();
   const updateEq  = useUpdateEquipment();
   const qc        = useQueryClient();
@@ -136,7 +250,7 @@ function BioModal({
   const [units, setUnits] = useState<UnitSystem>("metric");
   const [form, setForm]   = useState<BioForm>(emptyForm);
   const [dirty, setDirty] = useState(false);
-  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const imp  = units === "imperial";
   const wLbl = imp ? "lbs" : "kg";
@@ -174,18 +288,37 @@ function BioModal({
     await AsyncStorage.setItem(UNIT_KEY, u);
   };
 
-  const handleToggleEquipment = (item: Equipment) => {
-    setTogglingId(item.id);
-    const eqPayload: EquipmentUpdate = { available: !item.available };
-    updateEq.mutate(
-      { id: item.id, data: eqPayload },
-      {
-        onSettled: () => {
-          setTogglingId(null);
-          qc.invalidateQueries({ queryKey: ["/api/equipment"] });
-        },
+  // Match DB equipment to predefined catalogue by name (case-insensitive)
+  const dbByName = new Map<string, Equipment>();
+  for (const e of (dbEquipment ?? [])) {
+    dbByName.set(e.name.toLowerCase(), e);
+  }
+
+  const handleEquipmentTap = async (def: EquipmentDef) => {
+    const key = def.name.toLowerCase();
+    const existing = dbByName.get(key);
+    setTogglingId(def.id);
+
+    try {
+      if (existing) {
+        // Toggle availability
+        const payload: EquipmentUpdate = { available: !existing.available };
+        await updateEq.mutateAsync({ id: existing.id, data: payload });
+      } else {
+        // Create new equipment entry
+        await customFetch("/api/equipment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: def.name, category: def.category, available: true, owned: true }),
+        });
       }
-    );
+      qc.invalidateQueries({ queryKey: ["/api/equipment"] });
+      await refetchEq();
+    } catch {
+      Alert.alert("Error", `Could not update ${def.name}.`);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleSave = () => {
@@ -235,22 +368,19 @@ function BioModal({
 
   const lifts: { key: keyof BioForm; label: string; ph: string }[] = imp
     ? [
-        { key: "squat1rm",    label: "Squat",         ph: "e.g. 315" },
-        { key: "bench1rm",    label: "Bench",          ph: "e.g. 225" },
-        { key: "deadlift1rm", label: "Deadlift",       ph: "e.g. 405" },
-        { key: "ohp1rm",      label: "OHP",            ph: "e.g. 155" },
-        { key: "row1rm",      label: "Row",            ph: "e.g. 245" },
+        { key: "squat1rm",    label: "Squat",   ph: "e.g. 315" },
+        { key: "bench1rm",    label: "Bench",   ph: "e.g. 225" },
+        { key: "deadlift1rm", label: "Deadlift",ph: "e.g. 405" },
+        { key: "ohp1rm",      label: "OHP",     ph: "e.g. 155" },
+        { key: "row1rm",      label: "Row",     ph: "e.g. 245" },
       ]
     : [
-        { key: "squat1rm",    label: "Squat",         ph: "e.g. 140" },
-        { key: "bench1rm",    label: "Bench",          ph: "e.g. 100" },
-        { key: "deadlift1rm", label: "Deadlift",       ph: "e.g. 180" },
-        { key: "ohp1rm",      label: "OHP",            ph: "e.g. 70"  },
-        { key: "row1rm",      label: "Row",            ph: "e.g. 110" },
+        { key: "squat1rm",    label: "Squat",   ph: "e.g. 140" },
+        { key: "bench1rm",    label: "Bench",   ph: "e.g. 100" },
+        { key: "deadlift1rm", label: "Deadlift",ph: "e.g. 180" },
+        { key: "ohp1rm",      label: "OHP",     ph: "e.g. 70"  },
+        { key: "row1rm",      label: "Row",     ph: "e.g. 110" },
       ];
-
-  const available   = equipment?.filter((e) => e.available)  ?? [];
-  const unavailable = equipment?.filter((e) => !e.available) ?? [];
 
   return (
     <Modal
@@ -269,7 +399,7 @@ function BioModal({
           <View>
             <Text style={[m.headerTitle, { color: colors.foreground }]}>Hunter Bio</Text>
             <Text style={[m.headerSub, { color: colors.mutedForeground }]}>
-              Biometrics & equipment access
+              Biometrics, equipment & gear access
             </Text>
           </View>
           <TouchableOpacity
@@ -320,13 +450,9 @@ function BioModal({
               {/* Body metrics */}
               <View style={[m.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[m.sectionLabel, { color: colors.mutedForeground }]}>BODY METRICS</Text>
-
                 <View style={m.metricsGrid}>
-                  {/* Height */}
                   <View style={m.metricField}>
-                    <Text style={[m.fieldLabel, { color: colors.mutedForeground }]}>
-                      Height ({hLbl})
-                    </Text>
+                    <Text style={[m.fieldLabel, { color: colors.mutedForeground }]}>Height ({hLbl})</Text>
                     <TextInput
                       style={[m.input, { color: colors.foreground, borderColor: form.height ? colors.primary + "60" : colors.border, backgroundColor: colors.background }]}
                       value={form.height}
@@ -335,16 +461,10 @@ function BioModal({
                       placeholder={imp ? "e.g. 70" : "e.g. 178"}
                       placeholderTextColor={colors.mutedForeground + "80"}
                     />
-                    {heightHint && (
-                      <Text style={[m.hint, { color: colors.primary }]}>{heightHint}</Text>
-                    )}
+                    {heightHint && <Text style={[m.hint, { color: colors.primary }]}>{heightHint}</Text>}
                   </View>
-
-                  {/* Weight */}
                   <View style={m.metricField}>
-                    <Text style={[m.fieldLabel, { color: colors.mutedForeground }]}>
-                      Weight ({wLbl})
-                    </Text>
+                    <Text style={[m.fieldLabel, { color: colors.mutedForeground }]}>Weight ({wLbl})</Text>
                     <TextInput
                       style={[m.input, { color: colors.foreground, borderColor: form.weight ? colors.primary + "60" : colors.border, backgroundColor: colors.background }]}
                       value={form.weight}
@@ -354,8 +474,6 @@ function BioModal({
                       placeholderTextColor={colors.mutedForeground + "80"}
                     />
                   </View>
-
-                  {/* Body fat */}
                   <View style={m.metricField}>
                     <Text style={[m.fieldLabel, { color: colors.mutedForeground }]}>Body Fat %</Text>
                     <TextInput
@@ -376,7 +494,7 @@ function BioModal({
                   STRENGTH MAXES (1RM · {wLbl})
                 </Text>
                 <Text style={[m.hintText, { color: colors.mutedForeground }]}>
-                  Used to calculate recommended working weights in the planner.
+                  Used to calculate recommended working weights.
                 </Text>
                 <View style={m.liftGrid}>
                   {lifts.map(({ key, label, ph }) => (
@@ -384,24 +502,14 @@ function BioModal({
                       <Text style={[m.fieldLabel, { color: colors.mutedForeground }]}>{label}</Text>
                       <View>
                         <TextInput
-                          style={[
-                            m.input,
-                            {
-                              color: colors.foreground,
-                              borderColor: form[key] ? colors.primary + "60" : colors.border,
-                              backgroundColor: colors.background,
-                              paddingRight: 32,
-                            },
-                          ]}
+                          style={[m.input, { color: colors.foreground, borderColor: form[key] ? colors.primary + "60" : colors.border, backgroundColor: colors.background, paddingRight: 32 }]}
                           value={form[key] as string}
                           onChangeText={(v) => setField(key, v)}
                           keyboardType="decimal-pad"
                           placeholder={ph}
                           placeholderTextColor={colors.mutedForeground + "80"}
                         />
-                        <Text style={[m.unitOverlay, { color: colors.mutedForeground }]}>
-                          {wLbl}
-                        </Text>
+                        <Text style={[m.unitOverlay, { color: colors.mutedForeground }]}>{wLbl}</Text>
                       </View>
                     </View>
                   ))}
@@ -410,102 +518,84 @@ function BioModal({
 
               {/* Save biometrics */}
               <TouchableOpacity
-                style={[
-                  m.saveBtn,
-                  {
-                    backgroundColor: dirty ? colors.primary + "20" : colors.card,
-                    borderColor: dirty ? colors.primary : colors.border,
-                  },
-                ]}
+                style={[m.saveBtn, { backgroundColor: dirty ? colors.primary + "20" : colors.card, borderColor: dirty ? colors.primary : colors.border }]}
                 onPress={handleSave}
                 disabled={updateBio.isPending}
                 activeOpacity={0.75}
               >
-                {updateBio.isPending ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Text style={[m.saveBtnText, { color: dirty ? colors.primary : colors.mutedForeground }]}>
-                    {dirty ? "Save Biometrics" : "Biometrics Saved ✓"}
-                  </Text>
-                )}
+                {updateBio.isPending
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Text style={[m.saveBtnText, { color: dirty ? colors.primary : colors.mutedForeground }]}>
+                      {dirty ? "Save Biometrics" : "Biometrics Saved ✓"}
+                    </Text>
+                }
               </TouchableOpacity>
 
-              {/* Equipment */}
+              {/* Equipment — full predefined catalogue */}
               <View style={[m.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[m.sectionLabel, { color: colors.mutedForeground }]}>GYM EQUIPMENT</Text>
                 <Text style={[m.hintText, { color: colors.mutedForeground }]}>
-                  Toggle the equipment you have access to. This determines exercise selections.
+                  Tap to add equipment. Tap again to mark as unavailable. This determines exercise and workout plan selections.
                 </Text>
 
-                {available.length > 0 && (
-                  <>
-                    <Text style={[m.eqGroupLabel, { color: "#22c55e" }]}>
-                      AVAILABLE ({available.length})
-                    </Text>
-                    <View style={m.chipWrap}>
-                      {available.map((item) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          onPress={() => handleToggleEquipment(item)}
-                          disabled={togglingId === item.id}
-                          style={[m.chip, { borderColor: "#22c55e50", backgroundColor: "#22c55e15" }]}
-                          activeOpacity={0.75}
-                        >
-                          {togglingId === item.id ? (
-                            <ActivityIndicator size={10} color="#22c55e" />
-                          ) : (
-                            <Text style={[m.chipCheck, { color: "#22c55e" }]}>✓</Text>
-                          )}
-                          <Text style={[m.chipText, { color: "#22c55e" }]}>{item.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </>
-                )}
-
-                {unavailable.length > 0 && (
-                  <>
+                {EQUIPMENT_CATALOGUE.map((group) => (
+                  <View key={group.category} style={{ marginTop: 10 }}>
                     <Text style={[m.eqGroupLabel, { color: colors.mutedForeground }]}>
-                      NOT AVAILABLE ({unavailable.length})
+                      {group.label.toUpperCase()}
                     </Text>
                     <View style={m.chipWrap}>
-                      {unavailable.map((item) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          onPress={() => handleToggleEquipment(item)}
-                          disabled={togglingId === item.id}
-                          style={[m.chip, { borderColor: colors.border, backgroundColor: colors.background, opacity: 0.6 }]}
-                          activeOpacity={0.75}
-                        >
-                          {togglingId === item.id ? (
-                            <ActivityIndicator size={10} color={colors.mutedForeground} />
-                          ) : (
-                            <Text style={[m.chipCheck, { color: colors.mutedForeground }]}>+</Text>
-                          )}
-                          <Text style={[m.chipText, { color: colors.mutedForeground }]}>{item.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </>
-                )}
+                      {group.items.map((def) => {
+                        const dbItem = dbByName.get(def.name.toLowerCase());
+                        const isAdded     = !!dbItem;
+                        const isAvailable = dbItem?.available ?? false;
+                        const isToggling  = togglingId === def.id;
 
-                {equipment?.length === 0 && (
-                  <Text style={[m.hintText, { color: colors.mutedForeground, textAlign: "center", paddingVertical: 12 }]}>
-                    No equipment records found. Add equipment on the web app first.
-                  </Text>
-                )}
+                        let chipBorder  = colors.border;
+                        let chipBg      = "transparent";
+                        let chipOpacity = 0.65;
+                        let textColor   = colors.mutedForeground;
+                        let checkSymbol = "+";
+
+                        if (isAdded && isAvailable) {
+                          chipBorder  = "#22c55e50";
+                          chipBg      = "#22c55e15";
+                          chipOpacity = 1;
+                          textColor   = "#22c55e";
+                          checkSymbol = "✓";
+                        } else if (isAdded && !isAvailable) {
+                          chipBorder  = colors.border;
+                          chipBg      = "transparent";
+                          chipOpacity = 0.5;
+                          textColor   = colors.mutedForeground;
+                          checkSymbol = "✕";
+                        }
+
+                        return (
+                          <TouchableOpacity
+                            key={def.id}
+                            onPress={() => handleEquipmentTap(def)}
+                            disabled={isToggling}
+                            style={[m.chip, { borderColor: chipBorder, backgroundColor: chipBg, opacity: chipOpacity }]}
+                            activeOpacity={0.75}
+                          >
+                            {isToggling
+                              ? <ActivityIndicator size={10} color={textColor} />
+                              : <Text style={[m.chipCheck, { color: textColor }]}>{checkSymbol}</Text>
+                            }
+                            <Text style={[m.chipText, { color: textColor }]}>{def.name}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))}
               </View>
 
               {/* Notes */}
               <View style={[m.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[m.sectionLabel, { color: colors.mutedForeground }]}>
-                  INJURY / LIMITATION NOTES
-                </Text>
+                <Text style={[m.sectionLabel, { color: colors.mutedForeground }]}>INJURY / LIMITATION NOTES</Text>
                 <TextInput
-                  style={[
-                    m.notesInput,
-                    { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background },
-                  ]}
+                  style={[m.notesInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
                   value={form.notes}
                   onChangeText={(v) => setField("notes", v)}
                   placeholder="e.g. Bad lower back, avoid axial loading..."
@@ -516,26 +606,19 @@ function BioModal({
                 />
               </View>
 
-              {/* Second save at bottom */}
+              {/* Second save */}
               <TouchableOpacity
-                style={[
-                  m.saveBtn,
-                  {
-                    backgroundColor: dirty ? colors.primary + "20" : colors.card,
-                    borderColor: dirty ? colors.primary : colors.border,
-                  },
-                ]}
+                style={[m.saveBtn, { backgroundColor: dirty ? colors.primary + "20" : colors.card, borderColor: dirty ? colors.primary : colors.border }]}
                 onPress={handleSave}
                 disabled={updateBio.isPending}
                 activeOpacity={0.75}
               >
-                {updateBio.isPending ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Text style={[m.saveBtnText, { color: dirty ? colors.primary : colors.mutedForeground }]}>
-                    {dirty ? "Save Biometrics" : "Biometrics Saved ✓"}
-                  </Text>
-                )}
+                {updateBio.isPending
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Text style={[m.saveBtnText, { color: dirty ? colors.primary : colors.mutedForeground }]}>
+                      {dirty ? "Save Biometrics" : "Biometrics Saved ✓"}
+                    </Text>
+                }
               </TouchableOpacity>
             </>
           )}
@@ -583,287 +666,205 @@ export default function SettingsScreen() {
     ]);
   };
 
-  // Build a quick bio summary string for the card
   const bioSummary = (() => {
     if (!bioData) return "Tap to add your biometrics";
     const parts: string[] = [];
     if (bioData.weightKg) parts.push(`${bioData.weightKg} kg`);
     if (bioData.heightCm) parts.push(`${bioData.heightCm} cm`);
     if (bioData.bodyFatPct) parts.push(`${bioData.bodyFatPct}% BF`);
-    return parts.length > 0 ? parts.join(" · ") : "Tap to complete your bio";
+    return parts.length > 0 ? parts.join("  ·  ") : "Tap to edit your biometrics";
   })();
 
-  const has1rm = bioData && (
-    bioData.squat1rm || bioData.bench1rm || bioData.deadlift1rm || bioData.ohp1rm
-  );
-
   return (
-    <>
+    <View style={[t.root, { backgroundColor: colors.background }]}>
       <ScrollView
-        style={{ backgroundColor: colors.background }}
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
-        ]}
+        contentContainerStyle={[t.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.screenLabel, { color: colors.mutedForeground }]}>SETTINGS</Text>
+        <Text style={[t.screenLabel, { color: colors.mutedForeground }]}>SETTINGS</Text>
 
-        {/* Player Info */}
-        {player && (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-              HUNTER PROFILE
-            </Text>
-            <View style={styles.profileRow}>
-              <View style={[styles.rankCircle, { borderColor: colors.primary, backgroundColor: colors.primary + "22" }]}>
-                <Text style={[styles.rankLetter, { color: colors.primary }]}>{player.rank}</Text>
-              </View>
-              <View>
-                <Text style={[styles.profileName, { color: colors.foreground }]}>{player.name}</Text>
-                <Text style={[styles.profileLevel, { color: colors.primary }]}>Level {player.level}</Text>
-                {player.activeTitle ? (
-                  <Text style={[styles.profileTitle, { color: colors.accent }]}>{player.activeTitle}</Text>
-                ) : null}
-              </View>
+        {/* Player card */}
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginBottom: 16 }} />
+        ) : player ? (
+          <View style={[t.playerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[t.rankBadge, { borderColor: colors.primary }]}>
+              <Text style={[t.rankText, { color: colors.primary }]}>{player.rank ?? "E"}</Text>
             </View>
-            <View style={[styles.statRow, { borderColor: colors.border }]}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statItemVal, { color: colors.primary }]}>{(player.xp ?? 0).toLocaleString()}</Text>
-                <Text style={[styles.statItemKey, { color: colors.mutedForeground }]}>XP</Text>
-              </View>
-              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statItemVal, { color: colors.accent }]}>{(player.gold ?? 0).toLocaleString()}</Text>
-                <Text style={[styles.statItemKey, { color: colors.mutedForeground }]}>Gold</Text>
-              </View>
-              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statItemVal, { color: colors.success }]}>{player.level}</Text>
-                <Text style={[styles.statItemKey, { color: colors.mutedForeground }]}>Level</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {isLoading && !player && (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
-        )}
-
-        {/* Hunter Bio card */}
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => setBioOpen(true)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.bioCardHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>HUNTER BIO</Text>
-              <Text style={[styles.bioSummaryText, { color: colors.foreground }]}>{bioSummary}</Text>
-              {has1rm && (
-                <Text style={[styles.bioHint, { color: colors.mutedForeground }]}>
-                  1RM: Sq {bioData?.squat1rm ?? "—"} · Bp {bioData?.bench1rm ?? "—"} · DL {bioData?.deadlift1rm ?? "—"}
-                </Text>
-              )}
-            </View>
-            <View style={[styles.editChip, { borderColor: colors.primary + "60", backgroundColor: colors.primary + "15" }]}>
-              <Text style={[styles.editChipText, { color: colors.primary }]}>Edit</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Narrative Intensity */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.settingHeader}>
-            <View>
-              <Text style={[styles.settingTitle, { color: colors.foreground }]}>Narrative Intensity</Text>
-              <Text style={[styles.settingSubtitle, { color: colors.mutedForeground }]}>
-                How your workouts are told as battle stories
+              <Text style={[t.playerName, { color: colors.foreground }]}>{player.name ?? "Hunter"}</Text>
+              <Text style={[t.playerMeta, { color: colors.mutedForeground }]}>
+                Level {player.level ?? 1}  ·  {player.activeTitle ?? "Initiate"}
               </Text>
             </View>
-            {saving && <ActivityIndicator color={colors.primary} size="small" />}
           </View>
-          <View style={styles.intensityOptions}>
-            {INTENSITY_OPTIONS.map((opt) => {
-              const active = intensity === opt.id;
-              return (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={[
-                    styles.intensityOption,
-                    {
-                      borderColor: active ? colors.accent : colors.border,
-                      backgroundColor: active ? colors.accent + "15" : colors.secondary,
-                    },
-                  ]}
-                  onPress={() => handleIntensityChange(opt.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.intensityRow}>
-                    <Text style={[styles.intensityLabel, { color: active ? colors.accent : colors.foreground }]}>
-                      {opt.label}
-                    </Text>
-                    {active && <View style={[styles.checkDot, { backgroundColor: colors.accent }]} />}
-                  </View>
-                  <Text style={[styles.intensityDesc, { color: colors.mutedForeground }]}>{opt.desc}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+        ) : null}
 
-        {/* App Info */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>ABOUT</Text>
-          <View style={styles.aboutRow}>
-            <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>Personal Fitness RPG</Text>
-            <Text style={[styles.aboutValue, { color: colors.foreground }]}>Isekai Edition</Text>
-          </View>
-          <View style={styles.aboutRow}>
-            <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>Version</Text>
-            <Text style={[styles.aboutValue, { color: colors.foreground }]}>1.0.0</Text>
-          </View>
-          <Text style={[styles.tagline, { color: colors.primary }]}>
-            "Your real-world training determines your power."
+        {/* Narrative intensity */}
+        <View style={[t.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[t.sectionTitle, { color: colors.mutedForeground }]}>NARRATIVE MODE</Text>
+          <Text style={[t.sectionDesc, { color: colors.mutedForeground }]}>
+            Controls how combat replays and battle narratives are written.
           </Text>
+          {INTENSITY_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              onPress={() => handleIntensityChange(opt.id)}
+              style={[
+                t.intensityBtn,
+                {
+                  borderColor: intensity === opt.id ? colors.primary : colors.border,
+                  backgroundColor: intensity === opt.id ? colors.primary + "15" : "transparent",
+                },
+              ]}
+              activeOpacity={0.75}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[t.intensityLabel, { color: intensity === opt.id ? colors.primary : colors.foreground }]}>
+                  {opt.label}
+                </Text>
+                <Text style={[t.intensityDesc, { color: colors.mutedForeground }]}>{opt.desc}</Text>
+              </View>
+              {intensity === opt.id && (
+                <View style={[t.checkCircle, { borderColor: colors.primary, backgroundColor: colors.primary + "20" }]}>
+                  <Text style={[t.checkMark, { color: colors.primary }]}>✓</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Sign Out */}
+        {/* Hunter Bio */}
         <TouchableOpacity
-          style={[styles.signOutBtn, { borderColor: "#ef444444", backgroundColor: "#ef444410" }]}
-          onPress={handleSignOut}
-          activeOpacity={0.7}
+          style={[t.section, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => setBioOpen(true)}
+          activeOpacity={0.75}
         >
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={[t.sectionTitle, { color: colors.mutedForeground }]}>HUNTER BIO</Text>
+          <View style={t.rowBetween}>
+            <View style={{ flex: 1 }}>
+              <Text style={[t.sectionMainLabel, { color: colors.foreground }]}>Biometrics & Equipment</Text>
+              <Text style={[t.sectionDesc, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {bioSummary}
+              </Text>
+            </View>
+            <Text style={[t.chevron, { color: colors.mutedForeground }]}>›</Text>
+          </View>
         </TouchableOpacity>
+
+        {/* Connected devices / Wearables */}
+        <View style={[t.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[t.sectionTitle, { color: colors.mutedForeground }]}>CONNECTED DEVICES</Text>
+          <Text style={[t.sectionDesc, { color: colors.mutedForeground }]}>
+            Future wearable integrations. Synced data will automatically update your vitals and stats.
+          </Text>
+          {WEARABLE_PROVIDERS.map((provider) => (
+            <View
+              key={provider.id}
+              style={[t.wearableRow, { borderColor: colors.border }]}
+            >
+              <Text style={t.wearableIcon}>{provider.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[t.wearableName, { color: colors.foreground }]}>{provider.name}</Text>
+                <Text style={[t.wearablePlatform, { color: colors.mutedForeground }]}>{provider.platform}</Text>
+              </View>
+              <View style={[t.comingSoonBadge, { borderColor: colors.border }]}>
+                <Text style={[t.comingSoonText, { color: colors.mutedForeground }]}>COMING SOON</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Sign out */}
+        <TouchableOpacity
+          style={[t.signOutBtn, { borderColor: "#ef444440", backgroundColor: "#ef444410" }]}
+          onPress={handleSignOut}
+          activeOpacity={0.75}
+        >
+          <Text style={[t.signOutText, { color: "#ef4444" }]}>Sign Out</Text>
+        </TouchableOpacity>
+
+        {/* App version */}
+        <Text style={[t.version, { color: colors.mutedForeground }]}>Personal Fitness RPG · v1.0</Text>
       </ScrollView>
 
       <BioModal visible={bioOpen} onClose={() => setBioOpen(false)} colors={colors} />
-    </>
+    </View>
   );
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 16, gap: 12 },
-  screenLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 2, marginBottom: 4 },
-  card: { borderRadius: 12, borderWidth: 1, padding: 16, gap: 12 },
-  sectionLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 2 },
-
-  profileRow: { flexDirection: "row", alignItems: "center", gap: 14 },
-  rankCircle: { width: 52, height: 52, borderRadius: 26, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  rankLetter: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  profileName: { fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 2 },
-  profileLevel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  profileTitle: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 2 },
-  statRow: { flexDirection: "row", borderRadius: 8, borderWidth: 1, overflow: "hidden" },
-  statItem: { flex: 1, alignItems: "center", paddingVertical: 10, gap: 2 },
-  statDivider: { width: 1 },
-  statItemVal: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  statItemKey: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
-  loadingRow: { alignItems: "center", paddingVertical: 20 },
-
-  bioCardHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  bioSummaryText: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginTop: 4 },
-  bioHint: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 3 },
-  editChip: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
-  editChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-
-  settingHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  settingTitle: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 2 },
-  settingSubtitle: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  intensityOptions: { gap: 8 },
-  intensityOption: { borderRadius: 10, borderWidth: 1, padding: 12, gap: 4 },
-  intensityRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  intensityLabel: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  checkDot: { width: 8, height: 8, borderRadius: 4 },
-  intensityDesc: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
-
-  aboutRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  aboutLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  aboutValue: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  tagline: { fontSize: 11, fontFamily: "Inter_500Medium", fontStyle: "italic", textAlign: "center", paddingTop: 4 },
-
-  signOutBtn: { borderRadius: 12, borderWidth: 1, paddingVertical: 14, alignItems: "center", marginTop: 4 },
-  signOutText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#ef4444" },
+const t = StyleSheet.create({
+  root:            { flex: 1 },
+  content:         { paddingHorizontal: 16, gap: 12 },
+  screenLabel:     { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 2, marginBottom: 4 },
+  playerCard:      { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12,
+                     borderWidth: 1, padding: 14 },
+  rankBadge:       { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: "center",
+                     justifyContent: "center" },
+  rankText:        { fontSize: 16, fontFamily: "Inter_700Bold" },
+  playerName:      { fontSize: 16, fontFamily: "Inter_700Bold" },
+  playerMeta:      { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  section:         { borderRadius: 12, borderWidth: 1, padding: 14, gap: 10 },
+  sectionTitle:    { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 2 },
+  sectionMainLabel:{ fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  sectionDesc:     { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  rowBetween:      { flexDirection: "row", alignItems: "center" },
+  chevron:         { fontSize: 22, fontFamily: "Inter_400Regular" },
+  intensityBtn:    { flexDirection: "row", alignItems: "center", borderRadius: 10, borderWidth: 1,
+                     padding: 12, gap: 10 },
+  intensityLabel:  { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  intensityDesc:   { fontSize: 11, fontFamily: "Inter_400Regular" },
+  checkCircle:     { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center",
+                     justifyContent: "center" },
+  checkMark:       { fontSize: 11, fontFamily: "Inter_700Bold" },
+  wearableRow:     { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10,
+                     borderBottomWidth: StyleSheet.hairlineWidth },
+  wearableIcon:    { fontSize: 22, width: 32, textAlign: "center" },
+  wearableName:    { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  wearablePlatform:{ fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1 },
+  comingSoonBadge: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  comingSoonText:  { fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+  signOutBtn:      { borderRadius: 12, borderWidth: 1, padding: 14, alignItems: "center" },
+  signOutText:     { fontSize: 14, fontFamily: "Inter_700Bold" },
+  version:         { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 4 },
 });
 
 const m = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: 20, fontFamily: "SpecialElite_400Regular", letterSpacing: 0.4 },
-  headerSub:   { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 },
-  closeBtn: {
-    width: 34, height: 34, borderRadius: 17, borderWidth: 1,
-    alignItems: "center", justifyContent: "center",
-  },
-  closeBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-
-  scroll: { padding: 16, paddingBottom: 60, gap: 12 },
-  loading: { paddingVertical: 48, alignItems: "center" },
-
-  card: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 10 },
-  sectionLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 2 },
-  hintText: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15, marginTop: -4 },
-
-  unitRow: { flexDirection: "row", gap: 8 },
-  unitBtn: {
-    flex: 1, borderWidth: 1, borderRadius: 8,
-    paddingVertical: 8, alignItems: "center",
-  },
-  unitBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-
+  header:      { flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+                 paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1 },
+  headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  headerSub:   { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  closeBtn:    { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: "center",
+                 justifyContent: "center" },
+  closeBtnText:{ fontSize: 14, fontFamily: "Inter_700Bold" },
+  scroll:      { padding: 16, gap: 12, paddingBottom: 40 },
+  loading:     { padding: 40, alignItems: "center" },
+  card:        { borderRadius: 12, borderWidth: 1, padding: 14, gap: 10 },
+  sectionLabel:{ fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 2 },
+  hintText:    { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  hint:        { fontSize: 10, fontFamily: "Inter_500Medium", marginTop: 2 },
+  unitRow:     { flexDirection: "row", gap: 8 },
+  unitBtn:     { flex: 1, borderRadius: 8, borderWidth: 1, padding: 10, alignItems: "center" },
+  unitBtnText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  metricField: { width: "30%", minWidth: 90 },
-  fieldLabel: { fontSize: 10, fontFamily: "Inter_400Regular", marginBottom: 5 },
-  hint: { fontSize: 9, fontFamily: "Inter_400Regular", marginTop: 3 },
-  input: {
-    borderWidth: 1, borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 8,
-    fontSize: 13, fontFamily: "Inter_400Regular",
-  },
-  unitOverlay: {
-    position: "absolute", right: 10,
-    top: 0, bottom: 0,
-    textAlignVertical: "center",
-    fontSize: 10, fontFamily: "Inter_400Regular",
-    ...Platform.select({ ios: { lineHeight: 36 }, android: {} }),
-  },
-
-  liftGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  liftField: { width: "47%" },
-
-  saveBtn: {
-    borderWidth: 1, borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: "center",
-  },
+  metricField: { width: "47%" },
+  fieldLabel:  { fontSize: 10, fontFamily: "Inter_500Medium", marginBottom: 4 },
+  input:       { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9,
+                 fontSize: 14, fontFamily: "Inter_400Regular" },
+  liftGrid:    { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  liftField:   { width: "47%" },
+  unitOverlay: { position: "absolute", right: 10, top: 11, fontSize: 11,
+                 fontFamily: "Inter_500Medium" },
+  saveBtn:     { borderRadius: 10, borderWidth: 1, padding: 13, alignItems: "center" },
   saveBtnText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-
-  eqGroupLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 1.5, marginTop: 4 },
-  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
-  chip: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    borderWidth: 1, borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 6,
-  },
-  chipCheck: { fontSize: 10, fontFamily: "Inter_700Bold" },
-  chipText:  { fontSize: 11, fontFamily: "Inter_500Medium" },
-
-  notesInput: {
-    borderWidth: 1, borderRadius: 8,
-    padding: 10, minHeight: 72,
-    fontSize: 12, fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
+  eqGroupLabel:{ fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 1.5, marginBottom: 6 },
+  chipWrap:    { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip:        { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1,
+                 borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6 },
+  chipCheck:   { fontSize: 10, fontFamily: "Inter_700Bold" },
+  chipText:    { fontSize: 12, fontFamily: "Inter_500Medium" },
+  notesInput:  { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
+                 fontSize: 13, fontFamily: "Inter_400Regular", minHeight: 80 },
 });
