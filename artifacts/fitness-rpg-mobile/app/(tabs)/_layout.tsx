@@ -40,6 +40,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "sparkles", selected: "sparkles" }} />
         <Label>Skills</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="nutrition">
+        <Icon sf={{ default: "fork.knife", selected: "fork.knife" }} />
+        <Label>Nutrition</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <Label>Settings</Label>
@@ -162,6 +166,18 @@ function ClassicTabLayout() {
               <SymbolView name="sparkles" tintColor={color} size={22} />
             ) : (
               <Feather name="star" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="nutrition"
+        options={{
+          title: "Nutrition",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="fork.knife" tintColor={color} size={22} />
+            ) : (
+              <Feather name="bar-chart-2" size={22} color={color} />
             ),
         }}
       />
