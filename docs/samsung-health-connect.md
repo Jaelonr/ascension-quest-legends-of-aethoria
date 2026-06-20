@@ -21,7 +21,7 @@ Do not use the direct Samsung Health Data SDK for Version 1 unless Health Connec
 3. Install or update Health Connect if it is not already available on the phone.
 4. In Samsung Health, enable Health Connect sharing.
 5. In Android Health Connect settings, confirm Samsung Health can write steps, activity, sleep, heart rate, and calories.
-6. Install an Ascension Quest Android development build. Expo Go is not enough for native Health Connect permissions.
+6. Install an Ascension Quest Android development build. See `docs/android-development-build.md`; Expo Go is not enough for native Health Connect permissions.
 7. Grant Ascension Quest read permissions when requested.
 
 ## Mobile Implementation Requirements
