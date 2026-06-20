@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 14.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DEV_AUTH_BYPASS": "false",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "/api/__clerk"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DEV_AUTH_BYPASS": "false",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "/api/__clerk"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_DEV_AUTH_BYPASS": "false",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "/api/__clerk"
+      }
+    }
+  }
+}
