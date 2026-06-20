@@ -164,10 +164,16 @@ function GuildMasterDialog({ open, onOpenChange, initialReport }: {
     ...localLines,
   ], [conversation?.messages, localLines]);
 
-  async function sendMessage() {
-    const content = draft.trim();
-    if (!content || !conversation?.conversationId || sending) return;
-    setDraft("");
+  const { toast } = useToast();
+
+  async function sendMessage(contentOverride?: string) {
+    const content = (contentOverride !== undefined ? contentOverride : draft).trim();
+    if (!content || sending) return;
+    if (!conversation?.conversationId) {
+      toast({ title: "Still connecting", description: "The Guild Hall is loading — try again in a moment." });
+      return;
+    }
+    if (contentOverride === undefined) setDraft("");
     setSending(true);
     setLocalLines((items) => [...items, { id: `user-${Date.now()}`, role: "user", content }]);
     try {
@@ -186,6 +192,8 @@ function GuildMasterDialog({ open, onOpenChange, initialReport }: {
         .join("");
       if (answer) setLocalLines((items) => [...items, { id: `assistant-${Date.now()}`, role: "assistant", content: answer }]);
       await refetch();
+    } catch {
+      toast({ title: "Aldric is unavailable", description: "The Guild's connection was interrupted. Try again.", variant: "destructive" });
     } finally {
       setSending(false);
     }
@@ -226,8 +234,9 @@ function GuildMasterDialog({ open, onOpenChange, initialReport }: {
               <button
                 key={question}
                 type="button"
-                onClick={() => setDraft(question)}
-                className="border border-[#6b4d2f] px-2 py-1 text-[10px] text-[#d9ad63] hover:border-[#c08c4e]"
+                onClick={() => void sendMessage(question)}
+                disabled={sending}
+                className="border border-[#6b4d2f] px-2 py-1 text-[10px] text-[#d9ad63] hover:border-[#c08c4e] disabled:opacity-40"
               >
                 {question}
               </button>
