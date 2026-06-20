@@ -11,6 +11,7 @@ A fitness RPG where real training, nutrition, recovery, and consistency become c
 - `pnpm run deploy:migrate` - run Drizzle migrations against `DATABASE_URL`
 - `pnpm run deploy:start` - start the production API, which also serves the built web app
 - `pnpm run deploy:run` - run migrations first, then start production; this is what `.replit` uses
+- `SMOKE_BASE_URL=https://your-domain pnpm --filter @workspace/scripts run smoke:replit` - verify Replit secrets and core page availability
 - `pnpm --filter @workspace/api-spec run codegen` - regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` - push DB schema changes for dev only
 - Required env: `DATABASE_URL` - Postgres connection string
@@ -28,6 +29,8 @@ Use a single Replit deployment/domain for the web app and API. The Express API s
 7. For Expo/mobile testing, set `EXPO_PUBLIC_API_BASE_URL` to the deployed `https://...` origin.
 
 Persistence check: create two Google accounts, complete setup for each, save nutrition/workout/equipment data, refresh, sign out, sign back in, and confirm each account sees only its own records.
+
+Samsung wearable testing should start only after this persistence check passes. Use Samsung Health through Health Connect; see `docs/samsung-health-connect.md`.
 
 ## Stack
 
