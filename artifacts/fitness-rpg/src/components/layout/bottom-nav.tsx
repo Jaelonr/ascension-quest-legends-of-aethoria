@@ -1,35 +1,21 @@
 import { Link, useLocation } from "wouter";
-import { 
-  Home, 
-  Apple, 
-  Dumbbell, 
-  Landmark, 
-  Swords,
-  BarChart3,
-  User,
-  Watch,
-  ScrollText,
-} from "lucide-react";
+import { Apple, BookOpen, Dumbbell, Landmark, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", icon: Home, label: "Status" },
-  { href: "/nutrition", icon: Apple, label: "Nutrition" },
-  { href: "/training", icon: Dumbbell, label: "Training" },
-  { href: "/battle-log", icon: ScrollText, label: "Battle" },
-  { href: "/raids", icon: Swords, label: "Raids" },
   { href: "/guild-hall", icon: Landmark, label: "Hall" },
-  { href: "/wearables", icon: Watch, label: "Vitals" },
-  { href: "/analytics", icon: BarChart3, label: "Records" },
-  { href: "/profile", icon: User, label: "Profile" },
+  { href: "/training", icon: Dumbbell, label: "Training" },
+  { href: "/nutrition", icon: Apple, label: "Nutrition" },
+  { href: "/chronicle", icon: BookOpen, label: "Chronicle" },
+  { href: "/character", icon: Shield, label: "Character" },
 ];
 
 export function BottomNav() {
   const [location] = useLocation();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border/50 pb-safe">
-      <nav className="flex items-center justify-around px-1 h-16 max-w-md mx-auto overflow-x-auto gap-1">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card pb-safe md:bottom-auto md:top-4 md:left-1/2 md:right-auto md:w-[min(56rem,calc(100%-2rem))] md:-translate-x-1/2 md:rounded-md md:border md:pb-0">
+      <nav className="grid h-16 max-w-md grid-cols-5 items-center gap-1 px-1 mx-auto md:max-w-none">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
@@ -38,7 +24,7 @@ export function BottomNav() {
             <Link key={item.href} href={item.href}>
               <div 
                 className={cn(
-                  "flex flex-col items-center justify-center w-11 h-12 rounded-lg transition-colors cursor-pointer shrink-0",
+                  "flex h-12 min-w-0 flex-col items-center justify-center rounded-md transition-colors cursor-pointer",
                   isActive 
                     ? "text-primary bg-primary/10" 
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"

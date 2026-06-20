@@ -14,9 +14,7 @@ import Dashboard from "@/pages/dashboard";
 import Nutrition from "@/pages/nutrition";
 import Training from "@/pages/training";
 import ActiveSession from "@/pages/active-session";
-import Equipment from "@/pages/equipment";
 import Skills from "@/pages/skills";
-import Quests from "@/pages/quests";
 import Inventory from "@/pages/inventory";
 import Analytics from "@/pages/analytics";
 import Planner from "@/pages/planner";
@@ -25,14 +23,14 @@ import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
 import Program from "@/pages/program";
 import World from "@/pages/world";
-import Guilds from "@/pages/guilds";
 import Wearables from "@/pages/wearables";
 import Onboarding from "@/pages/onboarding";
 import CharacterSetup from "@/pages/character-setup";
-import ClassPage from "@/pages/class";
 import Landing from "@/pages/landing";
 import BattleLog from "@/pages/battle-log";
 import GuildHall from "@/pages/guild-hall";
+import Character from "@/pages/character";
+import LegalPage from "@/pages/legal";
 import { hasCompletedOnboarding, hasCompletedSetup, clearOnboardingAndSetup } from "@/hooks/use-story";
 import { useGetPlayer } from "@workspace/api-client-react";
 
@@ -45,7 +43,11 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const clerkProxyUrl = import.meta.env.PROD
+  ? import.meta.env.VITE_CLERK_PROXY_URL
+  : undefined;
+const devAuthBypass =
+  import.meta.env.DEV && import.meta.env.VITE_DEV_AUTH_BYPASS === "true";
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -53,7 +55,7 @@ function stripBase(path: string): string {
     : path;
 }
 
-if (!clerkPubKey) {
+if (!devAuthBypass && !clerkPubKey) {
   throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
 }
 
@@ -109,8 +111,8 @@ const clerkAppearance = {
 function AppRoutes() {
   const [location] = useLocation();
 
-  const onboarded = hasCompletedOnboarding();
-  const setup = hasCompletedSetup();
+  const onboarded = devAuthBypass || hasCompletedOnboarding();
+  const setup = devAuthBypass || hasCompletedSetup();
 
   if (!onboarded && location !== "/onboarding" && location !== "/setup") {
     return <Redirect to="/onboarding" />;
@@ -131,26 +133,39 @@ function AppRoutes() {
   return (
     <MainLayout>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/">
+          <Redirect to="/guild-hall" />
+        </Route>
+        <Route path="/status" component={Dashboard} />
         <Route path="/nutrition" component={Nutrition} />
         <Route path="/training" component={Training} />
         <Route path="/training/planner" component={Planner} />
         <Route path="/training/program" component={Program} />
         <Route path="/training/session/:id" component={ActiveSession} />
-        <Route path="/equipment" component={Equipment} />
+        <Route path="/equipment"><Redirect to="/inventory" /></Route>
         <Route path="/skills" component={Skills} />
-        <Route path="/quests" component={Quests} />
+        {/* Launch scope: keep legacy quest/player-guild code, but route users to the single-player Guild Hall hub. */}
+        <Route path="/quests">
+          <Redirect to="/guild-hall" />
+        </Route>
         <Route path="/guild-hall" component={GuildHall} />
         <Route path="/raids" component={Raids} />
         <Route path="/battle-log" component={BattleLog} />
+        <Route path="/chronicle" component={BattleLog} />
         <Route path="/world" component={World} />
-        <Route path="/guilds" component={Guilds} />
+        <Route path="/guilds">
+          <Redirect to="/guild-hall" />
+        </Route>
         <Route path="/wearables" component={Wearables} />
-        <Route path="/class" component={ClassPage} />
+        <Route path="/class"><Redirect to="/character" /></Route>
         <Route path="/inventory" component={Inventory} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/profile" component={Profile} />
+        <Route path="/character" component={Character} />
         <Route path="/settings" component={Settings} />
+        <Route path="/privacy"><LegalPage type="privacy" /></Route>
+        <Route path="/terms"><LegalPage type="terms" /></Route>
+        <Route path="/data"><LegalPage type="data" /></Route>
         <Route component={NotFound} />
       </Switch>
     </MainLayout>
@@ -269,6 +284,20 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
+  if (devAuthBypass) {
+    return (
+      <WouterRouter base={basePath}>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <AppRoutes />
+            <OfflineBanner />
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </WouterRouter>
+    );
+  }
+
   return (
     <WouterRouter base={basePath}>
       <ClerkProviderWithRoutes />

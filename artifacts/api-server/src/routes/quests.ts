@@ -6,7 +6,7 @@ import { getOrCreatePlayer, buildPlayerResponse, applyXpEvent } from "../progres
 
 const router = Router();
 
-function getTodayStr() {
+export function getTodayStr() {
   return new Date().toISOString().split("T")[0];
 }
 
@@ -24,7 +24,7 @@ function getNextWeekStr() {
   return d.toISOString();
 }
 
-async function buildQuestResponse(quest: any) {
+export async function buildQuestResponse(quest: any) {
   const tasks = await db.select().from(questTasksTable)
     .where(eq(questTasksTable.questId, quest.id))
     .orderBy(questTasksTable.order);
@@ -41,7 +41,7 @@ async function buildQuestResponse(quest: any) {
   };
 }
 
-async function ensureDailyQuest(playerId: number) {
+export async function ensureDailyQuest(playerId: number) {
   const today = getTodayStr();
   const existing = await db.select().from(questsTable)
     .where(and(eq(questsTable.playerId, playerId), eq(questsTable.type, "daily")))
@@ -55,8 +55,8 @@ async function ensureDailyQuest(playerId: number) {
 
   const [quest] = await db.insert(questsTable).values({
     playerId,
-    title: "Daily Training Protocol",
-    description: "Complete your daily fitness requirements to earn XP, Gold, and bonus stat points.",
+    title: "Today's Commission",
+    description: "Complete the Guild's practical requirements and report to Grandmaster Aldric.",
     type: "daily",
     status: "active",
     xpReward: 300,
@@ -67,11 +67,9 @@ async function ensureDailyQuest(playerId: number) {
   }).returning();
 
   const tasks = [
-    { description: "Hit your calorie target (within 200 calories)", order: 1 },
-    { description: "Hit your protein target", order: 2 },
-    { description: "Complete a workout session", order: 3 },
-    { description: "Log at least 3 meals", order: 4 },
-    { description: "Stay hydrated — drink at least 8 glasses of water", order: 5 },
+    { description: "Complete a workout or recovery session", order: 1, targetValue: 1, currentValue: 0, unit: "session" },
+    { description: "Hit your protein target", order: 2, targetValue: 1, currentValue: 0, unit: "target" },
+    { description: "Log at least 3 meals", order: 3, targetValue: 3, currentValue: 0, unit: "meals" },
   ];
   for (const t of tasks) {
     await db.insert(questTasksTable).values({ questId: quest.id, ...t, completed: false });

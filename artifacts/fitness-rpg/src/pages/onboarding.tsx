@@ -8,52 +8,51 @@ interface Slide {
   title?: string;
   text: string;
   subtext?: string;
-  icon?: string;
 }
 
 const SLIDES: Slide[] = [
   {
     type: "narrative",
     text: "You were living an ordinary life.",
-    subtext: "Work. Train. Sleep. Repeat. Unremarkable. Unnoticed.",
+    subtext: "Work. Train. Sleep. Repeat. Then the air split open and something noticed you.",
   },
   {
     type: "narrative",
-    text: "Then one night — a blinding light.",
-    subtext: "A pull you couldn't resist. The feeling of falling through something infinite.",
+    text: "A Gate opened where no Gate should exist.",
+    subtext: "A pull you could not resist. The feeling of falling through something infinite.",
   },
   {
     type: "system",
-    title: "⚡  SYSTEM NOTIFICATION  ⚡",
-    text: "Otherworld transfer detected.\nPhysical vessel assessment complete.",
-    subtext: "Hunter Class: AWAKENED\nSpecial Ability: [Real-World Training Sync]",
+    title: "SYSTEM NOTIFICATION",
+    text: "Otherworld transfer detected.\nCandidate bound to the System.",
+    subtext: "Authority: UNKNOWN\nAbility: [Real-World Training Sync]",
   },
   {
     type: "system",
-    title: "ABILITY CONFIRMED",
-    text: "Physical training performed in your origin world translates directly into power in Aethoria.",
-    subtext: "Every workout. Every rep. Every mile. Becomes strength here.",
+    title: "VESSEL SCAN REQUIRED",
+    text: "Before your first commission, the System will request identity, age, sex, activity, and available equipment.",
+    subtext: "These records help Aldric assign fair duties. Your class must still be earned.",
   },
   {
     type: "world",
     text: "You open your eyes in Aethoria.",
-    subtext: "A realm of magic and war — and it is dying. The Demon King Malachar advances from the north. His armies have never been stopped.",
+    subtext: "A realm of magic and war. Its people know danger is coming, but only you can see the System's full warning.",
   },
   {
     type: "world",
-    text: "Aethoria's defenders are failing.",
-    subtext: "Their warriors cannot grow stronger fast enough. But you — you come from a world where the only limit is how hard you're willing to train.",
+    text: "The world danger level is critical.",
+    subtext: "A great enemy gathers beyond the horizon. Aldric, Guild Master of the Adventurer's Guild, has seen enough to believe you matter.",
   },
   {
     type: "narrative",
-    text: "No one is coming to save this world.",
-    subtext: "Except you. And the only weapon you have is the one you've been building your whole life.",
+    text: "Your ordinary choices now echo in another world.",
+    subtext: "Training, meals, recovery, and consistency become the power your summoned self can wield.",
   },
   {
     type: "final",
-    title: "YOUR JOURNEY BEGINS",
-    text: "Train in your world. Fight in ours.",
-    subtext: "Every drop of sweat becomes power. Every completed workout weakens Malachar's hold. The fate of Aethoria depends on how hard you're willing to push.",
+    title: "ASCENSION QUEST",
+    text: "Train in your world. Fight in Aethoria.",
+    subtext: "Every healthy decision becomes part of your legend. The System awaits your first scan.",
   },
 ];
 
@@ -79,7 +78,7 @@ export default function Onboarding() {
     if (duration === 0) return;
     const t = setTimeout(() => advance(), duration);
     return () => clearTimeout(t);
-  }, [slideIndex]);
+  }, [slideIndex, isLast]);
 
   const advance = () => {
     setExiting(true);
@@ -120,17 +119,15 @@ export default function Onboarding() {
       )}
       onClick={isLast ? undefined : advance}
     >
-      {/* Skip button */}
       {!isLast && (
         <button
           onClick={e => { e.stopPropagation(); skip(); }}
           className="absolute top-6 right-6 text-[11px] font-mono text-white/30 hover:text-white/60 transition-colors px-3 py-1.5 rounded border border-white/10 hover:border-white/30"
         >
-          SKIP →
+          SKIP
         </button>
       )}
 
-      {/* Slide progress dots */}
       <div className="absolute top-6 left-1/2 -translate-x-1/2 flex gap-1.5">
         {SLIDES.map((_, i) => (
           <div
@@ -143,28 +140,24 @@ export default function Onboarding() {
         ))}
       </div>
 
-      {/* Content */}
       <div
         className={cn(
           "max-w-sm w-full text-center space-y-6 transition-all duration-700",
           visible && !exiting ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
         )}
       >
-        {/* System notification style */}
         {current.type === "system" && (
           <div className="inline-block border border-cyan-500/50 bg-cyan-500/5 rounded-lg px-4 py-2 mb-2">
             <span className="text-[10px] font-mono text-cyan-400 tracking-[0.3em]">{current.title}</span>
           </div>
         )}
 
-        {/* Final title */}
         {current.type === "final" && current.title && (
           <div className="inline-block border border-primary/50 bg-primary/5 rounded-lg px-4 py-2 mb-2">
             <span className="text-[10px] font-mono text-primary tracking-[0.3em]">{current.title}</span>
           </div>
         )}
 
-        {/* Main text */}
         <p
           className={cn(
             "font-serif leading-relaxed",
@@ -181,7 +174,6 @@ export default function Onboarding() {
           {current.text}
         </p>
 
-        {/* Subtext */}
         {current.subtext && (
           <p
             className={cn(
@@ -200,29 +192,20 @@ export default function Onboarding() {
           </p>
         )}
 
-        {/* Decorative line for system slides */}
         {current.type === "system" && (
           <div className="border-t border-cyan-500/20 w-32 mx-auto" />
         )}
       </div>
 
-      {/* Final CTA */}
       {isLast && (
         <div className="mt-12 flex flex-col items-center gap-4">
           <button
             onClick={finish}
             className="px-10 py-4 rounded-xl bg-primary text-primary-foreground font-bold text-lg font-serif shadow-[0_0_40px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_60px_hsl(var(--primary)/0.7)] transition-all hover:scale-105 active:scale-95"
           >
-            Begin Your Journey
+            Begin the Scan
           </button>
-          <span className="text-[10px] font-mono text-white/20 tracking-widest">HUNTER CLASS: AWAKENED</span>
-        </div>
-      )}
-
-      {/* Tap hint */}
-      {!isLast && (
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
-          <span className="text-[10px] font-mono text-white/20 tracking-widest animate-pulse">TAP TO CONTINUE</span>
+          <span className="text-[10px] font-mono text-white/20 tracking-widest">SYSTEM STATUS: CRITICAL</span>
         </div>
       )}
     </div>

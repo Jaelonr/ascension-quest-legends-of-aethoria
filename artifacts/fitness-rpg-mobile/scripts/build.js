@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
+const { execSync } = require("child_process");
 const { Readable } = require("stream");
 const { pipeline } = require("stream/promises");
 
@@ -24,18 +25,30 @@ const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
 
 function exitWithError(message) {
   console.error(message);
-  if (metroProcess) {
-    metroProcess.kill();
-  }
+  stopMetroProcess();
   process.exit(1);
+}
+
+function stopMetroProcess() {
+  if (!metroProcess) return;
+  if (metroProcess.killed) return;
+
+  if (process.platform === "win32") {
+    try {
+      execSync(`taskkill /pid ${metroProcess.pid} /T /F`, { stdio: "ignore" });
+      return;
+    } catch {
+      // Fall back to the regular kill path below.
+    }
+  }
+
+  metroProcess.kill();
 }
 
 function setupSignalHandlers() {
   const cleanup = () => {
-    if (metroProcess) {
-      console.log("Cleaning up Metro process...");
-      metroProcess.kill();
-    }
+    console.log("Cleaning up Metro process...");
+    stopMetroProcess();
     process.exit(0);
   };
 
@@ -67,10 +80,7 @@ function getDeploymentDomain() {
     return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
   }
 
-  console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
-  );
-  process.exit(1);
+  return "localhost:8081";
 }
 
 function prepareDirectories(timestamp) {
@@ -127,6 +137,16 @@ function getExpoPublicReplId() {
   return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
 }
 
+function isLocalDomain(domain) {
+  return domain.startsWith("localhost:") || domain.startsWith("127.0.0.1:");
+}
+
+function cleanEnv(env) {
+  return Object.fromEntries(
+    Object.entries(env).filter(([key, value]) => key && !key.startsWith("=") && value != null),
+  );
+}
+
 async function startMetro(expoPublicDomain, expoPublicReplId) {
   const isRunning = await checkMetroHealth();
   if (isRunning) {
@@ -139,21 +159,35 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
   const clerkProxyUrl = process.env.CLERK_PROXY_URL
     ? `https://${expoPublicDomain}${process.env.CLERK_PROXY_URL}`
     : "";
+  const devAuthBypass =
+    process.env.EXPO_PUBLIC_DEV_AUTH_BYPASS === "true" ||
+    process.env.DEV_AUTH_BYPASS === "true" ||
+    (!process.env.CLERK_PUBLISHABLE_KEY && isLocalDomain(expoPublicDomain));
+  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ||
+    (isLocalDomain(expoPublicDomain)
+      ? `http://127.0.0.1:${process.env.API_PORT || "5055"}`
+      : `https://${expoPublicDomain}`);
 
-  const env = {
+  const env = cleanEnv({
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
-    EXPO_PUBLIC_REPL_ID: expoPublicReplId,
+    EXPO_PUBLIC_API_BASE_URL: apiBaseUrl,
     EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY || "",
     EXPO_PUBLIC_CLERK_PROXY_URL: clerkProxyUrl,
-  };
+    EXPO_PUBLIC_DEV_AUTH_BYPASS: devAuthBypass ? "true" : "false",
+  });
+  console.log(`Setting EXPO_PUBLIC_API_BASE_URL=${apiBaseUrl}`);
+  if (devAuthBypass) {
+    console.log("Enabling local Expo auth bypass");
+  }
 
   if (expoPublicReplId) {
+    env.EXPO_PUBLIC_REPL_ID = expoPublicReplId;
     console.log(`Setting EXPO_PUBLIC_REPL_ID=${expoPublicReplId}`);
   }
 
   metroProcess = spawn(
-    "pnpm",
+    process.platform === "win32" ? "pnpm.cmd" : "pnpm",
     [
       "exec",
       "expo",
@@ -167,6 +201,7 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
       detached: false,
       cwd: projectRoot,
       env,
+      shell: process.platform === "win32",
     },
   );
 
@@ -564,16 +599,12 @@ async function main() {
 
   console.log("Build complete! Deploy to:", baseUrl);
 
-  if (metroProcess) {
-    metroProcess.kill();
-  }
+  stopMetroProcess();
   process.exit(0);
 }
 
 main().catch((error) => {
   console.error("Build failed:", error.message);
-  if (metroProcess) {
-    metroProcess.kill();
-  }
+  stopMetroProcess();
   process.exit(1);
 });

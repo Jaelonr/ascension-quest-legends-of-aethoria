@@ -5,6 +5,7 @@ import {
 } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { getOrCreatePlayer } from "./player";
+import { searchFoodMacroDatabase, type FoodMacroItem } from "../data/food-macro-database";
 
 const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   sedentary: 1.2,
@@ -45,6 +46,24 @@ const router = Router();
 
 function getTodayStr() {
   return new Date().toISOString().split("T")[0];
+}
+
+function toFoodSearchResult(item: FoodMacroItem) {
+  return {
+    id: item.id,
+    name: item.name,
+    calories100g: item.calories100g,
+    protein100g: item.protein100g,
+    carbs100g: item.carbs100g,
+    fat100g: item.fat100g,
+    fiber100g: item.fiber100g ?? null,
+    sugar100g: item.sugar100g ?? null,
+    sodiumMg100g: item.sodiumMg100g ?? null,
+    servingSize: item.servingSize,
+    servingGrams: item.servingGrams,
+    category: item.category,
+    source: item.source,
+  };
 }
 
 router.get("/nutrition/targets", async (req, res) => {
@@ -373,9 +392,11 @@ router.get("/nutrition/food-search", async (req, res) => {
     const q = String(req.query.q ?? "").trim();
     if (!q) { res.json([]); return; }
 
+    const localResults = searchFoodMacroDatabase(q, 16).map(toFoodSearchResult);
+
     const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&json=true&page_size=20&action=process&fields=id,product_name,brands,nutriments,serving_size,product_quantity`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!resp.ok) { res.json([]); return; }
+    const resp = await fetch(url, { signal: AbortSignal.timeout(4500) });
+    if (!resp.ok) { res.json(localResults); return; }
     const data = await resp.json() as any;
 
     const results = (data.products ?? [])
@@ -390,10 +411,28 @@ router.get("/nutrition/food-search", async (req, res) => {
         servingSize:  p.serving_size ?? null,
       }))
       .slice(0, 12);
-    res.json(results);
+    const seen = new Set<string>();
+    const merged = [...localResults, ...results.map((item: any) => ({
+      ...item,
+      fiber100g: null,
+      sugar100g: null,
+      sodiumMg100g: null,
+      servingGrams: null,
+      category: "Packaged Food",
+      source: "open_food_facts",
+    }))]
+      .filter(item => {
+        const key = item.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 24);
+    res.json(merged);
   } catch (err) {
     req.log.error(err, "food-search failed");
-    res.json([]);
+    const q = String(req.query.q ?? "").trim();
+    res.json(q ? searchFoodMacroDatabase(q, 16).map(toFoodSearchResult) : []);
   }
 });
 

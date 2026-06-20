@@ -18,13 +18,34 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+const apiBaseUrl =
+  process.env.EXPO_PUBLIC_API_BASE_URL || `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+const devAuthBypass = process.env.EXPO_PUBLIC_DEV_AUTH_BYPASS === "true";
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || "";
+const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
+
+setBaseUrl(apiBaseUrl);
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
-const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
+function DevAuthGuard() {
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    setAuthTokenGetter(null);
+  }, []);
+
+  useEffect(() => {
+    const inAuthGroup = (segments[0] as string) === "(auth)";
+    if (inAuthGroup) {
+      router.replace("/(tabs)" as never);
+    }
+  }, [segments]);
+
+  return null;
+}
 
 function AuthGuard() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
@@ -51,7 +72,7 @@ function AuthGuard() {
 function RootLayoutNav() {
   return (
     <>
-      <AuthGuard />
+      {devAuthBypass ? <DevAuthGuard /> : <AuthGuard />}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -79,6 +100,28 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError) return null;
 
+  const app = (
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <GestureHandlerRootView>
+            <KeyboardProvider>
+              <RootLayoutNav />
+            </KeyboardProvider>
+          </GestureHandlerRootView>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
+  );
+
+  if (devAuthBypass) {
+    return app;
+  }
+
+  if (!publishableKey) {
+    throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY");
+  }
+
   return (
     <ClerkProvider
       publishableKey={publishableKey}
@@ -86,17 +129,7 @@ export default function RootLayout() {
       proxyUrl={proxyUrl}
     >
       <ClerkLoaded>
-        <SafeAreaProvider>
-          <ErrorBoundary>
-            <QueryClientProvider client={queryClient}>
-              <GestureHandlerRootView>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </QueryClientProvider>
-          </ErrorBoundary>
-        </SafeAreaProvider>
+        {app}
       </ClerkLoaded>
     </ClerkProvider>
   );

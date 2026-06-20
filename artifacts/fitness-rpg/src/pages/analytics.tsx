@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useGetAnalyticsOverview, useGetAchievements } from "@workspace/api-client-react";
-import { PageHeader } from "@/components/shared/page-header";
+import { AethoriaHeader, AethoriaPage } from "@/components/shared/aethoria-page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,11 +33,11 @@ export default function Analytics() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Battle Records" />
-        <Skeleton className="h-64 w-full rounded-xl" />
-        <Skeleton className="h-48 w-full rounded-xl" />
-      </div>
+      <AethoriaPage>
+        <AethoriaHeader icon={BarChart3} title="Battle Records" subtitle="Your journey in numbers" />
+        <Skeleton className="h-64 w-full rounded-none bg-[#171510]" />
+        <Skeleton className="h-48 w-full rounded-none bg-[#171510]" />
+      </AethoriaPage>
     );
   }
 
@@ -50,11 +50,11 @@ export default function Analytics() {
   const filteredAch = achFilter === "all" ? achievements : achievements?.filter(a => a.category === achFilter);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      <PageHeader title="Battle Records" subtitle="Your journey in numbers" />
+    <AethoriaPage className="animate-in fade-in duration-500">
+      <AethoriaHeader icon={BarChart3} title="Battle Records" subtitle="Your journey in numbers" />
 
       <Tabs defaultValue="stats">
-        <TabsList className="w-full bg-black/40 border border-border/50 rounded-md p-1 h-12">
+        <TabsList className="h-12 w-full rounded-none border border-[#3b3328] bg-[#11100e] p-1">
           <TabsTrigger value="stats" className="flex-1">Stats</TabsTrigger>
           <TabsTrigger value="achievements" className="flex-1">
             Achievements
@@ -68,27 +68,27 @@ export default function Analytics() {
 
         <TabsContent value="stats" className="space-y-4 pt-4">
           <div className="grid grid-cols-2 gap-4">
-            <Card className="border-border/50 bg-card/50">
+            <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
               <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                 <Trophy className="w-6 h-6 text-primary mb-2" />
                 <div className="text-2xl font-mono font-bold">{analytics.totalWorkouts}</div>
                 <div className="text-xs text-muted-foreground uppercase">Battles Won</div>
               </CardContent>
             </Card>
-            <Card className="border-border/50 bg-card/50">
+            <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
               <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                 <TrendingUp className="w-6 h-6 text-accent mb-2" />
                 <div className="text-2xl font-mono font-bold">{analytics.totalPrs}</div>
                 <div className="text-xs text-muted-foreground uppercase">PRs Broken</div>
               </CardContent>
             </Card>
-            <Card className="border-border/50 bg-card/50">
+            <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
               <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                 <div className="text-2xl font-mono font-bold text-primary">{analytics.currentStreak}</div>
                 <div className="text-xs text-muted-foreground uppercase">Current Streak</div>
               </CardContent>
             </Card>
-            <Card className="border-border/50 bg-card/50">
+            <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
               <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                 <div className="text-2xl font-mono font-bold">{analytics.longestStreak}</div>
                 <div className="text-xs text-muted-foreground uppercase">Best Streak</div>
@@ -96,10 +96,10 @@ export default function Analytics() {
             </Card>
           </div>
 
-          <Card className="border-border/50 bg-card/50">
+          <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-serif flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-primary" /> Body Mass Trend
+                <BarChart3 className="w-4 h-4 text-[#d9ad63]" /> Body Mass Trend
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -134,7 +134,7 @@ export default function Analytics() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/50">
+          <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-serif text-yellow-400">Hall of Fame (Recent PRs)</CardTitle>
             </CardHeader>
@@ -144,7 +144,7 @@ export default function Analytics() {
               ) : (
                 <div className="space-y-2 mt-2">
                   {analytics.recentPrs.map(pr => (
-                    <div key={pr.id} className="flex justify-between items-center p-3 rounded bg-black/30 border border-border/50">
+                    <div key={pr.id} className="flex items-center justify-between border border-[#3b3328] bg-[#0c0b09] p-3">
                       <div className="font-bold text-sm">{pr.exerciseName}</div>
                       <div className="font-mono text-sm text-yellow-400">
                         {pr.weight} {pr.weightUnit} × {pr.reps}
@@ -184,7 +184,7 @@ export default function Analytics() {
               </div>
 
               {/* Progress Summary */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-black/30 border border-border/30">
+              <div className="flex items-center gap-3 border border-[#3b3328] bg-[#0c0b09] p-3">
                 <Trophy className="w-5 h-5 text-yellow-400 shrink-0" />
                 <div className="flex-1">
                   <div className="text-sm font-bold">{unlockedAch.length} / {achievements?.length ?? 0} Unlocked</div>
@@ -205,7 +205,7 @@ export default function Analytics() {
                     <div
                       key={ach.id}
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border transition-all",
+                        "flex items-center gap-3 border p-3 transition-all",
                         isUnlocked
                           ? "border-primary/20 bg-primary/5"
                           : "border-border/20 bg-black/10 opacity-50"
@@ -244,6 +244,6 @@ export default function Analytics() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </AethoriaPage>
   );
 }

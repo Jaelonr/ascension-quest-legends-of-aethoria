@@ -342,7 +342,7 @@ export default function ActiveSession() {
   const handleFinishBattle = () => {
     const narrativeIntensity = settings.narrative?.intensity ?? "balanced";
     finishSession.mutate(
-      { id: sessionId, data: { status: "completed", narrativeIntensity: narrativeIntensity as any } },
+      { id: sessionId, data: { status: "completed", narrativeIntensity } },
       {
         onSuccess: (data: any) => {
           queryClient.invalidateQueries({ queryKey: ["/api/player"] });

@@ -4,7 +4,7 @@ import {
   exercisesTable, workoutTemplatesTable, workoutSessionsTable,
   workoutSetsTable, personalRecordsTable, playerTable, nutritionLogsTable,
   nutritionTargetsTable, playerBiometricsTable, bossRaidsTable,
-  combatReplaysTable, playerStyleIdentityTable
+  combatReplaysTable, playerStyleIdentityTable, rpgGearTable
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { getOrCreatePlayer, buildPlayerResponse } from "../progression";
@@ -192,9 +192,29 @@ router.patch("/training/sessions/:id", async (req, res) => {
       const finishedAt = completedAt ? new Date(completedAt) : new Date();
       updates.completedAt = finishedAt;
       updates.status = "completed";
-      const [session] = await db.select().from(workoutSessionsTable).where(eq(workoutSessionsTable.id, id));
+      const [session] = await db.select().from(workoutSessionsTable).where(and(
+        eq(workoutSessionsTable.id, id),
+        eq(workoutSessionsTable.playerId, player.id),
+      ));
 
       if (session) {
+        if (session.status === "completed") {
+          const [existingReplay] = await db.select().from(combatReplaysTable)
+            .where(eq(combatReplaysTable.sessionId, session.id)).limit(1);
+          const existingSets = await db.select().from(workoutSetsTable).where(eq(workoutSetsTable.sessionId, id));
+          return void res.json({
+            session: {
+              ...session,
+              startedAt: session.startedAt.toISOString(),
+              completedAt: session.completedAt?.toISOString() || null,
+              sets: existingSets.map(ws => ({ ...ws, createdAt: ws.createdAt.toISOString() })),
+            },
+            alreadyCompleted: true,
+            xpEarned: 0,
+            goldEarned: 0,
+            combatReplay: existingReplay ?? null,
+          });
+        }
         const durationMs = finishedAt.getTime() - session.startedAt.getTime();
         const durationMinutes = Math.round(durationMs / 60000);
         updates.durationMinutes = durationMinutes;
@@ -260,7 +280,14 @@ router.patch("/training/sessions/:id", async (req, res) => {
           volumeBonusBreakdown = `Volume: +${volumeXp} XP (${Math.round(totalVolumeKg)}kg lifted)${intensityXp > 0 ? `, Intensity: +${intensityXp} XP (${Math.round(heaviestRelativeIntensity * 100)}% of 1RM)` : ""}`;
         }
 
-        const totalXp = baseXp + volumeBonus;
+        const equippedGear = await db.select().from(rpgGearTable).where(and(
+          eq(rpgGearTable.playerId, player.id),
+          eq(rpgGearTable.equipped, true),
+        ));
+        const xpBonusPercent = Math.min(10, equippedGear.reduce(
+          (total, item) => total + Math.max(0, item.xpBonusPercent), 0,
+        ));
+        const totalXp = Math.round((baseXp + volumeBonus) * (1 + xpBonusPercent / 100));
         goldEarned = 25 + Math.floor(durationMinutes / 5) * 5 + prCount * 15 + Math.floor(volumeBonus / 10);
 
         updates.xpEarned = totalXp;
@@ -319,6 +346,8 @@ router.patch("/training/sessions/:id", async (req, res) => {
           baseClass: freshPlayer.baseClass ?? "Warrior",
           playerName: freshPlayer.name ?? "Hunter",
           narrativeIntensity,
+          elementalAffinity: equippedGear.find((item) => item.elementalAffinity !== "physical")?.elementalAffinity ?? "physical",
+          narrativeModifiers: equippedGear.flatMap((item) => item.narrativeModifiers).slice(0, 3),
         };
 
         combatReplay = generateCombatReplay(combatInput);
@@ -338,6 +367,8 @@ router.patch("/training/sessions/:id", async (req, res) => {
           xpEarned: totalXp,
           goldEarned,
           prCount,
+          elementalAffinity: combatInput.elementalAffinity,
+          narrativeModifiers: combatInput.narrativeModifiers,
           raidImpact: combatReplay.raidImpact,
           narrativeIntensity,
         });

@@ -158,3 +158,37 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes system-gate-spin {
+    from { transform: translateX(-50%) rotate(0deg); }
+    to { transform: translateX(-50%) rotate(360deg); }
+  }
+
+  @keyframes system-gate-pulse {
+    0%, 100% { opacity: 0.2; transform: scale(0.92); }
+    50% { opacity: 0.72; transform: scale(1.06); }
+  }
+
+  @keyframes system-scanline {
+    0% { transform: translateY(-24px); opacity: 0; }
+    25% { opacity: 0.8; }
+    100% { transform: translateY(220px); opacity: 0; }
+  }
+
+  .system-gate-spin {
+    animation: system-gate-spin 18s linear infinite;
+  }
+
+  .system-gate-pulse {
+    animation: system-gate-pulse 2.8s ease-in-out infinite;
+  }
+
+  .system-scanline {
+    animation: system-scanline 3.2s ease-in-out infinite;
+  }
+
+  .system-text-glow {
+    text-shadow: 0 0 14px rgba(34, 211, 238, 0.45);
+  }
+}

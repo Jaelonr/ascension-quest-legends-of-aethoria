@@ -1,5 +1,7 @@
-import { useSignUp } from "@clerk/expo";
+import { useSignUp, useSSO } from "@clerk/expo";
+import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +15,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const COLORS = {
   background: "#0c0d13",
@@ -29,12 +33,14 @@ const COLORS = {
 
 export default function SignUpScreen() {
   const { signUp, errors, fetchStatus } = useSignUp();
+  const { startSSOFlow } = useSSO();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [ssoLoading, setSsoLoading] = useState(false);
 
   const handleSignUp = async () => {
     const { error } = await signUp.password({ emailAddress: email, password });
@@ -52,6 +58,30 @@ export default function SignUpScreen() {
           router.replace("/(tabs)" as never);
         },
       });
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    try {
+      setSsoLoading(true);
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy: "oauth_google",
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
+      if (createdSessionId && setActive) {
+        await setActive({
+          session: createdSessionId,
+          navigate: async ({ decorateUrl }) => {
+            const url = decorateUrl("/");
+            if (url.startsWith("http")) return;
+            router.replace("/(tabs)" as never);
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Google sign-up error:", JSON.stringify(err, null, 2));
+    } finally {
+      setSsoLoading(false);
     }
   };
 
@@ -192,6 +222,27 @@ export default function SignUpScreen() {
               <Text style={styles.primaryBtnText}>Create Account</Text>
             )}
           </Pressable>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable
+            style={[styles.oauthBtn, ssoLoading && styles.btnDisabled]}
+            onPress={handleGoogleSignUp}
+            disabled={ssoLoading}
+          >
+            {ssoLoading ? (
+              <ActivityIndicator color={COLORS.foreground} />
+            ) : (
+              <>
+                <Text style={styles.oauthIcon}>G</Text>
+                <Text style={styles.oauthBtnText}>Continue with Google</Text>
+              </>
+            )}
+          </Pressable>
         </View>
 
         <View style={styles.footer}>
@@ -288,6 +339,44 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#000",
     letterSpacing: 0.3,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: COLORS.muted,
+  },
+  oauthBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: COLORS.secondaryBg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingVertical: 13,
+    minHeight: 50,
+  },
+  oauthIcon: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#4285F4",
+  },
+  oauthBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: COLORS.foreground,
   },
   footer: {
     flexDirection: "row",

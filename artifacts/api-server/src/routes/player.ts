@@ -4,6 +4,7 @@ import {
   playerTable, playerStatsTable, titlesTable, playerTitlesTable,
   achievementsTable, playerAchievementsTable, equipmentTable,
   playerInventoryTable, storeItemsTable, dailyLoginsTable,
+  playerBiometricsTable, nutritionTargetsTable,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import {
@@ -13,6 +14,39 @@ import {
 const router = Router();
 
 export { getOrCreatePlayer, buildPlayerResponse, xpForLevel, rankForLevel };
+
+const ACTIVITY_MULTIPLIERS: Record<string, number> = {
+  sedentary: 1.2,
+  light: 1.375,
+  moderate: 1.55,
+  active: 1.725,
+  very_active: 1.9,
+};
+
+const GOAL_ADJUSTMENTS: Record<string, number> = {
+  lose: -500,
+  maintain: 0,
+  gain: 300,
+};
+
+function calcSetupTargets(params: {
+  sex: "male" | "female" | "other";
+  ageYears: number;
+  heightCm: number;
+  weightKg: number;
+  activityLevel: string;
+  weightGoal: string;
+}) {
+  const { sex, ageYears, heightCm, weightKg, activityLevel, weightGoal } = params;
+  const maleBmr = 10 * weightKg + 6.25 * heightCm - 5 * ageYears + 5;
+  const femaleBmr = 10 * weightKg + 6.25 * heightCm - 5 * ageYears - 161;
+  const bmr = sex === "male" ? maleBmr : sex === "female" ? femaleBmr : (maleBmr + femaleBmr) / 2;
+  const calories = Math.round(bmr * (ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.55) + (GOAL_ADJUSTMENTS[weightGoal] ?? 0));
+  const protein = Math.round(weightKg * 2.2 / 5) * 5;
+  const fat = Math.round((calories * 0.25) / 9 / 5) * 5;
+  const carbs = Math.round((calories - protein * 4 - fat * 9) / 4 / 5) * 5;
+  return { calories, protein: Math.max(protein, 80), carbs: Math.max(carbs, 50), fat: Math.max(fat, 30) };
+}
 
 router.get("/player", async (req, res) => {
   try {
@@ -41,11 +75,20 @@ router.patch("/player", async (req, res) => {
 
 router.post("/player/setup", async (req, res) => {
   try {
-    const { name, statBonuses, equipmentIds, baseClass } = req.body as {
+    const { name, statBonuses, equipmentIds, baseClass, systemScan } = req.body as {
       name: string;
       statBonuses: { strength: number; agility: number; stamina: number; vitality: number; discipline: number; sense: number };
       equipmentIds: number[];
       baseClass?: string;
+      systemScan?: {
+        ageYears?: number;
+        sex?: "male" | "female" | "other";
+        heightCm?: number | null;
+        weightKg?: number | null;
+        activityLevel?: "sedentary" | "light" | "moderate" | "active" | "very_active";
+        weightGoal?: "lose" | "maintain" | "gain";
+        equipmentTypes?: string[];
+      };
     };
     const { player, stats } = await getOrCreatePlayer(req.userId);
     if (!stats) return void res.status(400).json({ error: "Player stats not found" });
@@ -86,6 +129,62 @@ router.post("/player/setup", async (req, res) => {
         await db.update(equipmentTable)
           .set({ owned: true })
           .where(eq(equipmentTable.id, id));
+      }
+    }
+
+    if (systemScan) {
+      const heightCm = typeof systemScan.heightCm === "number" && systemScan.heightCm > 0 ? systemScan.heightCm : null;
+      const weightKg = typeof systemScan.weightKg === "number" && systemScan.weightKg > 0 ? systemScan.weightKg : null;
+      const equipmentTypes = Array.isArray(systemScan.equipmentTypes) ? systemScan.equipmentTypes : [];
+
+      const existingBio = await db.select().from(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, player.id)).limit(1);
+      const bioData = {
+        heightCm,
+        weightKg,
+        bodyFatPct: null,
+        squat1rm: null,
+        bench1rm: null,
+        deadlift1rm: null,
+        ohp1rm: null,
+        row1rm: null,
+        equipmentTypes,
+        notes: "Recorded during initial System scan.",
+        updatedAt: new Date(),
+      };
+      if (existingBio.length === 0) {
+        await db.insert(playerBiometricsTable).values({ playerId: player.id, ...bioData });
+      } else {
+        await db.update(playerBiometricsTable).set(bioData).where(eq(playerBiometricsTable.playerId, player.id));
+      }
+
+      if (systemScan.sex && systemScan.ageYears && systemScan.activityLevel && systemScan.weightGoal) {
+        const targetSex = systemScan.sex === "other" ? null : systemScan.sex;
+        const calc = heightCm && weightKg
+          ? calcSetupTargets({
+              sex: systemScan.sex,
+              ageYears: systemScan.ageYears,
+              heightCm,
+              weightKg,
+              activityLevel: systemScan.activityLevel,
+              weightGoal: systemScan.weightGoal,
+            })
+          : { calories: 2500, protein: 180, carbs: 250, fat: 80 };
+
+        const targetData = {
+          ...calc,
+          sex: targetSex,
+          ageYears: systemScan.ageYears,
+          activityLevel: systemScan.activityLevel,
+          weightGoal: systemScan.weightGoal,
+          autoCalc: Boolean(heightCm && weightKg),
+          updatedAt: new Date(),
+        };
+        const existingTargets = await db.select().from(nutritionTargetsTable).where(eq(nutritionTargetsTable.playerId, player.id)).limit(1);
+        if (existingTargets.length === 0) {
+          await db.insert(nutritionTargetsTable).values({ playerId: player.id, ...targetData });
+        } else {
+          await db.update(nutritionTargetsTable).set(targetData).where(eq(nutritionTargetsTable.playerId, player.id));
+        }
       }
     }
 

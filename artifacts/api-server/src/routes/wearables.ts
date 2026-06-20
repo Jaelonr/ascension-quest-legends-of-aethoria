@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { wearableEntriesTable } from "@workspace/db";
+import { healthImportsTable, wearableEntriesTable } from "@workspace/db";
 import { eq, and, gte, desc, asc } from "drizzle-orm";
 import { getOrCreatePlayer } from "../progression";
 const router = Router();
@@ -19,6 +19,18 @@ interface WearableInput {
   weight?: number | null;
   source?: WearableSource;
   notes?: string | null;
+}
+
+interface HealthImportInput {
+  externalId: string;
+  recordedAt: string;
+  steps?: number | null;
+  sleepHours?: number | null;
+  hrv?: number | null;
+  restingHr?: number | null;
+  caloriesBurned?: number | null;
+  activeMinutes?: number | null;
+  weight?: number | null;
 }
 
 function validateWearableInput(body: unknown): { data: WearableInput; error: null } | { data: null; error: string } {
@@ -173,6 +185,69 @@ router.get("/wearables/summary", async (req, res) => {
   } catch (err) {
     req.log.error(err, "wearables summary error");
     res.status(500).json({ error: "Failed to load summary" });
+  }
+});
+
+// POST /api/health/import — normalized, idempotent Apple Health / Health Connect batch import
+router.post("/health/import", async (req, res) => {
+  const source = String(req.body?.source ?? "");
+  const events = Array.isArray(req.body?.events) ? req.body.events as HealthImportInput[] : [];
+  if (!(["apple_health", "health_connect"] as const).includes(source as "apple_health" | "health_connect")) {
+    return void res.status(400).json({ error: "source must be apple_health or health_connect" });
+  }
+  if (events.length === 0 || events.length > 500) {
+    return void res.status(400).json({ error: "events must contain between 1 and 500 records" });
+  }
+  try {
+    const { player } = await getOrCreatePlayer(req.userId!);
+    let imported = 0;
+    let duplicates = 0;
+    await db.transaction(async (tx) => {
+      for (const event of events) {
+        if (!event.externalId || !event.recordedAt || Number.isNaN(Date.parse(event.recordedAt))) {
+          throw new Error("Each event requires externalId and a valid recordedAt timestamp");
+        }
+        const recordedAt = new Date(event.recordedAt);
+        const [receipt] = await tx.insert(healthImportsTable).values({
+          playerId: player.id,
+          source,
+          externalId: event.externalId.slice(0, 200),
+          recordedAt,
+          payload: event as unknown as Record<string, unknown>,
+        }).onConflictDoNothing().returning();
+        if (!receipt) {
+          duplicates += 1;
+          continue;
+        }
+        imported += 1;
+        const date = recordedAt.toISOString().slice(0, 10);
+        const [existing] = await tx.select().from(wearableEntriesTable).where(and(
+          eq(wearableEntriesTable.playerId, player.id),
+          eq(wearableEntriesTable.date, date),
+        )).limit(1);
+        const add = (current: number | null, value: number | null | undefined, max: number) =>
+          value == null ? current : Math.min(max, (current ?? 0) + Math.max(0, Number(value)));
+        const values = {
+          steps: add(existing?.steps ?? null, event.steps, 100000),
+          sleepHours: add(existing?.sleepHours ?? null, event.sleepHours, 24),
+          caloriesBurned: add(existing?.caloriesBurned ?? null, event.caloriesBurned, 10000),
+          activeMinutes: add(existing?.activeMinutes ?? null, event.activeMinutes, 1440),
+          hrv: event.hrv ?? existing?.hrv ?? null,
+          restingHr: event.restingHr ?? existing?.restingHr ?? null,
+          weight: event.weight ?? existing?.weight ?? null,
+          source,
+        };
+        if (existing) {
+          await tx.update(wearableEntriesTable).set(values).where(eq(wearableEntriesTable.id, existing.id));
+        } else {
+          await tx.insert(wearableEntriesTable).values({ playerId: player.id, date, ...values });
+        }
+      }
+    });
+    res.json({ source, imported, duplicates, total: events.length });
+  } catch (error) {
+    req.log.error(error, "health import error");
+    res.status(400).json({ error: error instanceof Error ? error.message : "Failed to import health data" });
   }
 });
 

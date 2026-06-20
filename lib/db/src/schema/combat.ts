@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { playerTable } from "./player";
 import { workoutSessionsTable } from "./training";
 
@@ -18,10 +18,14 @@ export const combatReplaysTable = pgTable("combat_replays", {
   goldEarned: integer("gold_earned").notNull().default(0),
   prCount: integer("pr_count").notNull().default(0),
   gearDrop: jsonb("gear_drop"),
+  elementalAffinity: text("elemental_affinity").notNull().default("physical"),
+  narrativeModifiers: jsonb("narrative_modifiers").$type<string[]>().notNull().default([]),
   raidImpact: text("raid_impact"),
   narrativeIntensity: text("narrative_intensity").notNull().default("balanced"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("combat_replays_session_idx").on(table.sessionId),
+]);
 
 export const playerStyleIdentityTable = pgTable("player_style_identity", {
   id: serial("id").primaryKey(),

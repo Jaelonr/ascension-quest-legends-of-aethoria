@@ -9,13 +9,12 @@ import {
   searchFood,
   type FoodSearchResult,
 } from "@workspace/api-client-react";
-import { PageHeader } from "@/components/shared/page-header";
 import { StatBar } from "@/components/shared/stat-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, Apple, Plus, X, Loader2, ChevronDown, ChevronUp, Calculator, Sparkles, Link, Search } from "lucide-react";
+import { Target, Apple, Plus, X, Loader2, ChevronDown, ChevronUp, Calculator, Sparkles, Link, Search, Utensils } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -52,6 +51,16 @@ const WEIGHT_GOALS = [
   { id: "gain", label: "Gain Muscle", desc: "+300 kcal surplus" },
 ] as const;
 
+function nutritionGoalLabel(goal?: string | null) {
+  if (goal === "lose") return "fat loss";
+  if (goal === "gain") return "muscle gain";
+  return "maintenance";
+}
+
+function activityLabel(activity?: string | null) {
+  return ACTIVITY_LEVELS.find((level) => level.id === activity)?.label ?? "profile";
+}
+
 const defaultForm = () => ({
   mealName: "",
   mealType: "lunch" as string,
@@ -60,6 +69,14 @@ const defaultForm = () => ({
   carbs: "",
   fat: "",
 });
+
+function foodDisplayName(item: FoodSearchResult) {
+  return item.name.split(" · ")[0].split(" Â· ")[0];
+}
+
+function foodSourceLabel(item: FoodSearchResult) {
+  return item.source === "open_food_facts" ? "Open Food Facts" : "Guild Compendium";
+}
 
 function CalorieGoalCard({
   targets,
@@ -109,12 +126,12 @@ function CalorieGoalCard({
   };
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden">
+    <div className="overflow-hidden border border-[#3b3328] bg-[#11100e]">
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-3 p-4 hover:bg-white/3 transition-all"
+        className="flex w-full items-center gap-3 p-4 transition-all hover:bg-[#181713]"
       >
-        <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center shrink-0">
+        <div className="flex size-8 shrink-0 items-center justify-center border border-[#6b4d2f] bg-[#15130f]">
           <Calculator className="w-4 h-4 text-green-400" />
         </div>
         <div className="flex-1 text-left">
@@ -279,6 +296,7 @@ export default function Nutrition() {
     const ratio = grams / 100;
     setField("mealName", item.name.split(" · ")[0]);
     setField("calories", String(Math.round(item.calories100g * ratio)));
+    setField("mealName", foodDisplayName(item));
     setField("protein",  String(Math.round(item.protein100g  * ratio * 10) / 10));
     setField("carbs",    String(Math.round(item.carbs100g    * ratio * 10) / 10));
     setField("fat",      String(Math.round(item.fat100g      * ratio * 10) / 10));
@@ -354,10 +372,10 @@ export default function Nutrition() {
 
   if (isLoadingToday || isLoadingTargets || isLoadingLogs) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Nutrition Log" />
-        <Skeleton className="h-48 w-full rounded-xl" />
-        <Skeleton className="h-64 w-full rounded-xl" />
+      <div className="min-h-screen bg-[#0c0b09] p-4 text-[#eee5d7] md:p-6">
+        <Skeleton className="h-20 w-full rounded-none bg-[#171510]" />
+        <Skeleton className="mt-4 h-48 w-full rounded-none bg-[#171510]" />
+        <Skeleton className="mt-4 h-64 w-full rounded-none bg-[#171510]" />
       </div>
     );
   }
@@ -367,11 +385,43 @@ export default function Nutrition() {
   }
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-500 pb-10">
-      <PageHeader title="Nutrition Log" subtitle="Fuel your recovery" />
+    <div
+      className="min-h-screen space-y-5 bg-[#0c0b09] bg-cover bg-top p-4 pb-24 text-[#eee5d7] md:p-6"
+      style={{ backgroundImage: "url('/assets/guild-hall-background.png')" }}
+    >
+      <header className="border-b border-[#6d4a25] pb-3">
+        <div className="flex items-center gap-3">
+          <Utensils className="size-6 text-[#d09b43]" />
+          <div>
+            <h1 className="font-serif text-2xl font-bold tracking-wide text-[#e5c386]">Guild Provisions</h1>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9f9586]">Fuel the body that carries the legend.</p>
+          </div>
+        </div>
+      </header>
+
+      <section className="border border-[#6b4d2f] bg-[#11100e] p-4">
+        <p className="font-serif text-lg font-bold text-[#d9ad63]">Healer's Ledger</p>
+        <p className="mt-1 text-sm leading-relaxed text-[#cfc5b8]">
+          Food is not bookkeeping in Aethoria. It is recovery, preparation, and the raw material the System turns into endurance.
+        </p>
+        <div className="mt-3 grid gap-2 text-xs md:grid-cols-3">
+          <div className="border border-[#3b3328] bg-[#0c0b09] p-3">
+            <p className="text-[#8f887d]">Goal basis</p>
+            <p className="mt-1 capitalize text-[#d8c4a5]">{nutritionGoalLabel(targets.weightGoal)} · {activityLabel(targets.activityLevel)}</p>
+          </div>
+          <div className="border border-[#3b3328] bg-[#0c0b09] p-3">
+            <p className="text-[#8f887d]">Commission effect</p>
+            <p className="mt-1 text-[#d8c4a5]">Meals and protein update Guild duty progress.</p>
+          </div>
+          <div className="border border-[#3b3328] bg-[#0c0b09] p-3">
+            <p className="text-[#8f887d]">Food sources</p>
+            <p className="mt-1 text-[#d8c4a5]">Guild database first; reputable lookup when available.</p>
+          </div>
+        </div>
+      </section>
 
       {/* Daily Targets */}
-      <Card className="border-border/50 bg-card/50">
+      <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-green-400">
@@ -411,12 +461,12 @@ export default function Nutrition() {
       {/* Log Food toggle */}
       <button
         onClick={() => setShowForm(!showForm)}
-        className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 transition-all"
+        className="flex w-full items-center gap-3 border border-[#c08c4e] bg-[#74291f] p-3.5 transition-all hover:bg-[#8c3527]"
       >
-        <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/20">
-          <Plus className="w-4 h-4 text-primary" />
+        <div className="flex size-8 items-center justify-center border border-[#c08c4e] bg-[#15130f]">
+          <Plus className="w-4 h-4 text-[#f1dfc6]" />
         </div>
-        <span className="font-bold text-sm text-primary flex-1 text-left">Log Food</span>
+        <span className="flex-1 text-left font-serif text-sm font-bold text-[#f1dfc6]">Record Provisions</span>
         {showForm
           ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
           : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -424,7 +474,7 @@ export default function Nutrition() {
 
       {/* Add Food Form */}
       {showForm && (
-        <Card className="border-primary/30 bg-card/50 animate-in slide-in-from-top-2 duration-200">
+        <Card className="animate-in slide-in-from-top-2 rounded-none border-[#6b4d2f] bg-[#11100e] duration-200">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm font-serif">Log a Meal</CardTitle>
           </CardHeader>
@@ -497,6 +547,20 @@ export default function Nutrition() {
                           <p className="text-[9px] text-muted-foreground font-mono mt-0.5">
                             {Math.round(item.calories100g * (parseFloat(portionGrams) || 100) / 100)} kcal · P:{Math.round(item.protein100g * (parseFloat(portionGrams) || 100) / 100)}g · C:{Math.round(item.carbs100g * (parseFloat(portionGrams) || 100) / 100)}g · F:{Math.round(item.fat100g * (parseFloat(portionGrams) || 100) / 100)}g
                           </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px]">
+                            <span className={cn(
+                              "rounded border px-1.5 py-0.5 font-mono uppercase tracking-wide",
+                              item.source === "open_food_facts"
+                                ? "border-sky-700/50 text-sky-300"
+                                : "border-amber-700/50 text-amber-300"
+                            )}>
+                              {foodSourceLabel(item)}
+                            </span>
+                            {item.category && <span className="text-muted-foreground">{item.category}</span>}
+                            {item.servingSize && <span className="text-muted-foreground">{item.servingSize}</span>}
+                            {item.fiber100g != null && <span className="text-muted-foreground">Fiber {Math.round(item.fiber100g)}g/100g</span>}
+                            {item.sugar100g != null && <span className="text-muted-foreground">Sugar {Math.round(item.sugar100g)}g/100g</span>}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -549,7 +613,7 @@ export default function Nutrition() {
       )}
 
       {/* Quick Adds */}
-      <Card className="border-border/50 bg-card/50">
+      <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
         <CardHeader className="pb-1 pt-4 px-4">
           <CardTitle className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Quick Add</CardTitle>
         </CardHeader>
@@ -571,7 +635,7 @@ export default function Nutrition() {
       </Card>
 
       {/* Today's Meals */}
-      <Card className="border-border/50 bg-card/50">
+      <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4 text-orange-400">
             <Apple className="w-4 h-4" />

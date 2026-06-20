@@ -3,7 +3,9 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSetupPlayer } from "@workspace/api-client-react";
 import { markSetupComplete } from "@/hooks/use-story";
-import { determineBaseClass, getBaseClass, getCurrentEvolution, storeBaseClass } from "@/hooks/use-class";
+import { APEX_CLASSES, BASE_CLASSES, determineBaseClass, getBaseClass, getCurrentEvolution, getNextEvolution, storeBaseClass } from "@/hooks/use-class";
+import { useSettings } from "@/hooks/use-settings";
+import { useSoundEngine } from "@/hooks/use-sound-engine";
 import { cn } from "@/lib/utils";
 
 // ── Stat types ─────────────────────────────────────────────────────────────
@@ -221,6 +223,14 @@ const STYLES = [
   },
 ];
 
+const SYSTEM_ACTIVITY_LEVELS: { id: Exclude<ActivityLevel, "">; label: string; desc: string }[] = [
+  { id: "sedentary", label: "Low Motion", desc: "Most days are seated or lightly active." },
+  { id: "light", label: "Lightly Active", desc: "Movement or training 1-3 days each week." },
+  { id: "moderate", label: "Battle-Ready", desc: "Training or hard movement 3-5 days each week." },
+  { id: "active", label: "Frontline Tempo", desc: "Hard movement or training nearly every day." },
+  { id: "very_active", label: "Relentless", desc: "Physical work or training multiple times per day." },
+];
+
 // ── Archetype derivation handled by use-class ──────────────────────────────
 
 const STAT_META: { key: keyof StatBonuses; label: string; color: string; bg: string }[] = [
@@ -232,10 +242,13 @@ const STAT_META: { key: keyof StatBonuses; label: string; color: string; bg: str
   { key: "sense",      label: "SEN", color: "text-cyan-400",   bg: "bg-cyan-500" },
 ];
 
-type Step = "name" | "background" | "goal" | "frequency" | "armory" | "style" | "confirm";
-const STEPS: Step[] = ["name", "background", "goal", "frequency", "armory", "style", "confirm"];
+type SetupSex = "male" | "female" | "other" | "";
+type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active" | "";
+type Step = "name" | "systemScan" | "background" | "goal" | "frequency" | "armory" | "style" | "confirm";
+const STEPS: Step[] = ["name", "systemScan", "background", "goal", "frequency", "armory", "style", "confirm"];
 const STEP_LABELS: Record<Step, string> = {
   name: "Identity",
+  systemScan: "System Scan",
   background: "Origin",
   goal: "Mission",
   frequency: "History",
@@ -248,6 +261,10 @@ export default function CharacterSetup() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const setupMutation = useSetupPlayer();
+  const { settings } = useSettings();
+  const { playSound } = useSoundEngine();
+  const isImperial = settings.units.weight === "lbs";
+  const ritualMotion = !settings.appearance.reducedMotion;
 
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState<"forward" | "back">("forward");
@@ -255,6 +272,11 @@ export default function CharacterSetup() {
 
   // Answers
   const [hunterName, setHunterName] = useState("");
+  const [ageYears, setAgeYears] = useState("");
+  const [sex, setSex] = useState<SetupSex>("");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel>("");
   const [background, setBackground] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const [frequency, setFrequency] = useState<string | null>(null);
@@ -263,10 +285,50 @@ export default function CharacterSetup() {
 
   const currentStep = STEPS[stepIndex];
   const totalSteps = STEPS.length;
+  const heightUnit = isImperial ? "in" : "cm";
+  const weightUnit = isImperial ? "lb" : "kg";
+  const heightPlaceholder = isImperial ? "inches, optional" : "cm, optional";
+  const weightPlaceholder = isImperial ? "lbs, optional" : "kg, optional";
+  const toStoredCm = (value: string) => {
+    const n = Number(value);
+    if (!value || Number.isNaN(n) || n <= 0) return null;
+    return isImperial ? Math.round(n * 2.54 * 10) / 10 : n;
+  };
+  const toStoredKg = (value: string) => {
+    const n = Number(value);
+    if (!value || Number.isNaN(n) || n <= 0) return null;
+    return isImperial ? Math.round((n / 2.20462) * 100) / 100 : n;
+  };
+
+  const systemScanBonuses = (): StatBonuses => {
+    let total = { ...ZERO_STATS };
+    const activityBonuses: Record<Exclude<ActivityLevel, "">, StatBonuses> = {
+      sedentary: { ...ZERO_STATS },
+      light: { ...ZERO_STATS, discipline: 1 },
+      moderate: { ...ZERO_STATS, stamina: 1, discipline: 1 },
+      active: { ...ZERO_STATS, stamina: 1, vitality: 1 },
+      very_active: { ...ZERO_STATS, stamina: 2, discipline: 1 },
+    };
+    if (activityLevel) total = addStats(total, activityBonuses[activityLevel]);
+
+    armorySelected.forEach(id => {
+      const bonusesByArmory: Record<string, StatBonuses> = {
+        barbell: { ...ZERO_STATS, strength: 1, vitality: 1 },
+        smith: { ...ZERO_STATS, strength: 1 },
+        machines: { ...ZERO_STATS, vitality: 1 },
+        mat: { ...ZERO_STATS, stamina: 1, sense: 1 },
+        bag: { ...ZERO_STATS, agility: 1, discipline: 1 },
+        bodyweight: { ...ZERO_STATS, stamina: 1, discipline: 1 },
+      };
+      total = addStats(total, bonusesByArmory[id] ?? ZERO_STATS);
+    });
+    return total;
+  };
 
   // Compute total stat bonuses
   const totalBonuses = (): StatBonuses => {
     let total = { ...ZERO_STATS };
+    total = addStats(total, systemScanBonuses());
     if (background) {
       const b = BACKGROUNDS.find(x => x.id === background);
       if (b) total = addStats(total, b.bonuses);
@@ -295,9 +357,18 @@ export default function CharacterSetup() {
     return [...new Set(ids)];
   };
 
+  const selectedEquipmentTypes = (): string[] => Array.from(armorySelected);
+
+  const inferredWeightGoal = (): "lose" | "maintain" | "gain" => {
+    if (goal === "strength" || goal === "combat") return "gain";
+    if (goal === "endurance") return "maintain";
+    return "maintain";
+  };
+
   const canAdvance = (): boolean => {
     switch (currentStep) {
       case "name": return hunterName.trim().length >= 2;
+      case "systemScan": return !!sex && !!activityLevel && Number(ageYears) >= 10 && Number(ageYears) <= 100;
       case "background": return background !== null;
       case "goal": return goal !== null;
       case "frequency": return frequency !== null;
@@ -309,6 +380,7 @@ export default function CharacterSetup() {
 
   function advance() {
     if (animating) return;
+    playSound("summon");
     setDirection("forward");
     setAnimating(true);
     setTimeout(() => {
@@ -319,6 +391,7 @@ export default function CharacterSetup() {
 
   function back() {
     if (animating || stepIndex === 0) return;
+    playSound("set-logged");
     setDirection("back");
     setAnimating(true);
     setTimeout(() => {
@@ -348,6 +421,15 @@ export default function CharacterSetup() {
         equipmentIds: selectedEquipmentIds(),
         baseClass: classId,
         goal: goalObj?.goalStr ?? "",
+        systemScan: {
+          ageYears: Number(ageYears),
+          sex: sex || undefined,
+          heightCm: toStoredCm(heightCm),
+          weightKg: toStoredKg(weightKg),
+          activityLevel: activityLevel || undefined,
+          weightGoal: inferredWeightGoal(),
+          equipmentTypes: selectedEquipmentTypes(),
+        },
       },
     });
 
@@ -361,6 +443,15 @@ export default function CharacterSetup() {
   const assignedClassId = determineBaseClass(bonuses);
   const assignedClass = getBaseClass(assignedClassId);
   const assignedEvo = getCurrentEvolution(assignedClassId, 1);
+  const nextEvo = getNextEvolution(assignedClassId, 1);
+  const classForecast = BASE_CLASSES
+    .map(cls => ({
+      cls,
+      score: Object.entries(cls.statWeights).reduce((sum, [key, weight]) => sum + bonuses[key as keyof StatBonuses] * weight, 0),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+  const specialtyPaths = APEX_CLASSES.filter(apex => apex.bases.includes(assignedClassId));
   const maxBonus = Math.max(...Object.values(bonuses), 1);
 
   const slideClass = animating
@@ -429,9 +520,14 @@ export default function CharacterSetup() {
           >
             {/* ── NAME ───────────────────────────────────────────────── */}
             {currentStep === "name" && (
-              <div className="space-y-6 pt-8">
+              <div className="space-y-6 pt-8 relative overflow-hidden">
+                <div className="pointer-events-none absolute inset-0 -z-0 opacity-70">
+                  <div className={cn("absolute left-1/2 top-8 h-48 w-48 -translate-x-1/2 rounded-full border border-cyan-400/20", ritualMotion && "system-gate-spin")} />
+                  <div className={cn("absolute left-1/2 top-14 h-36 w-36 -translate-x-1/2 rounded-full border border-cyan-300/15", ritualMotion && "system-gate-pulse")} />
+                  <div className={cn("absolute inset-x-6 top-24 h-px bg-cyan-400/30", ritualMotion && "animate-pulse")} />
+                </div>
                 <div>
-                  <p className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-1">
+                  <p className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-1 system-text-glow">
                     [ System Notification ]
                   </p>
                   <h1 className="text-2xl font-serif text-white leading-snug mb-2">
@@ -471,6 +567,112 @@ export default function CharacterSetup() {
             )}
 
             {/* ── BACKGROUND ─────────────────────────────────────────── */}
+            {currentStep === "systemScan" && (
+              <div className="space-y-5 pt-4 relative overflow-hidden">
+                <div className="pointer-events-none absolute inset-0 -z-0">
+                  <div className={cn("absolute right-4 top-0 h-40 w-40 rounded-full border border-cyan-500/15", ritualMotion && "system-gate-spin")} />
+                  <div className={cn("absolute -left-8 top-24 h-32 rounded-full border border-amber-400/10", ritualMotion && "system-gate-pulse")} />
+                  <div className={cn("absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent", ritualMotion && "system-scanline")} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-1 system-text-glow">
+                    [ System Scan ]
+                  </p>
+                  <h2 className="text-xl font-serif text-white leading-snug mb-1">
+                    Confirm the vessel brought through the Gate.
+                  </h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    The System records only what Aldric needs to set fair commissions, nutrition targets, and equipment-aware training. Imperial units are the default; metric can be selected in Settings.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-cyan-900/40 bg-cyan-950/15 p-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Age</span>
+                      <input
+                        type="number"
+                        min={10}
+                        max={100}
+                        value={ageYears}
+                        onChange={e => setAgeYears(e.target.value)}
+                        placeholder="Years"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-500/60"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Sex</span>
+                      <select
+                        value={sex}
+                        onChange={e => setSex(e.target.value as SetupSex)}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-500/60"
+                      >
+                        <option value="">Select</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Height ({heightUnit})</span>
+                      <input
+                        type="number"
+                        min={isImperial ? 36 : 80}
+                        max={isImperial ? 96 : 240}
+                        value={heightCm}
+                        onChange={e => setHeightCm(e.target.value)}
+                        placeholder={heightPlaceholder}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-500/60"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Weight ({weightUnit})</span>
+                      <input
+                        type="number"
+                        min={isImperial ? 60 : 30}
+                        max={isImperial ? 700 : 300}
+                        value={weightKg}
+                        onChange={e => setWeightKg(e.target.value)}
+                        placeholder={weightPlaceholder}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none focus:border-cyan-500/60"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-white/40">Current activity signal</p>
+                  {SYSTEM_ACTIVITY_LEVELS.map(level => (
+                    <button
+                      key={level.id}
+                      onClick={() => setActivityLevel(level.id)}
+                      className={cn(
+                        "w-full text-left rounded-xl border p-4 transition-all",
+                        activityLevel === level.id
+                          ? "border-cyan-700/60 bg-cyan-950/30"
+                          : "border-white/10 bg-white/5 hover:border-white/20"
+                      )}
+                    >
+                      <p className={cn("font-serif text-sm font-medium mb-0.5", activityLevel === level.id ? "text-cyan-300" : "text-white")}>
+                        {level.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{level.desc}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-black/30 px-4 py-3">
+                  <p className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-1">System Notice</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Activity and equipment can nudge your starting attributes. Age and sex guide nutrition context only. Your class is shaped by the choices you make here, then earned through action.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {currentStep === "background" && (
               <div className="space-y-5 pt-4">
                 <div>
@@ -710,6 +912,53 @@ export default function CharacterSetup() {
                   <p className="text-[10px] text-muted-foreground italic leading-relaxed pt-1">
                     "{assignedEvo.lore}"
                   </p>
+                </div>
+
+                <div className="rounded-xl border border-cyan-900/40 bg-cyan-950/10 p-4 space-y-3">
+                  <div>
+                    <p className="text-[9px] font-mono text-cyan-400 uppercase tracking-widest">System Forecast</p>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                      Your selected history, goal, training access, activity, and combat instinct are shaping this result.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    {classForecast.map(({ cls, score }, index) => (
+                      <div key={cls.id} className="flex items-center gap-2">
+                        <span className="w-5 text-[10px] font-mono text-white/40">#{index + 1}</span>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={cn("text-xs font-serif font-bold", cls.color)}>{cls.name}</span>
+                            <span className="text-[10px] font-mono text-white/40">{Math.round(score)} affinity</span>
+                          </div>
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-black/40">
+                            <div
+                              className={cn("h-full rounded-full", cls.color.replace("text-", "bg-").replace("-400", "-500"))}
+                              style={{ width: `${Math.max(8, Math.min(100, (score / Math.max(classForecast[0]?.score || 1, 1)) * 100))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {nextEvo && (
+                    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                      <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Next Specialty</p>
+                      <p className={cn("mt-1 text-sm font-serif font-bold", assignedClass.color)}>{nextEvo.name}</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground leading-relaxed">{nextEvo.awakening} at Level {nextEvo.level}</p>
+                    </div>
+                  )}
+                  {specialtyPaths.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Apex Hybrid Paths</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {specialtyPaths.map(apex => (
+                          <span key={apex.id} className={cn("rounded border px-2 py-1 text-[9px] font-mono", apex.border, apex.color)}>
+                            {apex.name} · Lv {apex.requiredLevel}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Stat bars */}

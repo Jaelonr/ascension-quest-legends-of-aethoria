@@ -24,6 +24,10 @@ function AnimatedStat({ value }: { value: number }) {
 
 export default function Dashboard() {
   const { data: summary, isLoading, error } = useGetDashboardSummary();
+  const { data: recentBattles } = useGetBattleLog(
+    { limit: 1 },
+    { query: { queryKey: ["/api/battle-log", { limit: 1 }] } }
+  );
   const allocateStats = useAllocateStats();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -58,10 +62,6 @@ export default function Dashboard() {
   const nextBoss = getNextBoss(player.level);
   const worldDanger = getWorldDanger(player.level);
 
-  const { data: recentBattles } = useGetBattleLog(
-    { limit: 1 },
-    { query: { queryKey: ["/api/battle-log", { limit: 1 }] } }
-  );
   const lastBattle = recentBattles?.[0] as any;
 
   const storedClassId = (player.baseClass ?? getStoredBaseClass()) as ReturnType<typeof getStoredBaseClass>;

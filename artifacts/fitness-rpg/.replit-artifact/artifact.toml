@@ -1,31 +1,28 @@
 kind = "web"
 previewPath = "/"
-title = "Personal Fitness RPG"
+title = "Fitness RPG"
 version = "1.0.0"
-id = "artifacts/fitness-rpg"
-router = "path"
-
-[[integratedSkills]]
-name = "react-vite"
-version = "1.0.0"
+id = "fitness-rpg"
 
 [[services]]
+localPort = 8081
 name = "web"
-paths = [ "/" ]
-localPort = 21052
+paths = ["/"]
 
 [services.development]
 run = "pnpm --filter @workspace/fitness-rpg run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/fitness-rpg", "run", "build" ]
-publicDir = "artifacts/fitness-rpg/dist/public"
-serve = "static"
 
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/fitness-rpg", "run", "build"]
 
-[services.env]
-PORT = "21052"
-BASE_PATH = "/"
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "artifacts/api-server/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8081"
+NODE_ENV = "production"

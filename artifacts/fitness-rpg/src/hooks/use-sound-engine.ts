@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import { useSettings } from "./use-settings";
 
 export type SoundType =
+  | "summon"
   | "level-up"
   | "gold"
   | "daily-reward"
@@ -32,6 +33,12 @@ function tone(
 }
 
 const SOUNDS: Record<SoundType, (ctx: AudioContext) => void> = {
+  "summon": (ctx) => {
+    const t = ctx.currentTime;
+    [130.81, 196, 261.63].forEach((f, i) => tone(ctx, f, t + i * 0.11, 0.8, "sine", 0.16));
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(ctx, f, t + 0.34 + i * 0.08, 0.5, "triangle", 0.14));
+    tone(ctx, 1567.98, t + 0.72, 0.9, "sine", 0.1);
+  },
   "level-up": (ctx) => {
     const t = ctx.currentTime;
     [329.63, 392, 493.88, 659.25].forEach((f, i) => tone(ctx, f, t + i * 0.13, 0.55, "sine", 0.28));

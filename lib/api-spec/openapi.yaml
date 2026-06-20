@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Api
+  title: Ascension Quest API
   version: 0.1.0
-  description: Personal Fitness RPG API
+  description: "Ascension Quest: Legends of Aethoria API"
 servers:
   - url: /api
     description: Base API path
@@ -1620,6 +1620,21 @@ paths:
           content:
             text/event-stream: {}
 
+  /guild-master/campaign-quests:
+    get:
+      operationId: getGuildMasterCampaignQuests
+      tags: [guild]
+      summary: Get campaign quest status records for the authenticated player
+      responses:
+        "200":
+          description: Campaign quest status records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CampaignQuestStatus"
+
   /battle-log:
     get:
       operationId: getBattleLog
@@ -1665,6 +1680,96 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StoreSections"
+
+  /chronicle/summary:
+    get:
+      operationId: getChronicleSummary
+      tags: [chronicle]
+      summary: Get the complete Chronicle hub summary
+      responses:
+        "200":
+          description: Chronicle summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChronicleSummary"
+
+  /character/summary:
+    get:
+      operationId: getCharacterSummary
+      tags: [character]
+      summary: Get unified character identity summary
+      responses:
+        "200":
+          description: Character summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CharacterSummary"
+
+  /guild-hall/today:
+    get:
+      operationId: getGuildHallToday
+      tags: [guild]
+      summary: Get the complete daily Guild Hall snapshot
+      responses:
+        "200":
+          description: Daily Guild Hall state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuildHallSnapshot"
+
+  /guild-hall/report:
+    post:
+      operationId: reportToGuildMaster
+      tags: [guild]
+      summary: Report daily commission progress and claim earned rewards idempotently
+      responses:
+        "200":
+          description: Guild report result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuildHallReportResult"
+
+  /guild-hall/consequences/{id}/restoration:
+    post:
+      operationId: startRestorationQuest
+      tags: [guild]
+      summary: Begin an available restoration campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Restoration quest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quest"
+
+  /health/import:
+    post:
+      operationId: importHealthData
+      tags: [health]
+      summary: Import deduplicated Apple Health or Health Connect records
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HealthImportBatch"
+      responses:
+        "200":
+          description: Health import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthImportResult"
 
 components:
   schemas:
@@ -1782,6 +1887,31 @@ components:
           type: string
         goal:
           type: string
+        systemScan:
+          type: object
+          additionalProperties: false
+          properties:
+            ageYears:
+              type: integer
+            sex:
+              type: string
+              enum: [male, female, other]
+            heightCm:
+              type: number
+              nullable: true
+            weightKg:
+              type: number
+              nullable: true
+            activityLevel:
+              type: string
+              enum: [sedentary, light, moderate, active, very_active]
+            weightGoal:
+              type: string
+              enum: [lose, maintain, gain]
+            equipmentTypes:
+              type: array
+              items:
+                type: string
 
     PlayerUpdate:
       type: object
@@ -2277,7 +2407,7 @@ components:
           type: ["string", "null"]
         narrativeIntensity:
           type: string
-          enum: [minimal, balanced, dramatic]
+          enum: [technical, balanced, immersive]
 
     WorkoutSet:
       type: object
@@ -3041,7 +3171,7 @@ components:
           type: string
         slot:
           type: string
-          enum: [weapon, offhand, helmet, chest, gloves, boots, ring, necklace]
+          enum: [weapon, offhand, helmet, chest, gloves, boots, ring, necklace, armor, wraps, relic, cloak, title, aura_cosmetic]
         rarity:
           type: string
           enum: [common, uncommon, rare, epic, legendary]
@@ -3064,6 +3194,18 @@ components:
           type: ["string", "null"]
         source:
           type: ["string", "null"]
+        elementalAffinity:
+          type: string
+        narrativeModifiers:
+          type: array
+          items:
+            type: string
+        xpBonusPercent:
+          type: integer
+          minimum: 0
+          maximum: 10
+        cosmeticKey:
+          type: ["string", "null"]
         equipped:
           type: boolean
         acquiredAt:
@@ -3085,8 +3227,21 @@ components:
           type: number
         fat100g:
           type: number
+        fiber100g:
+          type: ["number", "null"]
+        sugar100g:
+          type: ["number", "null"]
+        sodiumMg100g:
+          type: ["number", "null"]
         servingSize:
           type: ["string", "null"]
+        servingGrams:
+          type: ["number", "null"]
+        category:
+          type: string
+        source:
+          type: string
+          enum: [guild_compendium, open_food_facts]
 
     DailyRewardEntry:
       type: object
@@ -3248,6 +3403,28 @@ components:
         conversationId:
           type: integer
 
+    CampaignQuestStatus:
+      type: object
+      required: [campaignId, questId, status, title, createdAt]
+      properties:
+        campaignId:
+          type: integer
+        questId:
+          type: integer
+        status:
+          type: string
+          enum: [active, completed, claimed, failed]
+        title:
+          type: string
+        completedAt:
+          type: string
+          nullable: true
+        claimedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+
     CombatEvent:
       type: object
       properties:
@@ -3292,6 +3469,12 @@ components:
           type: integer
         prCount:
           type: integer
+        elementalAffinity:
+          type: string
+        narrativeModifiers:
+          type: array
+          items:
+            type: string
         raidImpact:
           type: ["string", "null"]
         narrativeIntensity:
@@ -3376,6 +3559,13 @@ components:
     StoreSections:
       type: object
       properties:
+        hall:
+          type: object
+          properties:
+            title:
+              type: string
+            lore:
+              type: string
         permanent:
           type: array
           items:
@@ -3392,3 +3582,364 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StoreSectionItem"
+
+    GuildMasterMemory:
+      type: object
+      required: [id, kind, summary, importance]
+      properties:
+        id:
+          type: integer
+        kind:
+          type: string
+        summary:
+          type: string
+        importance:
+          type: integer
+        occurredAt:
+          type: string
+
+    StoryConsequence:
+      type: object
+      required: [id, tier, outcome, canRestore]
+      properties:
+        id:
+          type: integer
+        tier:
+          type: string
+          enum: [minor, major, critical]
+        outcome:
+          type: string
+        canRestore:
+          type: boolean
+        restorationQuestId:
+          type: ["integer", "null"]
+        occurredAt:
+          type: string
+
+    WorldEvent:
+      type: object
+      required: [id, title, description, status, severity, reversible]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        severity:
+          type: string
+        reversible:
+          type: boolean
+        occurredAt:
+          type: string
+
+    EquippedGearEffect:
+      type: object
+      required: [id, name, elementalAffinity, narrativeModifiers, xpBonusPercent]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        elementalAffinity:
+          type: string
+        narrativeModifiers:
+          type: array
+          items:
+            type: string
+        xpBonusPercent:
+          type: integer
+
+    GuildHallSnapshot:
+      type: object
+      required: [date, player, commission, counsel, campaign, equippedGear, consequences, worldEvents]
+      properties:
+        date:
+          type: string
+        player:
+          $ref: "#/components/schemas/Player"
+        worldDanger:
+          $ref: "#/components/schemas/WorldDanger"
+        commission:
+          type: object
+          required: [id, readiness, quest]
+          properties:
+            id:
+              type: integer
+            category:
+              type: string
+            rationale:
+              type: string
+            readiness:
+              type: string
+            reportedAt:
+              type: ["string", "null"]
+            quest:
+              $ref: "#/components/schemas/Quest"
+        counsel:
+          type: object
+          required: [name, message, memories]
+          properties:
+            name:
+              type: string
+            message:
+              type: string
+            memories:
+              type: array
+              items:
+                $ref: "#/components/schemas/GuildMasterMemory"
+            trendSummary:
+              type: object
+              additionalProperties: true
+            guardrails:
+              type: object
+              additionalProperties: true
+        campaign:
+          type: object
+          required: [chapter, title]
+          properties:
+            chapter:
+              type: integer
+            title:
+              type: string
+        equippedGear:
+          type: array
+          items:
+            $ref: "#/components/schemas/EquippedGearEffect"
+        hallOfferings:
+          type: object
+          additionalProperties: true
+        readiness:
+          type: object
+          additionalProperties: true
+        consequences:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoryConsequence"
+        worldEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorldEvent"
+
+    GuildHallReportResult:
+      type: object
+      required: [reported, alreadyReported, snapshot]
+      properties:
+        reported:
+          type: boolean
+        alreadyReported:
+          type: boolean
+        counsel:
+          type: string
+        remainingTasks:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              description:
+                type: string
+        rewards:
+          type: object
+          properties:
+            xp:
+              type: integer
+            gold:
+              type: integer
+            statPoints:
+              type: integer
+        aldric:
+          type: object
+          properties:
+            tone:
+              type: string
+            counsel:
+              type: string
+            memoryReferences:
+              type: array
+              items:
+                type: string
+            practicalRecommendation:
+              type: string
+            warning:
+              type: ["string", "null"]
+            rewardSummary:
+              type: string
+            nextStep:
+              type: string
+        snapshot:
+          $ref: "#/components/schemas/GuildHallSnapshot"
+
+    ItemDiscovery:
+      type: object
+      required: [id, itemName, rarity, category, sourceType, currentState, discoveredAt]
+      properties:
+        id:
+          type: integer
+        itemName:
+          type: string
+        rarity:
+          type: string
+        category:
+          type: string
+        sourceType:
+          type: string
+        sourceLabel:
+          type: ["string", "null"]
+        loreText:
+          type: ["string", "null"]
+        currentState:
+          type: string
+        discoveredAt:
+          type: string
+
+    WorldDanger:
+      type: object
+      required: [value, state, label, defeatedBosses, activeThreats, failedIncursions, systemNote, nextRelief]
+      properties:
+        value:
+          type: integer
+          minimum: 0
+          maximum: 100
+        state:
+          type: string
+          enum: [critical, severe, unstable, guarded, recovering]
+        label:
+          type: string
+        defeatedBosses:
+          type: integer
+        activeThreats:
+          type: integer
+        failedIncursions:
+          type: integer
+        systemNote:
+          type: string
+        nextRelief:
+          type: string
+
+    ChronicleSummary:
+      type: object
+      additionalProperties: true
+      properties:
+        worldDanger:
+          $ref: "#/components/schemas/WorldDanger"
+        battleReplays:
+          type: array
+          items:
+            $ref: "#/components/schemas/CombatReplayEntry"
+        guildReports:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        campaignProgress:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        discoveredItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemDiscovery"
+        bossesDefeated:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        titlesEarned:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        personalRecords:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        map:
+          type: object
+          additionalProperties: true
+        majorMilestones:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        worldEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorldEvent"
+
+    CharacterSummary:
+      type: object
+      additionalProperties: true
+      properties:
+        player:
+          $ref: "#/components/schemas/Player"
+        gearSlots:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        titles:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        realEquipment:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    HealthImportEvent:
+      type: object
+      required: [externalId, recordedAt]
+      properties:
+        externalId:
+          type: string
+        recordedAt:
+          type: string
+        steps:
+          type: ["integer", "null"]
+        sleepHours:
+          type: ["number", "null"]
+        hrv:
+          type: ["number", "null"]
+        restingHr:
+          type: ["integer", "null"]
+        caloriesBurned:
+          type: ["integer", "null"]
+        activeMinutes:
+          type: ["integer", "null"]
+        weight:
+          type: ["number", "null"]
+
+    HealthImportBatch:
+      type: object
+      required: [source, events]
+      properties:
+        source:
+          type: string
+          enum: [apple_health, health_connect]
+        events:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/HealthImportEvent"
+
+    HealthImportResult:
+      type: object
+      required: [source, imported, duplicates, total]
+      properties:
+        source:
+          type: string
+        imported:
+          type: integer
+        duplicates:
+          type: integer
+        total:
+          type: integer

@@ -50,3 +50,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS player_clerk_id_unique ON player(clerk_id) WHE
 ## "Development mode" badge
 
 The orange "Development mode" badge on the Clerk sign-in card is expected in dev (test keys). It disappears automatically when the app is published to production with live keys.
+
+## Clerk proxy URL — dev vs production
+
+`VITE_CLERK_PROXY_URL` is set to `/api/__clerk` in `.replit`. The `clerkProxyMiddleware` is a no-op in dev (returns `next()`), so the proxy path falls into the auth router and returns 401. Fix: only pass `proxyUrl` to `ClerkProvider` in production:
+
+```ts
+const clerkProxyUrl = import.meta.env.PROD
+  ? import.meta.env.VITE_CLERK_PROXY_URL
+  : undefined;
+```
+
+**Why:** Dev Clerk loads its JS directly from Clerk CDN — the proxy is only needed for custom-domain production deployments. Passing the proxy URL in dev routes requests through the Express router which correctly rejects them as unauthorized.
+
+**How to apply:** Any new ClerkProvider setup must gate `proxyUrl` on `import.meta.env.PROD`.

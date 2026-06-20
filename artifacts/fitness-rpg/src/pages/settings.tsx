@@ -7,7 +7,7 @@ import { useSettings } from "@/hooks/use-settings";
 import { useBiometric } from "@/hooks/use-biometric";
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
-import { PageHeader } from "@/components/shared/page-header";
+import { AethoriaHeader, AethoriaPage } from "@/components/shared/aethoria-page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +16,7 @@ import {
   Bell, Shield, Fingerprint, Smartphone, Palette,
   Scale, Download, Info, ChevronRight, Check,
   Loader2, AlertCircle, Activity, Eye, Database,
-  Moon, Zap, Clock, Swords, LogIn, LogOut, User, RefreshCw, TriangleAlert, Volume2,
+  Moon, Zap, Clock, Swords, LogIn, LogOut, User, RefreshCw, TriangleAlert, Volume2, SlidersHorizontal,
 } from "lucide-react";
 
 function SettingRow({
@@ -96,9 +96,46 @@ const REMINDER_TIMES = [
   "12:00", "15:00", "17:00", "18:00", "19:00", "20:00", "21:00",
 ];
 
-export default function Settings() {
+const devAuthBypass =
+  import.meta.env.DEV && import.meta.env.VITE_DEV_AUTH_BYPASS === "true";
+
+function AccountAction() {
+  if (devAuthBypass) {
+    return (
+      <div className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-emerald-950/20 border border-emerald-800/40 text-emerald-300 text-sm font-semibold">
+        <LogIn className="w-4 h-4" />
+        Development Auth Active
+      </div>
+    );
+  }
+
+  return <ClerkAccountAction />;
+}
+
+function ClerkAccountAction() {
   const { isSignedIn } = useAuth();
   const { signOut, openSignIn } = useClerk();
+
+  return isSignedIn ? (
+    <button
+      onClick={() => signOut({ redirectUrl: "/" })}
+      className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-red-950/30 border border-red-800/40 text-red-400 hover:bg-red-950/50 hover:border-red-700/60 hover:text-red-300 transition-all text-sm font-semibold"
+    >
+      <LogOut className="w-4 h-4" />
+      Sign Out
+    </button>
+  ) : (
+    <button
+      onClick={() => openSignIn()}
+      className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-blue-950/30 border border-blue-700/40 text-blue-400 hover:bg-blue-950/50 hover:border-blue-600/60 hover:text-blue-300 transition-all text-sm font-semibold"
+    >
+      <LogIn className="w-4 h-4" />
+      Sign In
+    </button>
+  );
+}
+
+export default function Settings() {
   const [, navigate] = useLocation();
   const [confirmReset, setConfirmReset] = useState(false);
   const resetPlayer = useResetPlayer({
@@ -161,30 +198,14 @@ export default function Settings() {
   const appVersion = __APP_VERSION__;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-500 pb-10">
-      <PageHeader title="Settings" subtitle="Customize your hunter experience" />
+    <AethoriaPage className="animate-in fade-in duration-500">
+      <AethoriaHeader icon={SlidersHorizontal} title="Guild Settings" subtitle="Controls, safety, privacy, and presentation" />
 
       {/* Account */}
       <SectionHeader title="Account" icon={User} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-3">
-          {isSignedIn ? (
-            <button
-              onClick={() => signOut({ redirectUrl: "/" })}
-              className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-red-950/30 border border-red-800/40 text-red-400 hover:bg-red-950/50 hover:border-red-700/60 hover:text-red-300 transition-all text-sm font-semibold"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </button>
-          ) : (
-            <button
-              onClick={() => openSignIn()}
-              className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-blue-950/30 border border-blue-700/40 text-blue-400 hover:bg-blue-950/50 hover:border-blue-600/60 hover:text-blue-300 transition-all text-sm font-semibold"
-            >
-              <LogIn className="w-4 h-4" />
-              Sign In
-            </button>
-          )}
+          <AccountAction />
 
           {/* Recreate Character */}
           {!confirmReset ? (
@@ -421,6 +442,32 @@ export default function Settings() {
       <SectionHeader title="Units & Preferences" icon={Scale} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-0">
+          <SettingRow icon={Scale} label="Measurement System" description="Imperial is the default for setup and profile" iconColor="text-amber-400">
+            <div className="flex rounded-lg border border-border/50 overflow-hidden">
+              {[
+                { id: "imperial", label: "Imperial", weight: "lbs", distance: "mi" },
+                { id: "metric", label: "Metric", weight: "kg", distance: "km" },
+              ].map(system => {
+                const active = settings.units.weight === system.weight && settings.units.distance === system.distance;
+                return (
+                  <button
+                    key={system.id}
+                    onClick={() => {
+                      setSetting("units", "weight", system.weight as "kg" | "lbs");
+                      setSetting("units", "distance", system.distance as "km" | "mi");
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-mono transition-all",
+                      active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {system.label}
+                  </button>
+                );
+              })}
+            </div>
+          </SettingRow>
+
           <SettingRow icon={Scale} label="Weight Unit" description="For workout logs and biometrics" iconColor="text-cyan-400">
             <div className="flex rounded-lg border border-border/50 overflow-hidden">
               {(["kg", "lbs"] as const).map(unit => (
@@ -583,10 +630,10 @@ export default function Settings() {
 
           <SettingRow icon={Database} label="Export My Data" description="Download all your training history" iconColor="text-green-400">
             <button
-              onClick={() => toast({ title: "Coming soon", description: "Data export will be available in a future update." })}
+              onClick={() => navigate("/data")}
               className="text-xs text-primary font-medium flex items-center gap-1"
             >
-              Export <ChevronRight className="w-3 h-3" />
+              Roadmap <ChevronRight className="w-3 h-3" />
             </button>
           </SettingRow>
         </CardContent>
@@ -596,13 +643,25 @@ export default function Settings() {
       <SectionHeader title="About" icon={Info} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-0">
-          <SettingRow icon={Swords} label="Personal Fitness RPG" description={`Version ${appVersion}`} iconColor="text-primary">
+          <SettingRow icon={Swords} label="Ascension Quest: Legends of Aethoria" description={`Version ${appVersion}`} iconColor="text-primary">
             <span className="text-[10px] font-mono text-muted-foreground">v{appVersion}</span>
           </SettingRow>
 
-          <SettingRow icon={Shield} label="Privacy Policy" iconColor="text-muted-foreground">
-            <button onClick={() => toast({ title: "Privacy Policy", description: "All data is stored locally on your device and server. Nothing is shared." })} className="text-xs text-primary flex items-center gap-1">
+          <SettingRow icon={Shield} label="Privacy Policy" description="Launch policy surface and wearable disclosure" iconColor="text-muted-foreground">
+            <button onClick={() => navigate("/privacy")} className="text-xs text-primary flex items-center gap-1">
               View <ChevronRight className="w-3 h-3" />
+            </button>
+          </SettingRow>
+
+          <SettingRow icon={Info} label="Terms & Health Disclaimer" description="General coaching boundaries, pain guidance, and launch notes" iconColor="text-muted-foreground">
+            <button onClick={() => navigate("/terms")} className="text-xs text-primary flex items-center gap-1">
+              View <ChevronRight className="w-3 h-3" />
+            </button>
+          </SettingRow>
+
+          <SettingRow icon={Database} label="Configuration Checklist" description="Auth, database, OpenAI, mock mode, legal pages, and export/delete workflow" iconColor="text-muted-foreground">
+            <button onClick={() => navigate("/data")} className="text-xs text-primary flex items-center gap-1">
+              Open <ChevronRight className="w-3 h-3" />
             </button>
           </SettingRow>
 
@@ -614,12 +673,12 @@ export default function Settings() {
 
       {/* Save Button */}
       <Button
-        className="w-full gap-2 h-12 text-base font-bold shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
+        className="h-12 w-full gap-2 rounded-none bg-[#74291f] text-base font-bold text-[#f1dfc6] shadow-[0_0_20px_rgba(142,53,37,0.35)] hover:bg-[#8c3527]"
         onClick={() => toast({ title: "✓ Settings saved", description: "Your preferences have been applied." })}
       >
         <Check className="w-4 h-4" />
         Save Settings
       </Button>
-    </div>
+    </AethoriaPage>
   );
 }

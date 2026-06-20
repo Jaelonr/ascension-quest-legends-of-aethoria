@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useClerk } from "@clerk/react";
 import { useGetBiometrics, useUpdateBiometrics } from "@workspace/api-client-react";
 import { useSettings } from "@/hooks/use-settings";
-import { PageHeader } from "@/components/shared/page-header";
+import { AethoriaHeader, AethoriaPage, AethoriaPanel } from "@/components/shared/aethoria-page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,22 +12,60 @@ import { Dumbbell, Scale, Ruler, Activity, Save, ChevronRight, Info, Settings, L
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 
+const devAuthBypass = import.meta.env.DEV && import.meta.env.VITE_DEV_AUTH_BYPASS === "true";
+
+function SignOutButton() {
+  const { signOut } = useClerk();
+  return (
+    <button
+      onClick={() => signOut({ redirectUrl: "/" })}
+      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-900/40 bg-red-950/10 text-red-400/80 hover:bg-red-950/20 hover:border-red-700/50 hover:text-red-300 transition-all text-sm font-mono"
+    >
+      <LogOut className="w-4 h-4" />
+      Sign Out
+    </button>
+  );
+}
+
 const EQUIPMENT_TYPES = [
+  { id: "power_rack", label: "Power Rack" },
+  { id: "squat_rack", label: "Squat Rack" },
+  { id: "smith_machine", label: "Smith Machine" },
   { id: "barbell", label: "Barbell" },
-  { id: "dumbbell", label: "Dumbbells" },
-  { id: "cable", label: "Cable Machine" },
-  { id: "machine", label: "Weight Machines" },
-  { id: "kettlebell", label: "Kettlebell" },
-  { id: "bands", label: "Resistance Bands" },
-  { id: "bodyweight", label: "Bodyweight Only" },
-  { id: "pull_up_bar", label: "Pull-Up Bar" },
-  { id: "dip_bars", label: "Dip Bars" },
-  { id: "bench", label: "Flat Bench" },
+  { id: "plates", label: "Plates" },
+  { id: "dumbbells", label: "Dumbbells" },
+  { id: "adjustable_dumbbells", label: "Adjustable Dumbbells" },
+  { id: "kettlebells", label: "Kettlebells" },
+  { id: "adjustable_bench", label: "Adjustable Bench" },
+  { id: "flat_bench", label: "Flat Bench" },
   { id: "incline_bench", label: "Incline Bench" },
-  { id: "squat_rack", label: "Squat Rack / Power Rack" },
+  { id: "cable_machine", label: "Cable Machine" },
+  { id: "functional_trainer", label: "Functional Trainer" },
+  { id: "lat_pulldown", label: "Lat Pulldown" },
   { id: "leg_press", label: "Leg Press" },
-  { id: "cardio_machine", label: "Cardio Machines" },
+  { id: "hack_squat", label: "Hack Squat" },
+  { id: "belt_squat", label: "Belt Squat" },
+  { id: "pull_up_bar", label: "Pull-Up Bar" },
+  { id: "dip_station", label: "Dip Station" },
+  { id: "resistance_bands", label: "Resistance Bands" },
+  { id: "treadmill", label: "Treadmill" },
+  { id: "bike", label: "Bike" },
+  { id: "rower", label: "Rower" },
+  { id: "elliptical", label: "Elliptical" },
+  { id: "stair_climber", label: "Stair Climber" },
+  { id: "jump_rope", label: "Jump Rope" },
   { id: "heavy_bag", label: "Heavy Bag" },
+  { id: "fightcamp", label: "FightCamp" },
+  { id: "speed_bag", label: "Speed Bag" },
+  { id: "double_end_bag", label: "Double-End Bag" },
+  { id: "wrestling_mat", label: "Wrestling Mat" },
+  { id: "yoga_mat", label: "Yoga Mat" },
+  { id: "medicine_ball", label: "Medicine Ball" },
+  { id: "slam_ball", label: "Slam Ball" },
+  { id: "sled", label: "Sled" },
+  { id: "battle_ropes", label: "Battle Ropes" },
+  { id: "foam_roller", label: "Foam Roller" },
+  { id: "bodyweight", label: "Bodyweight Only" },
 ];
 
 // ── Unit conversions ────────────────────────────────────────────────────────
@@ -91,7 +129,6 @@ function numOrNull(s: string): number | null {
 }
 
 export default function Profile() {
-  const { signOut } = useClerk();
   const { data, isLoading } = useGetBiometrics();
   const update = useUpdateBiometrics();
   const { settings } = useSettings();
@@ -196,47 +233,48 @@ export default function Profile() {
       ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      <PageHeader
-        title="Hunter Profile"
-        subtitle="Biometric data & equipment access"
+    <AethoriaPage className="animate-in fade-in duration-500">
+      <AethoriaHeader
+        icon={Activity}
+        title="System Record"
+        subtitle="Biometrics, strength marks, and equipment access"
         action={
           <Link href="/settings">
-            <button className="w-9 h-9 rounded-lg border border-border/50 bg-black/20 flex items-center justify-center hover:border-primary/50 hover:bg-primary/10 transition-all">
-              <Settings className="w-4 h-4 text-muted-foreground" />
+            <button className="flex size-9 items-center justify-center border border-[#6b4d2f] bg-[#15130f] transition-all hover:border-[#c08c4e] hover:bg-[#1b1511]">
+              <Settings className="w-4 h-4 text-[#d9ad63]" />
             </button>
           </Link>
         }
       />
 
       {/* Unit system indicator */}
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center justify-between border border-[#3b3328] bg-[#11100e] px-3 py-2">
         <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
           Unit System
         </p>
         <div className="flex items-center gap-1 text-[10px] font-mono">
-          <span className={cn(isImperial ? "text-primary font-bold" : "text-muted-foreground")}>Imperial (lbs / in)</span>
+          <span className={cn(isImperial ? "font-bold text-[#d9ad63]" : "text-muted-foreground")}>Imperial (lbs / in)</span>
           <span className="text-white/20 mx-1">·</span>
-          <span className={cn(!isImperial ? "text-primary font-bold" : "text-muted-foreground")}>Metric (kg / cm)</span>
+          <span className={cn(!isImperial ? "font-bold text-[#d9ad63]" : "text-muted-foreground")}>Metric (kg / cm)</span>
           <Link href="/settings">
-            <span className="ml-2 text-[9px] text-primary/70 underline cursor-pointer">change</span>
+            <span className="ml-2 cursor-pointer text-[9px] text-[#d9ad63] underline">change</span>
           </Link>
         </div>
       </div>
 
       {/* Info Banner */}
-      <div className="flex items-start gap-3 p-3 rounded-xl border border-primary/20 bg-primary/5">
-        <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          This data is used by the <strong className="text-foreground">Workout Planner</strong> to recommend working weights based on your strength maxes and available equipment.
+      <AethoriaPanel accent className="flex items-start gap-3">
+        <Info className="mt-0.5 size-4 shrink-0 text-[#d9ad63]" />
+        <p className="text-xs leading-relaxed text-[#cfc5b8]">
+          The System uses this record to set fair commissions, recommend training loads, and help Aldric avoid assigning unsafe work.
         </p>
-      </div>
+      </AethoriaPanel>
 
       {/* Body Metrics */}
-      <Card className="border-border/50 bg-card/50">
+      <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-serif flex items-center gap-2">
-            <Scale className="w-4 h-4 text-primary" /> Body Metrics
+          <CardTitle className="flex items-center gap-2 font-serif text-sm text-[#d9ad63]">
+            <Scale className="w-4 h-4 text-[#d9ad63]" /> Body Metrics
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -251,10 +289,10 @@ export default function Profile() {
                 placeholder={isImperial ? "e.g. 70" : "e.g. 178"}
                 value={form.height}
                 onChange={e => set("height", e.target.value)}
-                className="bg-black/30 border-border/50 text-sm h-9"
+                className="h-9 border-[#3b3328] bg-[#0c0b09] text-sm"
               />
               {heightHint && (
-                <p className="text-[10px] font-mono text-primary/70">{heightHint}</p>
+                <p className="text-[10px] font-mono text-[#d9ad63]">{heightHint}</p>
               )}
             </div>
 
@@ -268,7 +306,7 @@ export default function Profile() {
                 placeholder={isImperial ? "e.g. 185" : "e.g. 82"}
                 value={form.weight}
                 onChange={e => set("weight", e.target.value)}
-                className="bg-black/30 border-border/50 text-sm h-9"
+                className="h-9 border-[#3b3328] bg-[#0c0b09] text-sm"
               />
             </div>
 
@@ -282,7 +320,7 @@ export default function Profile() {
                 placeholder="e.g. 15"
                 value={form.bodyFatPct}
                 onChange={e => set("bodyFatPct", e.target.value)}
-                className="bg-black/30 border-border/50 text-sm h-9"
+                className="h-9 border-[#3b3328] bg-[#0c0b09] text-sm"
               />
             </div>
           </div>
@@ -290,10 +328,10 @@ export default function Profile() {
       </Card>
 
       {/* 1RM Maxes */}
-      <Card className="border-border/50 bg-card/50">
+      <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-serif flex items-center gap-2">
-            <Dumbbell className="w-4 h-4 text-primary" /> Strength Maxes (1RM in {weightLabel})
+          <CardTitle className="flex items-center gap-2 font-serif text-sm text-[#d9ad63]">
+            <Dumbbell className="w-4 h-4 text-[#d9ad63]" /> Strength Maxes (1RM in {weightLabel})
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -302,7 +340,7 @@ export default function Profile() {
           </p>
 
           {!hasAny1rm && (
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <div className="flex items-center gap-2 border border-[#72552e] bg-[#1b1511] p-2">
               <ChevronRight className="w-3 h-3 text-yellow-400 shrink-0" />
               <p className="text-[11px] text-yellow-300">Fill in at least one max to get weight recommendations in the planner.</p>
             </div>
@@ -319,8 +357,8 @@ export default function Profile() {
                     value={form[field] as string}
                     onChange={e => set(field, e.target.value)}
                     className={cn(
-                      "bg-black/30 border-border/50 text-sm h-9 pr-8",
-                      form[field] && "border-primary/40 bg-primary/5"
+                      "h-9 border-[#3b3328] bg-[#0c0b09] pr-8 text-sm",
+                      form[field] && "border-[#d9ad63]/60 bg-[#1b1511]"
                     )}
                   />
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -334,10 +372,10 @@ export default function Profile() {
       </Card>
 
       {/* Equipment Access */}
-      <Card className="border-border/50 bg-card/50">
+      <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-serif flex items-center gap-2">
-            <Dumbbell className="w-4 h-4 text-primary" /> Available Equipment
+          <CardTitle className="flex items-center gap-2 font-serif text-sm text-[#d9ad63]">
+            <Dumbbell className="w-4 h-4 text-[#d9ad63]" /> Available Equipment
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -352,10 +390,10 @@ export default function Profile() {
                   key={eq.id}
                   onClick={() => toggleEquipment(eq.id)}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                    "border px-3 py-1.5 text-xs font-medium transition-all",
                     selected
-                      ? "border-primary bg-primary/20 text-primary"
-                      : "border-border/50 bg-black/20 text-muted-foreground hover:border-primary/30"
+                      ? "border-[#d9ad63] bg-[#3b2a18] text-[#d9ad63]"
+                      : "border-[#3b3328] bg-[#0c0b09] text-muted-foreground hover:border-[#6b4d2f]"
                   )}
                 >
                   {eq.label}
@@ -367,9 +405,9 @@ export default function Profile() {
       </Card>
 
       {/* Notes */}
-      <Card className="border-border/50 bg-card/50">
+      <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-serif">Injury / Limitation Notes</CardTitle>
+          <CardTitle className="font-serif text-sm text-[#d9ad63]">Injury / Limitation Notes</CardTitle>
         </CardHeader>
         <CardContent>
           <textarea
@@ -377,14 +415,14 @@ export default function Profile() {
             value={form.notes}
             onChange={e => { set("notes", e.target.value); }}
             rows={3}
-            className="w-full rounded-lg bg-black/30 border border-border/50 text-sm p-3 text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:border-primary/50"
+            className="w-full resize-none border border-[#3b3328] bg-[#0c0b09] p-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[#d9ad63] focus:outline-none"
           />
         </CardContent>
       </Card>
 
       {/* Save Button */}
       <Button
-        className="w-full h-12 text-base font-bold shadow-[0_0_20px_hsl(var(--primary)/0.4)]"
+        className="h-12 w-full rounded-none bg-[#74291f] text-base font-bold text-[#f1dfc6] shadow-[0_0_20px_rgba(142,53,37,0.35)] hover:bg-[#8c3527]"
         onClick={handleSave}
         disabled={update.isPending || isLoading}
       >
@@ -393,13 +431,7 @@ export default function Profile() {
       </Button>
 
       {/* Sign Out */}
-      <button
-        onClick={() => signOut({ redirectUrl: "/" })}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-900/40 bg-red-950/10 text-red-400/80 hover:bg-red-950/20 hover:border-red-700/50 hover:text-red-300 transition-all text-sm font-mono"
-      >
-        <LogOut className="w-4 h-4" />
-        Sign Out
-      </button>
-    </div>
+      {!devAuthBypass && <SignOutButton />}
+    </AethoriaPage>
   );
 }

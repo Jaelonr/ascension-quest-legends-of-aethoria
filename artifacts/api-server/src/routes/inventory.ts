@@ -1,10 +1,17 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { storeItemsTable, playerInventoryTable, playerTable, playerTitlesTable, titlesTable } from "@workspace/db";
+import { storeItemsTable, playerInventoryTable, playerTable, itemDiscoveriesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { getOrCreatePlayer, buildPlayerResponse } from "./player";
 
 const router = Router();
+const isLaunchStoreItem = (item: typeof storeItemsTable.$inferSelect) =>
+  item.type !== "stat_boost" && !(item.type === "xp_boost" && (item.effectValue ?? 0) > 10);
+
+function loreForItem(item: typeof storeItemsTable.$inferSelect) {
+  if (item.description.length > 12) return item.description;
+  return `The Hall revealed ${item.name} from a shelf that was empty a moment before. Aldric says useful things prefer useful hands.`;
+}
 
 router.get("/inventory", async (req, res) => {
   try {
@@ -99,7 +106,7 @@ router.post("/inventory/:id/use", async (req, res) => {
 router.get("/store/items", async (req, res) => {
   try {
     const items = await db.select().from(storeItemsTable).where(eq(storeItemsTable.available, true));
-    res.json(items.map(i => ({ ...i, createdAt: undefined })));
+    res.json(items.filter(isLaunchStoreItem).map(i => ({ ...i, createdAt: undefined })));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to get store items" });
@@ -111,7 +118,8 @@ const RANK_ORDER = ["E", "D", "C", "B", "A", "S"];
 router.get("/store/sections", async (req, res) => {
   try {
     const { player } = await getOrCreatePlayer(req.userId);
-    const allItems = await db.select().from(storeItemsTable).where(eq(storeItemsTable.available, true));
+    const allItems = (await db.select().from(storeItemsTable).where(eq(storeItemsTable.available, true)))
+      .filter(isLaunchStoreItem);
 
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
     const weekOfYear = Math.floor(dayOfYear / 7);
@@ -134,6 +142,10 @@ router.get("/store/sections", async (req, res) => {
     };
 
     res.json({
+      hall: {
+        title: "The Hall's Offerings",
+        lore: "The Hall is no mere shop. Aldric once faced the thing beneath its stones, bound it with mercy instead of pride, and now it reveals tools for adventurers who keep returning.",
+      },
       permanent: allItems.filter(i => i.section === "permanent").map(fmt),
       daily: rotate(dailyPool, dayOfYear, 5).map(fmt),
       weekly: rotate(weeklyPool, weekOfYear, 6).map(fmt),
@@ -153,6 +165,9 @@ router.post("/store/purchase", async (req, res) => {
     const [item] = await db.select().from(storeItemsTable).where(eq(storeItemsTable.id, itemId));
     if (!item) return void res.status(404).json({ error: "Item not found" });
     if (!item.available) return void res.status(400).json({ error: "Item not available" });
+    if (!isLaunchStoreItem(item)) {
+      return void res.status(400).json({ error: "This item is not available in the launch store" });
+    }
 
     const totalCost = item.goldCost * quantity;
     if (player.gold < totalCost) {
@@ -180,6 +195,20 @@ router.post("/store/purchase", async (req, res) => {
         equipped: false,
       });
     }
+    await db.insert(itemDiscoveriesTable).values({
+      playerId: player.id,
+      itemId: item.id,
+      itemName: item.name,
+      rarity: item.rarity,
+      category: item.category,
+      sourceType: "hall_offering",
+      sourceLabel: "The Hall's Offerings",
+      loreText: loreForItem(item),
+      currentState: "owned",
+    }).onConflictDoUpdate({
+      target: [itemDiscoveriesTable.playerId, itemDiscoveriesTable.itemName, itemDiscoveriesTable.sourceType],
+      set: { currentState: "owned", updatedAt: new Date() },
+    });
 
     res.json({
       success: true,
@@ -191,6 +220,55 @@ router.post("/store/purchase", async (req, res) => {
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to purchase item" });
+  }
+});
+
+router.post("/inventory/:id/sell", async (req, res) => {
+  try {
+    const inventoryId = parseInt(req.params.id);
+    const { player, stats } = await getOrCreatePlayer(req.userId);
+    const [item] = await db.select({ inv: playerInventoryTable, store: storeItemsTable })
+      .from(playerInventoryTable)
+      .innerJoin(storeItemsTable, eq(playerInventoryTable.itemId, storeItemsTable.id))
+      .where(and(eq(playerInventoryTable.id, inventoryId), eq(playerInventoryTable.playerId, player.id)));
+    if (!item) return void res.status(404).json({ error: "Item not found" });
+    const quantity = Math.max(1, Number(req.body?.quantity ?? 1));
+    const sold = Math.min(quantity, item.inv.quantity);
+    const goldReturned = Math.max(1, Math.floor(item.store.goldCost * 0.25)) * sold;
+    const [updatedPlayer] = await db.update(playerTable)
+      .set({ gold: player.gold + goldReturned, updatedAt: new Date() })
+      .where(eq(playerTable.id, player.id))
+      .returning();
+    if (item.inv.quantity <= sold) {
+      await db.delete(playerInventoryTable).where(eq(playerInventoryTable.id, inventoryId));
+    } else {
+      await db.update(playerInventoryTable)
+        .set({ quantity: item.inv.quantity - sold })
+        .where(eq(playerInventoryTable.id, inventoryId));
+    }
+    await db.insert(itemDiscoveriesTable).values({
+      playerId: player.id,
+      itemId: item.store.id,
+      itemName: item.store.name,
+      rarity: item.store.rarity,
+      category: item.store.category,
+      sourceType: "hall_offering",
+      sourceLabel: "The Hall's Offerings",
+      loreText: loreForItem(item.store),
+      currentState: "sold",
+    }).onConflictDoUpdate({
+      target: [itemDiscoveriesTable.playerId, itemDiscoveriesTable.itemName, itemDiscoveriesTable.sourceType],
+      set: { currentState: "sold", updatedAt: new Date() },
+    });
+    res.json({
+      success: true,
+      message: `Sold ${item.store.name} x${sold}. The Chronicle keeps its discovery record.`,
+      goldReceived: goldReturned,
+      player: buildPlayerResponse(updatedPlayer, stats),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Failed to sell item" });
   }
 });
 

@@ -8,13 +8,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pkg = require("./package.json") as { version: string };
 
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+const rawPort = process.env.PORT ?? "5173";
 
 const port = Number(rawPort);
 
@@ -22,13 +16,8 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+const basePath = process.env.BASE_PATH ?? "/";
+const apiTarget = process.env.API_TARGET ?? "http://127.0.0.1:5055";
 
 export default defineConfig({
   base: basePath,
@@ -43,9 +32,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "icons/icon.svg"],
       manifest: {
-        name: "Personal Fitness RPG",
-        short_name: "FitnessRPG",
-        description: "Level up your fitness. Track workouts, earn XP, defeat bosses.",
+        name: "Ascension Quest: Legends of Aethoria",
+        short_name: "Ascension Quest",
+        description: "Turn training, nutrition, and recovery into a living fantasy adventure across Aethoria.",
         theme_color: "#00e5ff",
         background_color: "#0a0a0f",
         display: "standalone",
@@ -122,6 +111,12 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: apiTarget,
+        changeOrigin: true,
+      },
+    },
     fs: {
       strict: true,
     },

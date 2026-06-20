@@ -1,5 +1,5 @@
 export type CombatStyle = "strength" | "striking" | "conditioning" | "grappling" | "recovery" | "discipline";
-export type NarrativeIntensity = "minimal" | "balanced" | "dramatic";
+export type NarrativeIntensity = "technical" | "balanced" | "immersive";
 
 export interface StyleScores {
   strength: number;
@@ -33,6 +33,8 @@ export interface CombatInput {
   baseClass: string;
   playerName: string;
   narrativeIntensity: NarrativeIntensity;
+  elementalAffinity?: string;
+  narrativeModifiers?: string[];
 }
 
 export interface CombatEvent {
@@ -229,7 +231,7 @@ function pickEnemy(rank: string, style: CombatStyle): [string, string] {
 
 const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = {
   strength: {
-    minimal: [
+    technical: [
       "Heavy compound lifts dominated the session.",
       "Significant loading across major muscle groups.",
       "Progressive overload applied.",
@@ -239,14 +241,14 @@ const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = 
       "Raw strength output overwhelmed the enemy's guards.",
       "Iron discipline under the bar translated into crushing blows.",
     ],
-    dramatic: [
+    immersive: [
       "With earth-shaking resolve, you drove the barbell through every rep — each repetition shattering the enemy's armor like paper.",
       "The dungeon walls trembled as your raw output reached critical mass. The enemy's guard broke under the pressure.",
       "You became an unmovable force. The enemy could not withstand your crushing power and staggered backward.",
     ],
   },
   striking: {
-    minimal: [
+    technical: [
       "Striking-focused session completed.",
       "High output across punch/kick combinations.",
       "Speed and precision maintained.",
@@ -256,14 +258,14 @@ const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = 
       "Swift footwork and precision strikes kept the enemy off balance throughout.",
       "You slipped the counterattack and returned fire with a brutal combination.",
     ],
-    dramatic: [
+    immersive: [
       "You unleashed a storm of precision — jab, cross, hook — the enemy barely registered the first hit before the third had already landed.",
       "Moving like smoke, you slipped beneath the enemy's guard and detonated an elbow strike that rocked the encounter.",
       "A flurry of footwork and controlled aggression dismantled the enemy's strategy. They had no answer for your tempo.",
     ],
   },
   conditioning: {
-    minimal: [
+    technical: [
       "Cardio/conditioning session logged.",
       "Sustained effort across full session duration.",
       "Endurance output maintained.",
@@ -273,14 +275,14 @@ const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = 
       "Where others would have slowed, you accelerated — the enemy's stamina failed first.",
       "High-tempo output wore the enemy down before the final exchange.",
     ],
-    dramatic: [
+    immersive: [
       "You circled the enemy like wind — never stopping, never tiring, always pressuring. When it finally slowed, you were still fresh.",
       "Your conditioning outlasted everything the dungeon threw at you. The enemy exhausted itself trying to keep up.",
       "The encounter stretched on, but you had trained for this. While the enemy gasped, you moved through it like water.",
     ],
   },
   grappling: {
-    minimal: [
+    technical: [
       "Grappling/mat work session completed.",
       "Control and positioning work logged.",
       "Takedown and ground work practiced.",
@@ -290,14 +292,14 @@ const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = 
       "Control over positioning denied the enemy any chance to counter.",
       "A precise takedown entry and relentless ground pressure sealed the outcome.",
     ],
-    dramatic: [
+    immersive: [
       "The moment the enemy committed to an attack, you shot in — a perfect level change, a thunderous double-leg. It had no answer.",
       "You pinned it to the ground with methodical control. No matter how it struggled, your weight and technique held fast.",
       "From your back you worked — shrimping, framing, regaining guard. When the opening came, the submission was already inevitable.",
     ],
   },
   recovery: {
-    minimal: [
+    technical: [
       "Recovery/mobility session completed.",
       "Active rest and tissue work logged.",
       "Readiness maintained.",
@@ -307,14 +309,14 @@ const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = 
       "Mobility and recovery work replenished your combat reserves before the next Gate opens.",
       "Proactive recovery is how champions sustain — today you invested in tomorrow's victories.",
     ],
-    dramatic: [
+    immersive: [
       "Like a fortress preparing for siege, you reinforced every joint and restored every muscle. The next Gate will face a fully recharged Hunter.",
       "Your guard regenerated. Fatigue cleansed. The Shadow within you receded — replaced by pristine combat readiness.",
       "Smart hunters know: a weapon that is never maintained becomes dull. Today you sharpened the blade.",
     ],
   },
   discipline: {
-    minimal: [
+    technical: [
       "Nutrition targets met. Discipline bonus applied.",
       "Calorie and protein adherence tracked.",
     ],
@@ -323,7 +325,7 @@ const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = 
       "Hitting your nutrition targets is a form of combat. Your body had exactly what it needed.",
       "Discipline off the mat is discipline on it. Your fuel management granted a hidden edge.",
     ],
-    dramatic: [
+    immersive: [
       "While others crumbled under hunger and poor fueling, your calculated nutrition kept your aura burning at full intensity.",
       "The Corruption could not take hold. Your mental discipline held the line — every macro accounted for, every temptation resisted.",
       "Your nutritional precision was a secret weapon. The enemy never expected a Hunter this prepared.",
@@ -344,7 +346,7 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
   const events: CombatEvent[] = [];
   const intensity = input.narrativeIntensity;
 
-  if (intensity === "minimal") {
+  if (intensity === "technical") {
     events.push({ type: "strike", text: pick(STYLE_EVENTS[dominant][intensity]) });
     if (input.prCount > 0) {
       events.push({ type: "pr", text: `${input.prCount} personal record${input.prCount > 1 ? "s" : ""} set this session.` });
@@ -361,11 +363,11 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
 
     if (input.prCount > 0) {
       const prEvents: Record<NarrativeIntensity, string> = {
-        minimal: `PR: ${input.prCount} new record${input.prCount > 1 ? "s" : ""} set.`,
+        technical: `PR: ${input.prCount} new record${input.prCount > 1 ? "s" : ""} set.`,
         balanced: input.prCount === 1
           ? "You set a new personal record — the numbers don't lie. You are stronger today than you were before."
           : `You shattered ${input.prCount} personal records in a single session. The System registered each breakthrough.`,
-        dramatic: input.prCount === 1
+        immersive: input.prCount === 1
           ? "The System flashed a notification: PERSONAL RECORD BROKEN. Your body crossed a threshold it had never reached before. The Gate shuddered."
           : `In a display of raw potential, you obliterated ${input.prCount} personal records. The enemy recoiled. The dungeon itself registered the shift in power.`,
       };
@@ -374,9 +376,9 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
 
     if (input.durationMinutes >= 60) {
       const durationEvents: Record<NarrativeIntensity, string> = {
-        minimal: `${input.durationMinutes} minutes of continuous effort.`,
+        technical: `${input.durationMinutes} minutes of continuous effort.`,
         balanced: `A full ${input.durationMinutes}-minute session — your endurance reserves proved deeper than the enemy anticipated.`,
-        dramatic: `${input.durationMinutes} minutes of unbroken combat. Most Hunters would have retreated. You pushed forward into the dungeon's depths.`,
+        immersive: `${input.durationMinutes} minutes of unbroken combat. Most Hunters would have retreated. You pushed forward into the dungeon's depths.`,
       };
       events.push({ type: "stat", text: durationEvents[intensity] });
     }
@@ -388,20 +390,31 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
 
   if (input.gearDrop) {
     const gearEvents: Record<NarrativeIntensity, string> = {
-      minimal: `Gear drop: ${input.gearDrop.name} (${input.gearDrop.rarity}).`,
+      technical: `Gear drop: ${input.gearDrop.name} (${input.gearDrop.rarity}).`,
       balanced: `The dungeon yielded its tribute: ${input.gearDrop.name} — a ${input.gearDrop.rarity} ${input.gearDrop.slot} materialized in your inventory.`,
-      dramatic: `As the enemy dissolved into shadow, a single item remained. The ${input.gearDrop.name} (${input.gearDrop.rarity.toUpperCase()}) — forged in the dungeon's core — bound itself to you.`,
+      immersive: `As the enemy dissolved into shadow, a single item remained. The ${input.gearDrop.name} (${input.gearDrop.rarity.toUpperCase()}) — forged in the dungeon's core — bound itself to you.`,
     };
     events.push({ type: "gear", text: gearEvents[intensity] });
+  }
+
+  if (input.elementalAffinity && input.elementalAffinity !== "physical") {
+    const affinity = input.elementalAffinity.charAt(0).toUpperCase() + input.elementalAffinity.slice(1);
+    const modifier = input.narrativeModifiers?.[0];
+    events.push({
+      type: "special",
+      text: modifier
+        ? `${affinity} mana answered your equipped relic: ${modifier}`
+        : `${affinity} mana gathered around your technique, changing how the enemy received the blow.`,
+    });
   }
 
   let raidImpact: string | null = null;
   if (input.activeRaidTitles.length > 0) {
     const raidName = input.activeRaidTitles[0]!;
     const raidEvents: Record<NarrativeIntensity, string> = {
-      minimal: `Raid progress: "${raidName}" updated.`,
+      technical: `Raid progress: "${raidName}" updated.`,
       balanced: `Your effort dealt damage to the ${raidName} raid. The boss is weakening.`,
-      dramatic: `Your ${dominant} output cracked the ${raidName}'s outer defense. The boss could feel the shift — your Hunter's aura growing stronger with each session.`,
+      immersive: `Your ${dominant} output cracked the ${raidName}'s outer defense. The boss could feel the shift — your Hunter's aura growing stronger with each session.`,
     };
     raidImpact = raidEvents[intensity];
     events.push({ type: "raid", text: raidImpact });

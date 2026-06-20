@@ -14,3 +14,4 @@ export * from "./conversations";
 export * from "./messages";
 export * from "./wearables";
 export * from "./guild-reports";
+export * from "./guild-hall";
