@@ -52,6 +52,7 @@ export interface CombatReplayData {
   events: CombatEvent[];
   styleScores: StyleScores;
   raidImpact: string | null;
+  narrativeConsequence: string | null;
 }
 
 const STRENGTH_KEYWORDS = [
@@ -337,6 +338,63 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
+function generateNarrativeConsequence(input: CombatInput, verdict: string): string {
+  const { narrativeIntensity: intensity, prCount, nutritionMet, activeRaidTitles, gearDrop } = input;
+
+  const parts: string[] = [];
+
+  if (intensity === "technical") {
+    if (prCount > 0) parts.push(`PR registered. Baseline updated for next session.`);
+    else if (nutritionMet) parts.push("Nutrition targets met. Ready for next gate.");
+    else parts.push("Session logged.");
+    if (activeRaidTitles.length > 0) parts.push(`"${activeRaidTitles[0]}" raid updated.`);
+    if (gearDrop) parts.push(`${gearDrop.name} (${gearDrop.rarity}) added to inventory.`);
+    return parts.join(" ");
+  }
+
+  if (verdict === "Victory" && prCount > 0) {
+    parts.push(intensity === "immersive"
+      ? "A threshold broken cannot be unbroken. The next Gate opens to a Hunter of greater power. Your name has been noted in the dungeon's ledger."
+      : "You broke a record today. Carry that proof into the next session — you are stronger than you were.");
+  } else if (verdict === "Victory") {
+    parts.push(intensity === "immersive"
+      ? "The Gate has been cleared. Your aura strengthens. The next encounter will feel what you have become."
+      : "Victory secured. Arrive at the next session with momentum on your side.");
+  } else if (verdict === "Narrow Victory") {
+    parts.push(intensity === "immersive"
+      ? "A close fight leaves marks on both sides. Rest well. The next Gate will not expect a Hunter who recovers this fast."
+      : "Hard-fought win. Take what you need to recover and come back sharper.");
+  } else if (verdict === "Strategic Retreat") {
+    parts.push(intensity === "immersive"
+      ? "You withdrew when others would have broken. That choice is a form of mastery. Your body enters the next session with elevated recovery — full MP restored."
+      : "Smart decision to step back today. Show up fresh — your discipline carries forward.");
+  } else {
+    if (nutritionMet) {
+      parts.push(intensity === "immersive"
+        ? "No drama, no theater — just the work and the fuel to sustain it. Consistency is how Hunters outlast every obstacle."
+        : "Steady session, nutrition on point. That is how streaks are built.");
+    } else {
+      parts.push(intensity === "immersive"
+        ? "You showed up. In a world that rewards those who return, showing up is already a victory of its own kind."
+        : "Session complete. Every rep compounds. Keep the streak alive.");
+    }
+  }
+
+  if (activeRaidTitles.length > 0) {
+    parts.push(intensity === "immersive"
+      ? `The ${activeRaidTitles[0]} has registered your presence. Continue to press the advantage — the boss does not get stronger while you do.`
+      : `Raid "${activeRaidTitles[0]}" damage dealt. Return to maintain pressure.`);
+  }
+
+  if (gearDrop) {
+    parts.push(intensity === "immersive"
+      ? `The ${gearDrop.name} bound itself to you as the dungeon fell. Equip it — and let the next Gate feel the difference.`
+      : `${gearDrop.name} (${gearDrop.rarity}) acquired. Equip it before your next session.`);
+  }
+
+  return parts.join(" ");
+}
+
 export function generateCombatReplay(input: CombatInput): CombatReplayData {
   const { dominant, secondary, scores } = classifyWorkoutStyle(input);
   const hybridArchetype = getHybridArchetype(scores);
@@ -431,6 +489,8 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
     verdict = input.prCount > 0 ? "Victory" : "Narrow Victory";
   }
 
+  const narrativeConsequence = generateNarrativeConsequence(input, verdict);
+
   return {
     encounterName,
     enemyName,
@@ -441,6 +501,7 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
     events,
     styleScores: scores,
     raidImpact,
+    narrativeConsequence,
   };
 }
 

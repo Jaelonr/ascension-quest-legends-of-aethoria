@@ -1442,6 +1442,83 @@ export interface GuildMasterMessageInput {
   conversationId: number;
 }
 
+export interface MissionStartResult {
+  success: boolean;
+  questId: number;
+  title: string;
+  missionStartedAt: string;
+}
+
+export type MissionAbandonResultSeverity = typeof MissionAbandonResultSeverity[keyof typeof MissionAbandonResultSeverity];
+
+
+export const MissionAbandonResultSeverity = {
+  slight: 'slight',
+  moderate: 'moderate',
+  severe: 'severe',
+} as const;
+
+export interface MissionAbandonResult {
+  severity: MissionAbandonResultSeverity;
+  narrative: string;
+  questTitle: string;
+}
+
+export type CampaignStoryQuestStatus = typeof CampaignStoryQuestStatus[keyof typeof CampaignStoryQuestStatus];
+
+
+export const CampaignStoryQuestStatus = {
+  active: 'active',
+  completed: 'completed',
+  claimed: 'claimed',
+  locked: 'locked',
+} as const;
+
+export interface CampaignStoryQuest {
+  campaignId: number;
+  dbId?: number | null;
+  title: string;
+  description: string;
+  lore?: string | null;
+  difficulty?: string | null;
+  fitnessMapping?: string | null;
+  xpReward: number;
+  goldReward: number;
+  status: CampaignStoryQuestStatus;
+  missionStartedAt?: string | null;
+  abandonedNarrative?: string | null;
+}
+
+export type CampaignStoryChapterStatus = typeof CampaignStoryChapterStatus[keyof typeof CampaignStoryChapterStatus];
+
+
+export const CampaignStoryChapterStatus = {
+  active: 'active',
+  completed: 'completed',
+  locked: 'locked',
+} as const;
+
+export interface CampaignStoryChapter {
+  chapter: number;
+  chapterName: string;
+  status: CampaignStoryChapterStatus;
+  quests: CampaignStoryQuest[];
+}
+
+export type CampaignStoryActiveMission = {
+  dbId: number;
+  title: string;
+  missionStartedAt: string;
+} | null;
+
+export interface CampaignStory {
+  currentChapter: number;
+  currentQuestTitle?: string | null;
+  totalChapters: number;
+  chapters: CampaignStoryChapter[];
+  activeMission?: CampaignStoryActiveMission;
+}
+
 export type CampaignQuestStatusStatus = typeof CampaignQuestStatusStatus[keyof typeof CampaignQuestStatusStatus];
 
 
@@ -1469,6 +1546,12 @@ export interface CombatEvent {
 
 export type CombatReplayEntryStyleScores = {[key: string]: number};
 
+export type CombatReplayEntryGearDrop = {
+  name?: string;
+  rarity?: string;
+  slot?: string;
+} | null;
+
 export interface CombatReplayEntry {
   id: number;
   playerId?: number;
@@ -1491,6 +1574,9 @@ export interface CombatReplayEntry {
   narrativeModifiers?: string[];
   /** @nullable */
   raidImpact?: string | null;
+  gearDrop?: CombatReplayEntryGearDrop;
+  /** @nullable */
+  narrativeConsequence?: string | null;
   narrativeIntensity: string;
   createdAt: string;
 }
@@ -1944,6 +2030,14 @@ export type UnsubscribePushBody = {
 
 export type UnsubscribePush200 = {
   success?: boolean;
+};
+
+export type StartCampaignMissionBody = {
+  dbId: number;
+};
+
+export type AbandonCampaignMissionBody = {
+  dbId: number;
 };
 
 export type GetBattleLogParams = {

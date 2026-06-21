@@ -5,7 +5,10 @@ import {
   getGetGuildHallTodayQueryKey,
   useGetGuildHallToday,
   useGetGuildMasterConversation,
+  useGetCampaignStory,
   useReportToGuildMaster,
+  type CampaignStoryChapter,
+  type CampaignStoryQuest,
   type GuildHallReportResult,
   type QuestTask,
 } from "@workspace/api-client-react";
@@ -13,18 +16,23 @@ import {
   Apple,
   BookOpen,
   Check,
+  ChevronDown,
+  ChevronRight,
   Clock3,
   Crown,
   Dumbbell,
   Flame,
+  Gift,
   Landmark,
   Loader2,
+  Lock,
   MapPin,
   MessageCircle,
   Route,
   Send,
   Shield,
   Sparkles,
+  Swords,
   Utensils,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -145,6 +153,121 @@ function CommissionLocationPanel({ commission }: { commission: any }) {
   );
 }
 
+const GH_DIFF: Record<string, string> = {
+  E: "text-[#8f887d] border-[#3b3328]", D: "text-green-400 border-green-600/30",
+  C: "text-blue-400 border-blue-600/30", B: "text-purple-400 border-purple-600/30",
+  A: "text-orange-400 border-orange-600/30", S: "text-[#d9ad63] border-[#d9ad63]/40",
+};
+const GH_STATUS: Record<string, { label: string; color: string; Icon: React.ElementType }> = {
+  claimed:   { label: "Completed",    color: "text-green-400",  Icon: Check },
+  completed: { label: "Claim Reward", color: "text-[#d9ad63]", Icon: Gift },
+  active:    { label: "In Progress",  color: "text-[#49a3a0]", Icon: Swords },
+  locked:    { label: "???",          color: "text-[#6b5d4f]", Icon: Lock },
+};
+
+function GHQuestRow({ quest }: { quest: CampaignStoryQuest }) {
+  const [open, setOpen] = useState(quest.status === "active" || quest.status === "completed");
+  const s = GH_STATUS[quest.status] ?? GH_STATUS.locked;
+  const isLocked = quest.status === "locked";
+  return (
+    <div className={cn("border-b border-[#3b3328] last:border-b-0", isLocked && "opacity-50")}>
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+        <s.Icon className={cn("size-3.5 shrink-0", s.color)} />
+        <div className="min-w-0 flex-1">
+          <p className={cn("font-serif text-sm font-bold", isLocked ? "text-[#6b5d4f]" : "text-[#d8c4a5]")}>{quest.title}</p>
+          <p className={cn("text-[10px]", s.color)}>{s.label}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {quest.difficulty && <span className={cn("border px-1 text-[10px] font-mono", GH_DIFF[quest.difficulty] ?? "")}>{quest.difficulty}</span>}
+          {open ? <ChevronDown className="size-3 text-[#8f887d]" /> : <ChevronRight className="size-3 text-[#8f887d]" />}
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-[#3b3328] bg-[#0c0b09] px-4 pb-4 pt-3 space-y-2">
+          <p className={cn("text-xs leading-relaxed", isLocked ? "italic text-[#6b5d4f]" : "text-[#b7ab9c]")}>{quest.description}</p>
+          {quest.lore && (
+            <div className="border-l-2 border-[#9d3e2a]/60 bg-[#1b1511] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest text-[#9d8f80] mb-1">Guild Lore</p>
+              <p className="text-xs italic leading-relaxed text-[#cfc5b8]">{quest.lore}</p>
+            </div>
+          )}
+          {quest.fitnessMapping && !isLocked && (
+            <p className="text-[10px] text-[#8f887d]"><span className="font-mono text-[#9d8f80]">Objective:</span> {quest.fitnessMapping}</p>
+          )}
+          <div className="flex gap-4 text-[10px] font-mono">
+            <span className="text-[#49a3a0]">+{quest.xpReward} XP</span>
+            <span className="text-[#d7a54d]">+{quest.goldReward} Gold</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GHChapterBlock({ chapter, defaultOpen }: { chapter: CampaignStoryChapter; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const isLocked = chapter.status === "locked";
+  const done = chapter.quests.filter(q => q.status === "claimed").length;
+  const revealed = chapter.quests.filter(q => q.status !== "locked").length;
+  return (
+    <div className={cn("border", isLocked ? "border-[#2a2520]" : "border-[#6b4d2f]", "bg-[#11100e]")}>
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center gap-3 bg-[#0c0b09] px-4 py-3 text-left">
+        <div className={cn("flex size-7 items-center justify-center border font-mono text-xs font-bold shrink-0",
+          chapter.status === "completed" ? "border-green-600/40 text-green-400" :
+          chapter.status === "active"    ? "border-[#d9ad63]/40 text-[#d9ad63]" :
+                                          "border-[#3b3328] text-[#6b5d4f]",
+        )}>
+          {chapter.status === "completed" ? "✓" : isLocked ? "?" : chapter.chapter}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={cn("font-serif text-sm font-bold", isLocked ? "text-[#6b5d4f]" : "text-[#d9ad63]")}>
+            {isLocked ? `Chapter ${chapter.chapter} — ???` : `Ch. ${chapter.chapter}: ${chapter.chapterName}`}
+          </p>
+          {!isLocked && <p className="text-[10px] text-[#8f887d]">{done}/{revealed} complete</p>}
+        </div>
+        {open ? <ChevronDown className="size-4 text-[#8f887d] shrink-0" /> : <ChevronRight className="size-4 text-[#8f887d] shrink-0" />}
+      </button>
+      {open && (
+        <div className="border-t border-[#3b3328]">
+          {chapter.quests.map(q => <GHQuestRow key={q.campaignId} quest={q} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CampaignStoryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { data: story, isLoading } = useGetCampaignStory({ query: { queryKey: ["/api/campaign/story"], enabled: open } });
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md border-[#6e4d2d] bg-[#11100e] text-[#eee5d7]">
+        <DialogHeader>
+          <DialogTitle className="font-serif text-[#d9ad63]">Campaign — Aethoria's Story</DialogTitle>
+        </DialogHeader>
+        {isLoading && <div className="space-y-2"><div className="h-10 animate-pulse rounded bg-[#1a1815]" /><div className="h-10 animate-pulse rounded bg-[#1a1815]" /></div>}
+        {story && (
+          <>
+            <div className="border border-[#6b4d2f]/50 bg-[#0c0b09] px-3 py-2 text-xs">
+              <p className="text-[9px] uppercase tracking-widest text-[#8f887d] font-mono">Current Position</p>
+              <p className="mt-0.5 font-serif font-bold text-[#d9ad63]">
+                Chapter {story.currentChapter}
+                {story.currentQuestTitle && <span className="font-normal text-[#b7ab9c]"> — {story.currentQuestTitle}</span>}
+              </p>
+            </div>
+            <ScrollArea className="max-h-[55vh] pr-2">
+              <div className="space-y-2 py-1">
+                {story.chapters.map(ch => (
+                  <GHChapterBlock key={ch.chapter} chapter={ch} defaultOpen={ch.status === "active"} />
+                ))}
+              </div>
+            </ScrollArea>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function GuildMasterDialog({ open, onOpenChange, initialReport }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -192,6 +315,7 @@ function GuildMasterDialog({ open, onOpenChange, initialReport }: {
         .join("");
       if (answer) setLocalLines((items) => [...items, { id: `assistant-${Date.now()}`, role: "assistant", content: answer }]);
       await refetch();
+      setLocalLines([]);
     } catch {
       toast({ title: "Aldric is unavailable", description: "The Guild's connection was interrupted. Try again.", variant: "destructive" });
     } finally {
@@ -282,6 +406,7 @@ export default function GuildHall() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [campaignOpen, setCampaignOpen] = useState(false);
   const [reportResult, setReportResult] = useState<GuildHallReportResult | null>(null);
   const report = useReportToGuildMaster({
     mutation: {
@@ -368,16 +493,24 @@ export default function GuildHall() {
 
       <section className="mt-4 grid grid-cols-4 border border-[#514332] bg-[#11100e]">
         {[
-          { icon: Crown, label: "Rank", value: `${data.player.rank}-Rank`, color: "text-[#d6a14b]" },
-          { icon: Sparkles, label: "Level", value: `Lv. ${data.player.level}`, color: "text-[#d8c4a5]" },
-          { icon: Flame, label: "Streak", value: `${data.player.streakDays} days`, color: "text-[#dc7540]" },
-          { icon: BookOpen, label: "Campaign", value: `Ch. ${data.campaign.chapter}`, color: "text-[#55a6a1]" },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="border-r border-[#3b3328] px-1 py-3 text-center last:border-r-0">
-            <Icon className={cn("mx-auto size-4", color)} />
-            <p className="mt-1 text-[9px] uppercase text-[#80796f]">{label}</p>
-            <p className="mt-0.5 truncate font-serif text-xs text-[#e2d8ca]">{value}</p>
-          </div>
+          { icon: Crown, label: "Rank", value: `${data.player.rank}-Rank`, color: "text-[#d6a14b]", onClick: undefined },
+          { icon: Sparkles, label: "Level", value: `Lv. ${data.player.level}`, color: "text-[#d8c4a5]", onClick: undefined },
+          { icon: Flame, label: "Streak", value: `${data.player.streakDays} days`, color: "text-[#dc7540]", onClick: undefined },
+          { icon: BookOpen, label: "Campaign", value: `Ch. ${data.campaign.chapter}`, color: "text-[#55a6a1]", onClick: () => setCampaignOpen(true) },
+        ].map(({ icon: Icon, label, value, color, onClick }) => (
+          onClick ? (
+            <button key={label} type="button" onClick={onClick} className="border-r border-[#3b3328] px-1 py-3 text-center hover:bg-[#1a1815] transition-colors last:border-r-0">
+              <Icon className={cn("mx-auto size-4", color)} />
+              <p className="mt-1 text-[9px] uppercase text-[#80796f]">{label}</p>
+              <p className="mt-0.5 truncate font-serif text-xs text-[#55a6a1]">{value} ›</p>
+            </button>
+          ) : (
+            <div key={label} className="border-r border-[#3b3328] px-1 py-3 text-center last:border-r-0">
+              <Icon className={cn("mx-auto size-4", color)} />
+              <p className="mt-1 text-[9px] uppercase text-[#80796f]">{label}</p>
+              <p className="mt-0.5 truncate font-serif text-xs text-[#e2d8ca]">{value}</p>
+            </div>
+          )
         ))}
       </section>
 
@@ -441,6 +574,7 @@ export default function GuildHall() {
       )}
 
       <GuildMasterDialog open={dialogOpen} onOpenChange={setDialogOpen} initialReport={reportResult} />
+      <CampaignStoryDialog open={campaignOpen} onOpenChange={setCampaignOpen} />
       <p className={cn("mt-4 text-center text-[11px]", allDone ? "text-[#69a97b]" : "text-[#7e776d]")}>{allDone ? "The Guild is ready to receive your report." : "Consistency is the weapon. The next action is enough."}</p>
     </div>
   );

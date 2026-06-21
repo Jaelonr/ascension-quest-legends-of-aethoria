@@ -87,4 +87,4 @@ SMOKE_BASE_URL=https://your-domain.example pnpm --filter @workspace/scripts run 
 - Manual sync imports at least one step or activity record.
 - Refresh/sign out/sign in preserves imported data.
 - Running sync twice reports duplicates instead of double-counting progress.
-- Missing permissions show a helpful message and do not crash.
+- Missing permissions show a helpful message and do not catch.

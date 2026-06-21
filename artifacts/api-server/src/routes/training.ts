@@ -7,6 +7,7 @@ import {
   combatReplaysTable, playerStyleIdentityTable, rpgGearTable
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { autoClaimActiveMission } from "./campaign";
 import { getOrCreatePlayer, buildPlayerResponse } from "../progression";
 import { applyXpEvent, updateStreak } from "../progression";
 import { progressRaidTasks } from "./boss-raids";
@@ -187,6 +188,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
     let xpResult: any = null;
     let goldEarned = 0;
     let combatReplay: any = null;
+    let missionClaimed: { title: string; xpReward: number; goldReward: number } | null = null;
 
     if (status === "completed") {
       const finishedAt = completedAt ? new Date(completedAt) : new Date();
@@ -404,6 +406,8 @@ router.patch("/training/sessions/:id", async (req, res) => {
             hybridArchetype: combatReplay.hybridArchetype,
           });
         }
+        // Auto-claim any active campaign mission when workout is complete
+        missionClaimed = await autoClaimActiveMission(player.id, today);
       }
     } else {
       updates.status = status;
@@ -431,6 +435,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
       newTitles: xpResult?.newTitles || [],
       player: buildPlayerResponse(freshPlayer, freshStats),
       combatReplay,
+      missionClaimed,
     });
   } catch (err) {
     req.log.error(err);

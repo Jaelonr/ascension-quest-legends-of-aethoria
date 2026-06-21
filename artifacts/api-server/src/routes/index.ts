@@ -24,6 +24,7 @@ import devMockRouter from "./dev-mock";
 import guildHallRouter from "./guild-hall";
 import chronicleRouter from "./chronicle";
 import characterRouter from "./character";
+import campaignRouter from "./campaign";
 
 const router: IRouter = Router();
 const devAuthBypass =
@@ -75,5 +76,6 @@ router.use(wearablesRouter);
 router.use(guildHallRouter);
 router.use(chronicleRouter);
 router.use(characterRouter);
+router.use(campaignRouter);
 
 export default router;

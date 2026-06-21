@@ -2200,6 +2200,69 @@ export const SendGuildMasterMessageBody = zod.object({
 
 
 /**
+ * @summary Get full campaign story progress grouped by chapter
+ */
+export const GetCampaignStoryResponse = zod.object({
+  "currentChapter": zod.number(),
+  "currentQuestTitle": zod.string().nullish(),
+  "totalChapters": zod.number(),
+  "chapters": zod.array(zod.object({
+  "chapter": zod.number(),
+  "chapterName": zod.string(),
+  "status": zod.enum(['active', 'completed', 'locked']),
+  "quests": zod.array(zod.object({
+  "campaignId": zod.number(),
+  "dbId": zod.number().nullish(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "lore": zod.string().nullish(),
+  "difficulty": zod.string().nullish(),
+  "fitnessMapping": zod.string().nullish(),
+  "xpReward": zod.number(),
+  "goldReward": zod.number(),
+  "status": zod.enum(['active', 'completed', 'claimed', 'locked']),
+  "missionStartedAt": zod.string().nullish(),
+  "abandonedNarrative": zod.string().nullish()
+}))
+})),
+  "activeMission": zod.object({
+  "dbId": zod.number(),
+  "title": zod.string(),
+  "missionStartedAt": zod.string()
+}).nullish()
+})
+
+
+/**
+ * @summary Start a campaign commission as an active mission
+ */
+export const StartCampaignMissionBody = zod.object({
+  "dbId": zod.number()
+})
+
+export const StartCampaignMissionResponse = zod.object({
+  "success": zod.boolean(),
+  "questId": zod.number(),
+  "title": zod.string(),
+  "missionStartedAt": zod.string()
+})
+
+
+/**
+ * @summary Abandon an active campaign mission and receive a narrative consequence
+ */
+export const AbandonCampaignMissionBody = zod.object({
+  "dbId": zod.number()
+})
+
+export const AbandonCampaignMissionResponse = zod.object({
+  "severity": zod.enum(['slight', 'moderate', 'severe']),
+  "narrative": zod.string(),
+  "questTitle": zod.string()
+})
+
+
+/**
  * @summary Get campaign quest status records for the authenticated player
  */
 export const GetGuildMasterCampaignQuestsResponseItem = zod.object({
@@ -2242,6 +2305,12 @@ export const GetBattleLogResponseItem = zod.object({
   "elementalAffinity": zod.string().optional(),
   "narrativeModifiers": zod.array(zod.string()).optional(),
   "raidImpact": zod.string().nullish(),
+  "gearDrop": zod.object({
+  "name": zod.string().optional(),
+  "rarity": zod.string().optional(),
+  "slot": zod.string().optional()
+}).nullish(),
+  "narrativeConsequence": zod.string().nullish(),
   "narrativeIntensity": zod.string(),
   "createdAt": zod.string()
 })
@@ -2387,6 +2456,12 @@ export const GetChronicleSummaryResponse = zod.object({
   "elementalAffinity": zod.string().optional(),
   "narrativeModifiers": zod.array(zod.string()).optional(),
   "raidImpact": zod.string().nullish(),
+  "gearDrop": zod.object({
+  "name": zod.string().optional(),
+  "rarity": zod.string().optional(),
+  "slot": zod.string().optional()
+}).nullish(),
+  "narrativeConsequence": zod.string().nullish(),
   "narrativeIntensity": zod.string(),
   "createdAt": zod.string()
 })).optional(),

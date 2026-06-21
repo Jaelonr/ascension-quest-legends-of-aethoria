@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { customFetch, useGetBattleLog, useGetPlayerStyleIdentity } from "@workspace/api-client-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { customFetch, useGetBattleLog, useGetPlayerStyleIdentity, useGetCampaignStory, type CampaignStoryQuest, type CampaignStoryChapter } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  BookOpen, Boxes, Coins, Flag, Footprints, Landmark, Lock, Map, Medal, Minus,
-  Plus, RotateCcw, ScrollText, Shield, Sparkles, Swords, Trophy, Zap,
+  BookOpen, Boxes, Coins, ChevronDown, ChevronRight, Flag, Footprints,
+  Gift, Landmark, Lock, Map, Medal, Minus, Plus, RotateCcw, ScrollText,
+  Shield, Sparkles, Swords, Trophy, X, Zap,
 } from "lucide-react";
 
 const STYLE_META: Record<string, { label: string; text: string; bg: string; border: string }> = {
@@ -101,31 +104,342 @@ function StatTile({ icon: Icon, label, value, color }: { icon: React.ElementType
   );
 }
 
-function ReplayCard({ replay }: { replay: any }) {
+const VERDICT_COLORS: Record<string, string> = {
+  "Crushing Victory": "text-yellow-400",
+  "Victory":          "text-green-400",
+  "Close Victory":    "text-cyan-400",
+  "Strategic Retreat":"text-orange-400",
+  "Training Complete":"text-green-400",
+};
+
+function ReplayDialog({ replay, onClose }: { replay: any; onClose: () => void }) {
+  const [revealedCount, setRevealedCount] = useState(0);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const meta = STYLE_META[replay.dominantStyle] ?? STYLE_META.strength;
+  const events = (replay.events ?? []) as Array<{ text: string; type: string }>;
+  const allRevealed = revealedCount >= events.length;
+  const styleScores = (replay.styleScores ?? {}) as Record<string, number>;
+  const maxScore = Math.max(1, ...Object.values(styleScores).map(Number));
+  const activeStyles = STYLE_ORDER.filter(s => (styleScores[s] ?? 0) > 0)
+    .sort((a, b) => (styleScores[b] ?? 0) - (styleScores[a] ?? 0));
+  const verdictColor = VERDICT_COLORS[replay.verdict] ?? "text-green-400";
+  const rarityColors: Record<string, string> = {
+    common: "text-gray-300 border-gray-400/40",
+    uncommon: "text-green-400 border-green-400/40",
+    rare: "text-blue-400 border-blue-400/40",
+    epic: "text-purple-400 border-purple-400/40",
+    legendary: "text-yellow-400 border-yellow-400/50",
+  };
+
+  useEffect(() => {
+    if (allRevealed) return;
+    const t = setTimeout(() => setRevealedCount(c => c + 1), 600);
+    return () => clearTimeout(t);
+  }, [revealedCount, allRevealed]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [revealedCount]);
+
   return (
-    <Card className={cn("border bg-[#11100e]", meta.border, meta.bg)}>
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="mb-1 flex flex-wrap items-center gap-2">
-              <span className={cn("text-[10px] font-bold uppercase", meta.text)}>{meta.label}</span>
-              <Badge variant="outline" className="border-[#6b4d2f] text-[#d8c4a5]">{replay.verdict}</Badge>
+    <div className="fixed inset-0 z-[120] bg-black/95 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="shrink-0 px-5 pt-12 pb-4 border-b border-[#2a2520]">
+        <div className={cn("text-[10px] font-mono tracking-[0.3em] uppercase mb-1 animate-pulse", meta.text)}>
+          ─── Battle Report ───
+        </div>
+        <h2 className="font-serif text-2xl font-black text-[#eee5d7] leading-tight">
+          {replay.encounterName}
+        </h2>
+        <p className="text-[#8f887d] text-sm font-mono mt-0.5">vs. {replay.enemyName}</p>
+        <div className="flex items-center gap-3 mt-2">
+          <span className={cn(
+            "border px-2 py-0.5 text-[10px] font-mono uppercase rounded-sm",
+            meta.border, meta.text, meta.bg
+          )}>
+            {meta.label} Style
+          </span>
+          {replay.hybridArchetype && (
+            <span className="text-[10px] text-[#8f887d] font-mono">{replay.hybridArchetype}</span>
+          )}
+          <span className="text-[10px] text-[#6b5d4f] font-mono ml-auto">
+            {new Date(replay.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-[#6b5d4f] hover:text-[#d8c4a5] transition-colors"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        {/* Narrative events — staggered reveal */}
+        {events.length > 0 ? (
+          <div className="space-y-2.5">
+            {events.slice(0, revealedCount).map((ev, i) => (
+              <div
+                key={i}
+                className="animate-in fade-in slide-in-from-bottom-2 duration-400 bg-[#181612] border border-[#2a2520] rounded-lg p-3 text-sm text-[#d8c4a5] leading-relaxed"
+              >
+                {ev.text}
+              </div>
+            ))}
+            {!allRevealed && (
+              <div className="flex gap-1 px-1 py-2">
+                <span className="w-1.5 h-1.5 bg-[#4a4035] rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 bg-[#4a4035] rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 bg-[#4a4035] rounded-full animate-bounce [animation-delay:300ms]" />
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+        ) : (
+          <div className="text-center py-6 text-[#6b5d4f] text-sm font-mono italic">
+            No battle record found for this session.
+          </div>
+        )}
+
+        {/* Stats + verdict — shown after all events */}
+        {allRevealed && (
+          <div className="space-y-3 animate-in fade-in duration-500">
+            {/* XP / Gold */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-[#0a1a1a] border border-[#1a3535] rounded-xl p-3 text-center">
+                <Zap className="size-4 text-[#49a3a0] mx-auto mb-1" />
+                <div className="text-2xl font-black text-[#49a3a0] font-mono">+{replay.xpEarned}</div>
+                <div className="text-[10px] text-[#8f887d] mt-0.5">XP Earned</div>
+              </div>
+              <div className="bg-[#1a1200] border border-[#3a2a00] rounded-xl p-3 text-center">
+                <Coins className="size-4 text-[#d7a54d] mx-auto mb-1" />
+                <div className="text-2xl font-black text-[#d7a54d] font-mono">+{replay.goldEarned}</div>
+                <div className="text-[10px] text-[#8f887d] mt-0.5">Gold Earned</div>
+              </div>
             </div>
-            <h3 className="truncate font-serif text-sm font-bold text-[#eee5d7]">{replay.encounterName}</h3>
-            <p className="text-[11px] text-[#8f887d]">vs. {replay.enemyName}</p>
+
+            {/* PR badge */}
+            {replay.prCount > 0 && (
+              <div className="flex items-center gap-2 border border-[#d9ad63]/30 bg-[#d9ad63]/5 px-3 py-2 rounded-lg">
+                <Trophy className="size-4 text-[#d9ad63] shrink-0" />
+                <span className="text-sm font-bold text-[#d9ad63]">{replay.prCount} Personal Record{replay.prCount > 1 ? "s" : ""} set this session</span>
+              </div>
+            )}
+
+            {/* Style breakdown */}
+            {activeStyles.length > 0 && (
+              <div className="bg-[#0e0d0b] border border-[#2a2520] rounded-xl p-3 space-y-2">
+                <p className="text-[9px] font-mono uppercase tracking-widest text-[#6b5d4f]">Combat Style Breakdown</p>
+                {activeStyles.map(s => {
+                  const t = STYLE_META[s]!;
+                  const pct = Math.round(((styleScores[s] ?? 0) / maxScore) * 100);
+                  return (
+                    <div key={s} className="flex items-center gap-2 text-[10px]">
+                      <span className={cn("w-20 shrink-0 capitalize font-mono", t.text)}>{t.label}</span>
+                      <div className="h-1.5 flex-1 bg-[#1e1c18] rounded-full overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-700", t.bg.replace("/10", ""))}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="w-8 text-right text-[#6b5d4f]">{pct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Gear drop */}
+            {replay.gearDrop && (() => {
+              const g = replay.gearDrop as { name: string; rarity: string; slot: string };
+              const cls = rarityColors[g.rarity] ?? rarityColors.common;
+              return (
+                <div className={cn("border rounded-xl p-3 bg-[#0e0d0b] space-y-1", cls)}>
+                  <p className="text-[9px] font-mono uppercase tracking-widest text-[#6b5d4f]">⚙ Gear Drop</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={cn("text-sm font-bold font-serif", cls.split(" ")[0])}>{g.name}</span>
+                    <span className={cn("text-[10px] font-mono uppercase border px-2 py-0.5 rounded", cls)}>{g.rarity}</span>
+                  </div>
+                  <p className="text-[10px] text-[#8f887d] capitalize">{g.slot.replace(/_/g, " ")}</p>
+                </div>
+              );
+            })()}
+
+            {/* Narrative consequence */}
+            {replay.narrativeConsequence && (
+              <div className="border border-[#1a3535] bg-[#0a1a1a] rounded-xl p-3">
+                <p className="text-[9px] font-mono uppercase tracking-widest text-[#49a3a0]/60 mb-1.5">↠ Consequence</p>
+                <p className="text-xs text-[#d8c4a5]/70 leading-relaxed italic">{replay.narrativeConsequence}</p>
+              </div>
+            )}
+
+            {/* Verdict */}
+            <div className={cn(
+              "text-center py-3 border border-[#2a2520] bg-[#0e0d0b] rounded-xl font-mono text-base font-bold tracking-wide",
+              verdictColor
+            )}>
+              {replay.verdict ?? "Training Complete"}
+            </div>
           </div>
-          <div className="shrink-0 text-right text-[10px] text-[#8f887d]">
-            {new Date(replay.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+        )}
+      </div>
+
+      {/* Close button */}
+      {allRevealed && (
+        <div className="shrink-0 px-5 pb-8 pt-3 border-t border-[#2a2520]">
+          <Button onClick={onClose} variant="outline" className="w-full border-[#3b3328] text-[#8f887d]">
+            Return to Chronicle
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReplayCard({ replay }: { replay: any }) {
+  const [open, setOpen] = useState(false);
+  const meta = STYLE_META[replay.dominantStyle] ?? STYLE_META.strength;
+  const verdictColor = VERDICT_COLORS[replay.verdict] ?? "text-green-400";
+
+  return (
+    <>
+      <Card
+        className={cn("border bg-[#11100e] cursor-pointer active:scale-[0.98] transition-transform", meta.border, meta.bg)}
+        onClick={() => setOpen(true)}
+      >
+        <CardContent className="p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <span className={cn("text-[10px] font-bold uppercase", meta.text)}>{meta.label}</span>
+                <Badge variant="outline" className={cn("border-transparent text-[10px]", verdictColor)}>
+                  {replay.verdict}
+                </Badge>
+              </div>
+              <h3 className="truncate font-serif text-sm font-bold text-[#eee5d7]">{replay.encounterName}</h3>
+              <p className="text-[11px] text-[#8f887d]">vs. {replay.enemyName}</p>
+            </div>
+            <div className="shrink-0 text-right text-[10px] text-[#8f887d]">
+              {new Date(replay.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex gap-4 text-[11px] font-bold">
+              <span className="flex items-center gap-1 text-[#49a3a0]"><Zap className="size-3" />+{replay.xpEarned}</span>
+              <span className="flex items-center gap-1 text-[#d7a54d]"><Coins className="size-3" />+{replay.goldEarned}</span>
+              {replay.prCount > 0 && <span className="flex items-center gap-1 text-[#e2ad4d]"><Trophy className="size-3" />{replay.prCount} PR</span>}
+            </div>
+            <span className="text-[9px] font-mono text-[#4a4035] uppercase tracking-wide">Tap to replay</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {open && <ReplayDialog replay={replay} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+const DIFF_COLOR: Record<string, string> = {
+  E: "text-gray-400 border-gray-600/40", D: "text-green-400 border-green-600/40",
+  C: "text-blue-400 border-blue-600/40",  B: "text-purple-400 border-purple-600/40",
+  A: "text-orange-400 border-orange-600/40", S: "text-[#d9ad63] border-[#d9ad63]/40",
+};
+const STORY_STATUS: Record<string, { label: string; color: string; Icon: React.ElementType }> = {
+  claimed:   { label: "Completed",    color: "text-green-400",   Icon: Zap },
+  completed: { label: "Claim Reward", color: "text-[#d9ad63]",  Icon: Gift },
+  active:    { label: "In Progress",  color: "text-[#49a3a0]",  Icon: Swords },
+  locked:    { label: "???",          color: "text-[#6b5d4f]",  Icon: Lock },
+};
+
+function CampaignQuestRow({ quest }: { quest: CampaignStoryQuest }) {
+  const [open, setOpen] = useState(quest.status === "active" || quest.status === "completed");
+  const s = STORY_STATUS[quest.status] ?? STORY_STATUS.locked;
+  const isLocked = quest.status === "locked";
+  return (
+    <div className={cn("border-b border-[#3b3328] last:border-b-0", isLocked && "opacity-50")}>
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+        <s.Icon className={cn("size-3.5 shrink-0", s.color)} />
+        <div className="min-w-0 flex-1">
+          <p className={cn("font-serif text-sm font-bold", isLocked ? "text-[#6b5d4f]" : "text-[#d8c4a5]")}>{quest.title}</p>
+          <p className={cn("text-[10px]", s.color)}>{s.label}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {quest.difficulty && <span className={cn("border px-1 text-[10px] font-mono", DIFF_COLOR[quest.difficulty] ?? "")}>{quest.difficulty}</span>}
+          {open ? <ChevronDown className="size-3 text-[#8f887d]" /> : <ChevronRight className="size-3 text-[#8f887d]" />}
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-[#3b3328] bg-[#0c0b09] px-4 pb-4 pt-3 space-y-2">
+          <p className={cn("text-xs leading-relaxed", isLocked ? "italic text-[#6b5d4f]" : "text-[#b7ab9c]")}>{quest.description}</p>
+          {quest.lore && (
+            <div className="border-l-2 border-[#9d3e2a]/60 bg-[#1b1511] px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest text-[#9d8f80] mb-1">Guild Lore</p>
+              <p className="text-xs italic leading-relaxed text-[#cfc5b8]">{quest.lore}</p>
+            </div>
+          )}
+          {quest.fitnessMapping && !isLocked && (
+            <p className="text-[10px] text-[#8f887d]"><span className="font-mono text-[#9d8f80]">Objective:</span> {quest.fitnessMapping}</p>
+          )}
+          <div className="flex gap-4 text-[10px] font-mono">
+            <span className="text-[#49a3a0]">+{quest.xpReward} XP</span>
+            <span className="text-[#d7a54d]">+{quest.goldReward} Gold</span>
           </div>
         </div>
-        <div className="mt-3 flex gap-4 text-[11px] font-bold">
-          <span className="flex items-center gap-1 text-[#49a3a0]"><Zap className="size-3" />+{replay.xpEarned}</span>
-          <span className="flex items-center gap-1 text-[#d7a54d]"><Coins className="size-3" />+{replay.goldEarned}</span>
-          {replay.prCount > 0 && <span className="flex items-center gap-1 text-[#e2ad4d]"><Trophy className="size-3" />{replay.prCount} PR</span>}
+      )}
+    </div>
+  );
+}
+
+function CampaignChapterBlock({ chapter, defaultOpen }: { chapter: CampaignStoryChapter; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const isLocked = chapter.status === "locked";
+  const done = chapter.quests.filter(q => q.status === "claimed").length;
+  const revealed = chapter.quests.filter(q => q.status !== "locked").length;
+  return (
+    <Card className={cn("rounded-none", isLocked ? "border-[#2a2520]" : "border-[#6b4d2f]", "bg-[#11100e]")}>
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center gap-3 p-4 text-left">
+        <div className={cn("flex size-7 items-center justify-center border font-mono text-xs font-bold shrink-0",
+          chapter.status === "completed" ? "border-green-600/40 text-green-400" :
+          chapter.status === "active"    ? "border-[#d9ad63]/40 text-[#d9ad63]" :
+                                          "border-[#3b3328] text-[#6b5d4f]",
+        )}>
+          {chapter.status === "completed" ? "✓" : isLocked ? "?" : chapter.chapter}
         </div>
-      </CardContent>
+        <div className="min-w-0 flex-1">
+          <p className={cn("font-serif text-sm font-bold", isLocked ? "text-[#6b5d4f]" : "text-[#d9ad63]")}>
+            {isLocked ? `Chapter ${chapter.chapter} — ???` : `Ch. ${chapter.chapter}: ${chapter.chapterName}`}
+          </p>
+          {!isLocked && <p className="text-[10px] text-[#8f887d]">{done}/{revealed} complete</p>}
+        </div>
+        {open ? <ChevronDown className="size-4 text-[#8f887d] shrink-0" /> : <ChevronRight className="size-4 text-[#8f887d] shrink-0" />}
+      </button>
+      {open && (
+        <div className="border-t border-[#3b3328]">
+          {chapter.quests.map(q => <CampaignQuestRow key={q.campaignId} quest={q} />)}
+        </div>
+      )}
     </Card>
+  );
+}
+
+function CampaignChronicleView() {
+  const { data: story, isLoading } = useGetCampaignStory({ query: { queryKey: ["/api/campaign/story"] } });
+  if (isLoading) return <><Skeleton className="h-14 w-full rounded-none bg-[#171510]" /><Skeleton className="mt-2 h-14 w-full rounded-none bg-[#171510]" /></>;
+  if (!story) return <EmptyRecord icon={Flag} title="No campaign entries yet" text="Aethoria's larger movements will be recorded here as threats are revealed." />;
+  return (
+    <div className="space-y-2">
+      <div className="border border-[#6b4d2f]/50 bg-[#11100e] px-4 py-3">
+        <p className="text-[9px] uppercase tracking-widest text-[#8f887d] mb-0.5 font-mono">Current Position</p>
+        <p className="font-serif text-sm font-bold text-[#d9ad63]">
+          Chapter {story.currentChapter}
+          {story.currentQuestTitle && <span className="font-normal text-[#b7ab9c]"> — {story.currentQuestTitle}</span>}
+        </p>
+      </div>
+      {story.chapters.map(ch => (
+        <CampaignChapterBlock key={ch.chapter} chapter={ch} defaultOpen={ch.status === "active"} />
+      ))}
+    </div>
   );
 }
 
@@ -289,10 +603,7 @@ export default function BattleLog() {
         </TabsContent>
 
         <TabsContent value="campaign" className="space-y-3 pt-3">
-          {(chronicle?.campaignProgress ?? []).map((quest) => (
-            <Card key={quest.id} className="border-[#3b3328] bg-[#11100e]"><CardContent className="p-4"><p className="font-serif text-sm font-bold text-[#d9ad63]">{quest.title}</p><p className="mt-1 text-xs text-[#8f887d]">{quest.description}</p><Badge className="mt-3 bg-[#3b3328] text-[#d8c4a5]">{quest.status}</Badge></CardContent></Card>
-          ))}
-          {!(chronicle?.campaignProgress ?? []).length && <EmptyRecord icon={Flag} title="No campaign entries yet" text="Aethoria's larger movements will be recorded here as threats are revealed." />}
+          <CampaignChronicleView />
         </TabsContent>
 
         <TabsContent value="items" className="space-y-3 pt-3">

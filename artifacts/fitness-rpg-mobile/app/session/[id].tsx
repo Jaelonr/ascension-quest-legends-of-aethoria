@@ -181,9 +181,9 @@ export default function ActiveSessionScreen() {
   useEffect(() => {
     AsyncStorage.getItem("narrative_intensity").then((val) => {
       if (
-        val === WorkoutSessionUpdateNarrativeIntensity.minimal ||
+        val === WorkoutSessionUpdateNarrativeIntensity.technical ||
         val === WorkoutSessionUpdateNarrativeIntensity.balanced ||
-        val === WorkoutSessionUpdateNarrativeIntensity.dramatic
+        val === WorkoutSessionUpdateNarrativeIntensity.immersive
       ) {
         setNarrativeIntensity(val as WorkoutSessionUpdateNarrativeIntensity);
       }

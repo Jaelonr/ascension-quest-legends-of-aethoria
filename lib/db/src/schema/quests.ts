@@ -28,6 +28,8 @@ export const questsTable = pgTable("quests", {
   expiresAt: timestamp("expires_at"),
   completedAt: timestamp("completed_at"),
   claimedAt: timestamp("claimed_at"),
+  missionStartedAt: timestamp("mission_started_at"),
+  abandonedNarrative: text("abandoned_narrative"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
