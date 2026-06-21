@@ -18,6 +18,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 WebBrowser.maybeCompleteAuthSession();
 
+const OAUTH_REDIRECT_URL = AuthSession.makeRedirectUri({
+  scheme: "fitness-rpg-mobile",
+  path: "sso-callback",
+});
+
 const COLORS = {
   background: "#0c0d13",
   card: "#111520",
@@ -30,6 +35,22 @@ const COLORS = {
   secondaryBg: "#161b2e",
 };
 
+function getAuthErrorMessage(error: unknown) {
+  if (
+    error &&
+    typeof error === "object" &&
+    "errors" in error &&
+    Array.isArray((error as { errors?: unknown }).errors)
+  ) {
+    const firstError = (error as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0];
+    return firstError?.longMessage || firstError?.message || "Google sign-in could not be completed.";
+  }
+
+  if (error instanceof Error) return error.message;
+
+  return "Google sign-in could not be completed. Check that Google sign-in is enabled for this app.";
+}
+
 export default function SignInScreen() {
   const { signIn, errors, fetchStatus } = useSignIn();
   const { startSSOFlow } = useSSO();
@@ -40,6 +61,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [ssoLoading, setSsoLoading] = useState<"google" | "apple" | null>(null);
+  const [ssoError, setSsoError] = useState<string | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -80,10 +102,11 @@ export default function SignInScreen() {
   const handleSSOSignIn = useCallback(
     async (strategy: "oauth_google" | "oauth_apple") => {
       try {
+        setSsoError(null);
         setSsoLoading(strategy === "oauth_google" ? "google" : "apple");
         const { createdSessionId, setActive } = await startSSOFlow({
           strategy,
-          redirectUrl: AuthSession.makeRedirectUri(),
+          redirectUrl: OAUTH_REDIRECT_URL,
         });
         if (createdSessionId && setActive) {
           await setActive({
@@ -97,6 +120,7 @@ export default function SignInScreen() {
         }
       } catch (err) {
         console.error(`${strategy} SSO error:`, JSON.stringify(err, null, 2));
+        setSsoError(getAuthErrorMessage(err));
       } finally {
         setSsoLoading(null);
       }
@@ -236,6 +260,7 @@ export default function SignInScreen() {
               </>
             )}
           </Pressable>
+          {ssoError && <Text style={styles.oauthError}>{ssoError}</Text>}
 
           {Platform.OS === "ios" && (
             <Pressable
@@ -338,6 +363,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: COLORS.danger,
     marginBottom: 4,
+  },
+  oauthError: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: COLORS.danger,
+    lineHeight: 17,
+    marginTop: 10,
   },
   primaryBtn: {
     backgroundColor: COLORS.primary,
