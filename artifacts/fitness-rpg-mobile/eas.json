@@ -12,7 +12,9 @@
       },
       "env": {
         "EXPO_PUBLIC_DEV_AUTH_BYPASS": "false",
-        "EXPO_PUBLIC_CLERK_PROXY_URL": "/api/__clerk",
+        "EXPO_PUBLIC_API_BASE_URL": "https://fitnesslegend.fit",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZml0bmVzc2xlZ2VuZC5maXQk",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "https://fitnesslegend.fit/api/__clerk",
         "EAS_NO_FROZEN_LOCKFILE": "1"
       }
     },
@@ -23,7 +25,9 @@
       },
       "env": {
         "EXPO_PUBLIC_DEV_AUTH_BYPASS": "false",
-        "EXPO_PUBLIC_CLERK_PROXY_URL": "/api/__clerk"
+        "EXPO_PUBLIC_API_BASE_URL": "https://fitnesslegend.fit",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZml0bmVzc2xlZ2VuZC5maXQk",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "https://fitnesslegend.fit/api/__clerk"
       }
     },
     "production": {
@@ -32,7 +36,9 @@
       },
       "env": {
         "EXPO_PUBLIC_DEV_AUTH_BYPASS": "false",
-        "EXPO_PUBLIC_CLERK_PROXY_URL": "/api/__clerk"
+        "EXPO_PUBLIC_API_BASE_URL": "https://fitnesslegend.fit",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZml0bmVzc2xlZ2VuZC5maXQk",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "https://fitnesslegend.fit/api/__clerk"
       }
     }
   }
