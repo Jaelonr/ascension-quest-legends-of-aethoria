@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Ascension Quest",
-    "slug": "fitness-rpg-mobile",
+    "slug": "ascension-quest-legends-of-aethoria-",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -46,6 +46,6 @@
         "projectId": "d6766285-92e7-40fe-b578-f77726e19636"
       }
     },
-    "owner": "jaelonr"
+    "owner": "the-rakestraw-group-98"
   }
 }
