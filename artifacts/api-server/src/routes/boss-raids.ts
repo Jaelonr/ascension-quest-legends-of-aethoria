@@ -176,7 +176,7 @@ interface RaidTemplate {
 const RAID_TEMPLATES: RaidTemplate[] = [
   {
     title: "The First Gate",
-    description: "Prove yourself worthy of ascending beyond Rank E. Complete the entry-level challenge.",
+    description: "Prove yourself worthy of ascending beyond Wood Grade. Complete the entry-level challenge.",
     lore: "A pulsing gate has appeared in your training ground. The system demands proof before it grants passage. Complete the trial within 72 hours or face penalty.",
     difficulty: "E",
     timeLimitHours: 72,

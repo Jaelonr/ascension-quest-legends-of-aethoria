@@ -148,13 +148,13 @@ export const CAMPAIGN_QUESTS: CampaignQuestDef[] = [
     campaignId: 9,
     chapter: 2,
     chapterName: "The Climb",
-    title: "The Ranking Wall",
+    title: "The Grade Wall",
     description: "Wood Grade is where every adventurer begins. Copper Grade is where the steady ones stay.",
     lore: "The promotion board is covered with names who tried and fell short. The Grandmaster believes you are ready. Now prove him right.",
     difficulty: "D",
     xpReward: 550,
     goldReward: 280,
-    fitnessMapping: "Rank promotion to D",
+    fitnessMapping: "Promotion to Copper Grade",
     tasks: [
       { description: "Achieve Copper Grade promotion", targetValue: 1, unit: "grade", order: 1 },
     ],
@@ -352,7 +352,7 @@ export const CAMPAIGN_QUESTS: CampaignQuestDef[] = [
     difficulty: "C",
     xpReward: 780,
     goldReward: 380,
-    fitnessMapping: "Complete a D/C-rank boss raid",
+    fitnessMapping: "Complete a Copper or Iron Grade boss raid",
     tasks: [
       { description: "Clear a boss raid", targetValue: 1, unit: "raid", order: 1 },
       { description: "Set 2 new personal records", targetValue: 2, unit: "PRs", order: 2 },
@@ -477,7 +477,7 @@ export const CAMPAIGN_QUESTS: CampaignQuestDef[] = [
     difficulty: "B",
     xpReward: 1100,
     goldReward: 550,
-    fitnessMapping: "Clear a C-rank boss raid",
+    fitnessMapping: "Clear an Iron Grade boss raid",
     tasks: [
       { description: "Clear a boss raid", targetValue: 1, unit: "raid", order: 1 },
       { description: "Set 3 new personal records", targetValue: 3, unit: "PRs", order: 2 },
@@ -618,7 +618,7 @@ export const CAMPAIGN_QUESTS: CampaignQuestDef[] = [
     difficulty: "S",
     xpReward: 2200,
     goldReward: 1100,
-    fitnessMapping: "Complete an A-rank boss raid",
+    fitnessMapping: "Complete a Silver Grade boss raid",
     tasks: [
       { description: "Complete a Silver Grade or Mythril Grade boss raid", targetValue: 1, unit: "raid", order: 1 },
       { description: "Set 5 new personal records", targetValue: 5, unit: "PRs", order: 2 },

@@ -21,7 +21,7 @@ const copy = {
     sections: [
       ["Fitness guidance", "The app provides general training and nutrition guidance for motivation and planning. It is not medical advice."],
       ["Pain and injury", "Users should not train through sharp, worsening, or concerning pain. Medical concerns should go to qualified professionals."],
-      ["No guaranteed outcomes", "XP, ranks, and fantasy rewards are motivational framing. Real-world results depend on consistency, recovery, nutrition, genetics, and health context."],
+      ["No guaranteed outcomes", "XP, guild grades, and fantasy rewards are motivational framing. Real-world results depend on consistency, recovery, nutrition, genetics, and health context."],
       ["Production note", "Final terms should be reviewed before launch."],
     ],
   },

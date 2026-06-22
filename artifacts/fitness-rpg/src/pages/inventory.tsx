@@ -23,6 +23,7 @@ import { Coins, Backpack, Shield, Sword, Lock, Calendar, Clock, Eye, Layers, Scr
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { formatGuildGrade } from "@/lib/ranks";
 
 const RARITY_STYLES: Record<string, { label: string; color: string; border: string; glow: string; bg: string }> = {
   common:    { label: "Common",    color: "text-gray-400",   border: "border-gray-400/30",   glow: "",                                    bg: "bg-gray-400/5" },
@@ -230,7 +231,7 @@ function StoreItemCard({
                   )}
                   {item.rankRequired && (
                     <span className="text-[9px] font-mono text-muted-foreground border border-border/30 px-1.5 py-0.5 rounded">
-                      Rank {item.rankRequired}+
+                      {formatGuildGrade(item.rankRequired)}+
                     </span>
                   )}
                   {item.levelRequired && (

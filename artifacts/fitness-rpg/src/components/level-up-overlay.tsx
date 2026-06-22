@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, TrendingUp, Star, Zap } from "lucide-react";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useSoundEngine } from "@/hooks/use-sound-engine";
+import { formatGuildGrade } from "@/lib/ranks";
 
 interface Props {
   info: LevelUpInfo;
@@ -48,6 +49,8 @@ export function LevelUpOverlay({ info, onDismiss }: Props) {
 
   const rankColor = RANK_COLORS[info.newRank] ?? "text-cyan-400";
   const rankGlow = RANK_GLOW[info.newRank] ?? "";
+  const previousGrade = formatGuildGrade(info.prevRank);
+  const newGrade = formatGuildGrade(info.newRank);
 
   return (
     <div
@@ -88,7 +91,7 @@ export function LevelUpOverlay({ info, onDismiss }: Props) {
         </div>
 
         <p className="text-xs font-mono text-cyan-400/70 uppercase tracking-[0.3em] mb-2 animate-pulse">
-          ─── System Alert ───
+          --- System Alert ---
         </p>
 
         <h1 className="text-6xl font-serif font-black text-white mb-1">
@@ -113,11 +116,11 @@ export function LevelUpOverlay({ info, onDismiss }: Props) {
               transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
             }}
           >
-            <div className="text-xs font-mono tracking-widest uppercase mb-1 opacity-70">Rank Up!</div>
+            <div className="text-xs font-mono tracking-widest uppercase mb-1 opacity-70">Grade Raised!</div>
             <div className="text-2xl font-black font-mono">
-              {info.prevRank} → {info.newRank}
+              {previousGrade} to {newGrade}
             </div>
-            <div className="text-xs mt-1 opacity-60">New rank achieved. The world trembles.</div>
+            <div className="text-xs mt-1 opacity-60">New guild grade achieved. The world trembles.</div>
           </div>
         )}
 
@@ -134,8 +137,8 @@ export function LevelUpOverlay({ info, onDismiss }: Props) {
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-3">
             <Star className="w-4 h-4 text-purple-400 mx-auto mb-1" />
-            <div className="text-lg font-bold text-purple-400">{info.newRank}</div>
-            <div className="text-[10px] text-muted-foreground">Rank</div>
+            <div className="text-lg font-bold text-purple-400">{newGrade}</div>
+            <div className="text-[10px] text-muted-foreground">Grade</div>
           </div>
         </div>
 
