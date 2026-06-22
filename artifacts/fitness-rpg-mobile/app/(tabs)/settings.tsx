@@ -358,18 +358,21 @@ export default function SettingsScreen() {
             label="Samsung Health"
             description="Target device path for your testing. Native permissions and deduplication still need final integration."
             right={<Text style={s.statusSoon}>Soon</Text>}
+            onPress={() => router.push("/wearables" as any)}
           />
           <Row
             icon="heart"
             label="Health Connect"
             description="Android bridge for steps, sleep, workouts, and body metrics once permission handling is implemented."
             right={<Text style={s.statusSoon}>Soon</Text>}
+            onPress={() => router.push("/wearables" as any)}
           />
           <Row
             icon="watch"
             label="Apple Health"
             description="Coming later for iOS builds. This Android APK does not sync Apple Health."
             right={<Text style={s.statusSoon}>Later</Text>}
+            onPress={() => router.push("/wearables" as any)}
           />
         </Section>
 
