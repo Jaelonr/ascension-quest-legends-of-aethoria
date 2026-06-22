@@ -44,6 +44,9 @@ export default function TrainingScreen() {
   const createSession = useCreateWorkoutSession();
 
   const commission = hall?.commission as any;
+  const commissionLocation = commission?.location as { name?: string; region?: string; distanceMiles?: number } | null | undefined;
+  const commissionTravel = commission?.travel as { onFootMiles?: number; footMiles?: number; caravanMiles?: number; mountMiles?: number; returnStone?: boolean } | null | undefined;
+  const commissionTasks = (commission?.tasks ?? commission?.quest?.tasks ?? []) as any[];
   const recentSessions = (sessions ?? []).slice(0, 5);
 
   const handleStart = (templateId: number, name: string) => {
@@ -68,41 +71,113 @@ export default function TrainingScreen() {
           {/* Header */}
           <View style={s.header}>
             <Text style={s.headerSub}>TRAINING YARD</Text>
-            <Text style={s.headerTitle}>Choose Your Battle</Text>
+            <Text style={s.headerTitle}>Training Yard</Text>
+            <Text style={s.headerDesc}>Turn real effort into combat form.</Text>
+          </View>
+
+          <View style={s.prepCard}>
+            <View style={s.iconBox}><Text style={s.iconText}>SH</Text></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.prepTitle}>Commission Preparation</Text>
+              <Text style={s.prepText}>
+                Choose a planned drill, generate an equipment-aware session, or continue the long program. The Hall records the work as battle evidence.
+              </Text>
+            </View>
           </View>
 
           {/* Active commission hint */}
           {commission && (
-            <View style={[s.commissionBanner, { borderColor: "#8c6a36" }]}>
-              <Text style={s.bannerLabel}>ACTIVE COMMISSION</Text>
-              <Text style={[s.bannerTitle, { color: colors.foreground }]}>
-                {commission.title ?? commission.quest?.title}
-              </Text>
-              <Text style={[s.bannerDesc, { color: colors.mutedForeground }]}>
-                Train to advance this commission. Your session will be recorded as battle evidence.
-              </Text>
+            <View style={s.commissionCard}>
+              <View style={s.commissionHeader}>
+                <View style={s.iconBox}><Text style={s.iconText}>FL</Text></View>
+                <View style={{ flex: 1 }}>
+                  <View style={s.titleRow}>
+                    <Text style={s.commissionTitle}>Today's Commission</Text>
+                    <Text style={s.categoryPill}>{commission.category ?? "training"}</Text>
+                  </View>
+                  <Text style={s.commissionText}>
+                    {commission.rationale ?? "Train to advance this commission. Your session will be recorded as battle evidence."}
+                  </Text>
+                </View>
+              </View>
+              <View style={s.infoGrid}>
+                <View style={s.infoBox}>
+                  <Text style={s.infoLabel}>Location</Text>
+                  <Text style={s.infoTitle}>{commissionLocation?.name ?? "Guild training grounds"}</Text>
+                  <Text style={s.infoMeta}>
+                    {commissionLocation?.region ?? "Near the Hall"}
+                    {commissionLocation?.distanceMiles ? ` - ${commissionLocation.distanceMiles} mi from the Hall` : ""}
+                  </Text>
+                </View>
+                <View style={s.infoBox}>
+                  <Text style={s.infoLabel}>Travel Ledger</Text>
+                  <Text style={s.infoTitle}>
+                    {commissionTravel
+                      ? `${commissionTravel.onFootMiles ?? commissionTravel.footMiles ?? 0} mi on foot - ${commissionTravel.caravanMiles ?? 0} mi by caravan${commissionTravel.mountMiles ? ` - ${commissionTravel.mountMiles} mi mounted` : ""}`
+                      : "Travel details will appear as the commission develops."}
+                  </Text>
+                  <Text style={s.infoMeta}>{commissionTravel?.returnStone ? "Return stone authorized after report." : "Return route pending Guild approval."}</Text>
+                </View>
+              </View>
+              {commissionTasks.length > 0 && (
+                <View style={s.taskStack}>
+                  {commissionTasks.map((task) => {
+                    const current = task.currentValue ?? task.current ?? 0;
+                    const target = task.targetValue ?? task.target ?? 1;
+                    return (
+                      <View key={task.id ?? task.description} style={s.taskRow}>
+                        <Text style={s.taskText}>{task.description}</Text>
+                        <Text style={[s.taskCount, task.completed && { color: "#7cc79b" }]}>
+                          {current}/{target} {task.unit ?? ""}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           )}
 
+          <View style={s.actionGrid}>
+            <TouchableOpacity style={s.actionCard} activeOpacity={0.8}>
+              <View style={s.iconBox}><Text style={s.iconText}>8W</Text></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.actionTitle}>8-Week Campaign Program</Text>
+                <Text style={s.actionText}>Progressive strength and combat preparation</Text>
+              </View>
+              <Text style={s.actionState}>Soon</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.actionCard} activeOpacity={0.8}>
+              <View style={s.iconBox}><Text style={s.iconText}>AI</Text></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.actionTitle}>Guild Drill Planner</Text>
+                <Text style={s.actionText}>Equipment-aware plan generation for the day</Text>
+              </View>
+              <Text style={[s.actionState, { color: "#49a3a0" }]}>Soon</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Templates header */}
-          <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>TRAINING PROGRAMS</Text>
+          <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>AVAILABLE DRILLS</Text>
         </>
       }
       data={isLoading ? [] : (templates ?? [])}
       keyExtractor={(item: any) => String(item.id)}
       ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
       renderItem={({ item }: { item: any }) => {
-        const muscleColor = MUSCLE_COLORS[item.muscleGroup?.toLowerCase?.() ?? ""] ?? "#d9ad63";
+        const category = item.category ?? item.muscleGroup;
+        const muscleColor = MUSCLE_COLORS[String(category ?? "").toLowerCase?.() ?? ""] ?? "#d9ad63";
         const exerciseCount = item.exercises?.length ?? 0;
         return (
           <View style={[s.templateCard, { backgroundColor: "#171510", borderColor: "#3b3328" }]}>
+            <View style={s.drillAccent} />
             <View style={s.templateHeader}>
               <View style={{ flex: 1 }}>
                 <View style={s.templateTags}>
-                  {item.muscleGroup && (
+                  {category && (
                     <View style={[s.tag, { borderColor: muscleColor + "60" }]}>
                       <Text style={[s.tagText, { color: muscleColor }]}>
-                        {item.muscleGroup.replace(/_/g, " ")}
+                        {String(category).replace(/_/g, " ")}
                       </Text>
                     </View>
                   )}
@@ -120,7 +195,7 @@ export default function TrainingScreen() {
                 )}
                 <Text style={[s.templateMeta, { color: "#6b5d4f" }]}>
                   {exerciseCount} exercise{exerciseCount !== 1 ? "s" : ""}
-                  {item.estimatedDuration ? ` · ~${formatDuration(item.estimatedDuration)}` : ""}
+                  {item.estimatedDuration ? ` - ${formatDuration(item.estimatedDuration)}` : ""}
                 </Text>
               </View>
               <TouchableOpacity
@@ -132,7 +207,7 @@ export default function TrainingScreen() {
                 {createSession.isPending ? (
                   <ActivityIndicator size="small" color="#000" />
                 ) : (
-                  <Text style={s.startBtnText}>▶</Text>
+                  <Text style={s.startBtnText}>Start</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -206,12 +281,39 @@ const s = StyleSheet.create({
   header: { marginBottom: 20 },
   headerSub: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   headerTitle: { fontSize: 24, fontWeight: "900", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
+  headerDesc: { color: "#9f9586", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginTop: 2 },
+  prepCard: { flexDirection: "row", gap: 12, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14, marginBottom: 14 },
+  iconBox: { width: 38, height: 38, borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#15130f", alignItems: "center", justifyContent: "center" },
+  iconText: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold" },
+  prepTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  prepText: { color: "#cfc5b8", fontSize: 13, lineHeight: 20, marginTop: 4, fontFamily: "Inter_400Regular" },
+  commissionCard: { borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#11100e", padding: 14, marginBottom: 14 },
+  commissionHeader: { flexDirection: "row", gap: 12 },
+  titleRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 },
+  commissionTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  categoryPill: { borderWidth: 1, borderColor: "#3b3328", color: "#8f887d", paddingHorizontal: 7, paddingVertical: 2, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  commissionText: { color: "#cfc5b8", fontSize: 12, lineHeight: 18, marginTop: 5, fontFamily: "Inter_400Regular" },
+  infoGrid: { gap: 8, marginTop: 12 },
+  infoBox: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10 },
+  infoLabel: { color: "#d9ad63", fontSize: 10, textTransform: "uppercase", fontFamily: "Inter_700Bold", marginBottom: 4 },
+  infoTitle: { color: "#d8c4a5", fontSize: 12, lineHeight: 17, fontFamily: "Inter_700Bold" },
+  infoMeta: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 2, fontFamily: "Inter_400Regular" },
+  taskStack: { gap: 6, marginTop: 12 },
+  taskRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10 },
+  taskText: { flex: 1, color: "#d8c4a5", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
+  taskCount: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold" },
+  actionGrid: { gap: 10, marginBottom: 16 },
+  actionCard: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14 },
+  actionTitle: { color: "#eee5d7", fontSize: 14, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  actionText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 2, fontFamily: "Inter_400Regular" },
+  actionState: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   commissionBanner: { borderWidth: 1, backgroundColor: "#15130f", padding: 14, marginBottom: 16 },
   bannerLabel: { fontSize: 9, letterSpacing: 2, color: "#d9ad63", textTransform: "uppercase", marginBottom: 4, fontFamily: "Inter_400Regular" },
   bannerTitle: { fontSize: 14, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
   bannerDesc: { fontSize: 12, lineHeight: 18 },
   sectionLabel: { fontSize: 9, letterSpacing: 3, textTransform: "uppercase", marginBottom: 10, fontFamily: "Inter_400Regular" },
-  templateCard: { borderWidth: 1, padding: 14 },
+  templateCard: { borderWidth: 1, padding: 14, overflow: "hidden" },
+  drillAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 3, backgroundColor: "#8e3525" },
   templateHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   templateTags: { flexDirection: "row", gap: 6, marginBottom: 6, flexWrap: "wrap" },
   tag: { borderWidth: 1, paddingHorizontal: 6, paddingVertical: 1 },
@@ -219,8 +321,8 @@ const s = StyleSheet.create({
   templateName: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   templateDesc: { fontSize: 12, marginTop: 2, lineHeight: 17 },
   templateMeta: { fontSize: 10, marginTop: 6 },
-  startBtn: { width: 44, height: 44, backgroundColor: "#d9ad63", alignItems: "center", justifyContent: "center" },
-  startBtnText: { color: "#000", fontSize: 18, fontWeight: "700" },
+  startBtn: { minWidth: 54, height: 44, borderWidth: 1, borderColor: "#c08c4e", backgroundColor: "#74291f", alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  startBtnText: { color: "#f1dfc6", fontSize: 11, fontWeight: "700", fontFamily: "Inter_700Bold" },
   centered: { paddingVertical: 32, alignItems: "center" },
   empty: { borderWidth: 1, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 8, marginTop: 8 },
   emptyTitle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
