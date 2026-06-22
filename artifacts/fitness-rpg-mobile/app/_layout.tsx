@@ -7,7 +7,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { ClerkLoaded, ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
-import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
+import { setBaseUrl, setAuthTokenGetter, useGetPlayer } from "@workspace/api-client-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -61,6 +61,30 @@ function useOnboardingGate(enabled: boolean) {
   return checked;
 }
 
+function PlayerSetupGuard({ enabled }: { enabled: boolean }) {
+  const segments = useSegments();
+  const router = useRouter();
+  const { data: player, isLoading } = useGetPlayer({ query: { queryKey: ["/api/player"], enabled } });
+
+  useEffect(() => {
+    if (!enabled || isLoading || !player) return;
+    const topSegment = segments[0] as string | undefined;
+    const inAuthGroup = topSegment === "(auth)";
+    const inOnboarding = topSegment === "onboarding";
+    const inProfile = topSegment === "profile";
+    if (!player.setupCompleted && !inAuthGroup && !inOnboarding && !inProfile) {
+      router.replace("/profile" as never);
+    }
+  }, [enabled, isLoading, player, router, segments]);
+
+  return null;
+}
+
+function AuthenticatedSetupGuard() {
+  const { isSignedIn, isLoaded } = useAuth();
+  return <PlayerSetupGuard enabled={isLoaded && !!isSignedIn} />;
+}
+
 function DevAuthGuard() {
   const segments = useSegments();
   const router = useRouter();
@@ -107,6 +131,7 @@ function RootLayoutNav() {
   return (
     <>
       {devAuthBypass ? <DevAuthGuard /> : <AuthGuard />}
+      {devAuthBypass ? <PlayerSetupGuard enabled /> : <AuthenticatedSetupGuard />}
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
