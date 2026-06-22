@@ -267,8 +267,9 @@ export default function CharacterScreen() {
   const xpPct = player ? Math.min(100, Math.round((player.xp / Math.max(1, player.xpToNextLevel)) * 100)) : 0;
   const equippedCount = char?.gearSlots.filter((slot) => slot.item).length ?? 0;
   const playerStats = player?.stats ?? {};
-  const activeTitle = char?.titles?.[0]?.name ?? "No title equipped";
-  const className = player?.baseClass ?? identity?.hybridArchetype ?? "Unranked Adventurer";
+  const summaryIdentity = char?.identity ?? identity;
+  const activeTitle = summaryIdentity?.activeTitle ?? char?.titles?.[0]?.name ?? "No title equipped";
+  const className = summaryIdentity?.class ?? player?.baseClass ?? identity?.hybridArchetype ?? "Unranked Adventurer";
   const bio = char?.biometrics ?? {};
   const realEquipment = char?.realEquipment ?? [];
   const inventorySummary = char?.inventorySummary ?? { items: 0, gear: 0, equippedGear: 0 };
@@ -280,6 +281,8 @@ export default function CharacterScreen() {
         .reduce((sum, k) => sum + ((identity as any)[k] ?? 0), 0)
     : 0;
   const dominantStyleKey = typeof identity?.dominantStyle === "string" ? identity.dominantStyle : null;
+  const styleLabel = dominantStyleKey ? STYLE_META[dominantStyleKey]?.label ?? dominantStyleKey : "Still forming";
+  const specialization = identity?.hybridArchetype ?? "Earned through behavior";
 
   const isLoading = charLoading || armoryLoading;
 
@@ -293,27 +296,34 @@ export default function CharacterScreen() {
         <Text style={cs.headerTitle}>Adventurer Record</Text>
 
         {player && (
-          <View style={[cs.card, { backgroundColor: "#171510", borderColor: "#3b3328" }]}>
-            <View style={cs.statsRow}>
-              <View style={cs.statBlock}>
-                <Text style={cs.nameText}>{player.name ?? "Adventurer"}</Text>
-                <View style={[cs.rankPill, { borderColor: rankColor + "60" }]}>
-                  <Text style={[cs.rankText, { color: rankColor }]}>{formatGuildGrade(player.rank)}</Text>
-                </View>
-                <Text style={cs.levelText}>Level {player.level} - {className}</Text>
+          <View style={cs.recordCard}>
+            <Text style={cs.recordKicker}>Adventurer Record</Text>
+            <View style={cs.recordHero}>
+              <View style={[cs.gradeSigil, { borderColor: rankColor }]}>
+                <Text style={[cs.gradeSigilText, { color: rankColor }]}>{formatGuildGrade(player.rank)}</Text>
+                <Text style={cs.gradeSigilLabel}>Grade</Text>
               </View>
-              <View style={cs.statsGrid}>
-                {[
-                  { label: "XP", value: (player.xp ?? 0).toLocaleString(), color: "#0dcef5" },
-                  { label: "Gold", value: (player.gold ?? 0).toLocaleString(), color: "#d9ad63" },
-                  { label: "Sessions", value: (player.totalWorkouts ?? 0), color: "#eee5d7" },
-                  { label: "PRs", value: (player.totalPrs ?? 0), color: "#eab308" },
-                ].map((s) => (
-                  <View key={s.label} style={cs.miniStat}>
-                    <Text style={[cs.miniStatValue, { color: s.color }]}>{s.value}</Text>
-                    <Text style={cs.miniStatLabel}>{s.label}</Text>
-                  </View>
-                ))}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={cs.nameText} numberOfLines={1}>{player.name ?? "Adventurer"}</Text>
+                <Text style={cs.levelText}>Level {player.level} - {className}</Text>
+                <View style={cs.recordBadges}>
+                  <Text style={cs.recordBadge} numberOfLines={1}>{activeTitle}</Text>
+                  <Text style={[cs.recordBadge, cs.recordBadgeAccent]} numberOfLines={1}>{specialization}</Text>
+                </View>
+              </View>
+            </View>
+            <View style={cs.recordSummaryGrid}>
+              <View style={cs.recordSummaryTile}>
+                <Text style={[cs.recordSummaryValue, { color: rankColor }]}>{formatGuildGrade(player.rank)}</Text>
+                <Text style={cs.recordSummaryLabel}>Guild Grade</Text>
+              </View>
+              <View style={cs.recordSummaryTile}>
+                <Text style={[cs.recordSummaryValue, { color: "#49a3a0" }]}>{equippedCount}/{char?.gearSlots.length ?? 0}</Text>
+                <Text style={cs.recordSummaryLabel}>Equipped</Text>
+              </View>
+              <View style={[cs.recordSummaryTile, { borderRightWidth: 0 }]}>
+                <Text style={cs.recordSummaryValue} numberOfLines={1}>{styleLabel}</Text>
+                <Text style={cs.recordSummaryLabel}>Style</Text>
               </View>
             </View>
             <View style={cs.xpRow}>
@@ -614,6 +624,19 @@ const cs = StyleSheet.create({
   headerSub: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   headerTitle: { fontSize: 24, fontWeight: "900", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2, marginBottom: 16 },
   card: { borderWidth: 1, padding: 14, marginBottom: 12 },
+  recordCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#171510", padding: 0, marginBottom: 12, overflow: "hidden" },
+  recordKicker: { color: "#8f887d", fontSize: 10, letterSpacing: 2.2, textTransform: "uppercase", fontFamily: "Inter_700Bold", paddingHorizontal: 14, paddingTop: 14 },
+  recordHero: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  gradeSigil: { width: 62, minHeight: 62, borderWidth: 2, backgroundColor: "#1b1511", alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  gradeSigilText: { fontSize: 14, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", textAlign: "center" },
+  gradeSigilLabel: { color: "#9f9586", fontSize: 8, letterSpacing: 1.4, textTransform: "uppercase", marginTop: 2, fontFamily: "Inter_700Bold" },
+  recordBadges: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  recordBadge: { maxWidth: "100%", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", color: "#d8c4a5", paddingHorizontal: 8, paddingVertical: 4, fontSize: 10, fontFamily: "Inter_700Bold" },
+  recordBadgeAccent: { borderColor: "#6b4d2f", color: "#d9ad63" },
+  recordSummaryGrid: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#3b3328" },
+  recordSummaryTile: { flex: 1, minHeight: 58, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderRightColor: "#3b3328", paddingHorizontal: 5 },
+  recordSummaryValue: { color: "#d8c4a5", fontSize: 13, fontFamily: "PlayfairDisplay_700Bold", textAlign: "center" },
+  recordSummaryLabel: { color: "#8f887d", fontSize: 8, textTransform: "uppercase", letterSpacing: 1.2, marginTop: 3, fontFamily: "Inter_400Regular", textAlign: "center" },
   statsRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
   statBlock: { flex: 1, justifyContent: "center", gap: 6 },
   nameText: { color: "#eee5d7", fontSize: 20, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
@@ -624,12 +647,12 @@ const cs = StyleSheet.create({
   miniStat: { minWidth: "45%", backgroundColor: "#0e0d0b", borderWidth: 1, borderColor: "#2a2520", padding: 8, alignItems: "center" },
   miniStatValue: { fontSize: 14, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   miniStatLabel: { fontSize: 9, color: "#9d8f80", textTransform: "uppercase", letterSpacing: 1, marginTop: 2 },
-  xpRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  xpRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4, marginTop: 12, paddingHorizontal: 14 },
   xpLabel: { fontSize: 10, color: "#9d8f80" },
   xpPct: { fontSize: 10, color: "#d9ad63", fontWeight: "700" },
-  xpTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
+  xpTrack: { height: 4, borderRadius: 2, overflow: "hidden", marginHorizontal: 14 },
   xpFill: { height: 4, backgroundColor: "#d9ad63" },
-  titleRow: { borderTopWidth: 1, borderTopColor: "#2a2520", marginTop: 12, paddingTop: 10, flexDirection: "row", justifyContent: "space-between", gap: 12 },
+  titleRow: { borderTopWidth: 1, borderTopColor: "#2a2520", marginTop: 12, paddingTop: 10, paddingHorizontal: 14, paddingBottom: 14, flexDirection: "row", justifyContent: "space-between", gap: 12 },
   titleLabel: { color: "#9d8f80", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 },
   titleValue: { color: "#d8c4a5", fontSize: 12, flex: 1, textAlign: "right", fontFamily: "PlayfairDisplay_700Bold" },
   titleBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
