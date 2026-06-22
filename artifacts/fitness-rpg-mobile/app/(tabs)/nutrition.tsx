@@ -4,6 +4,7 @@ import {
   useGetNutritionLogs,
   useCreateNutritionLog,
   useDeleteNutritionLog,
+  useUpdateNutritionTargets,
   searchFood,
 } from "@workspace/api-client-react";
 import React, { useEffect, useRef, useState } from "react";
@@ -40,6 +41,30 @@ const MEAL_LABELS: Record<string, string> = {
   snack: "Snack", pre_workout: "Pre-Workout", post_workout: "Post-Workout",
 };
 
+const ACTIVITY_LEVELS = [
+  { id: "sedentary", label: "Sedentary", desc: "Desk job, little exercise" },
+  { id: "light", label: "Light", desc: "1-3 workouts/week" },
+  { id: "moderate", label: "Moderate", desc: "3-5 workouts/week" },
+  { id: "active", label: "Active", desc: "6-7 workouts/week" },
+  { id: "very_active", label: "Very Active", desc: "Twice a day" },
+] as const;
+
+const WEIGHT_GOALS = [
+  { id: "lose", label: "Fat Loss", desc: "-500 kcal" },
+  { id: "maintain", label: "Maintain", desc: "TDEE" },
+  { id: "gain", label: "Gain Muscle", desc: "+300 kcal" },
+] as const;
+
+function nutritionGoalLabel(goal?: string | null) {
+  if (goal === "lose") return "fat loss";
+  if (goal === "gain") return "muscle gain";
+  return "maintenance";
+}
+
+function activityLabel(activity?: string | null) {
+  return ACTIVITY_LEVELS.find((level) => level.id === activity)?.label ?? "profile";
+}
+
 type MacroKey = "calories" | "protein" | "carbs" | "fat";
 const MACRO_META: Array<{ key: MacroKey; label: string; unit: string; color: string }> = [
   { key: "calories", label: "Calories", unit: "kcal", color: "#d9ad63" },
@@ -75,6 +100,167 @@ const mb = StyleSheet.create({
   unit: { fontSize: 10, color: "#9d8f80", fontWeight: "400" },
   track: { height: 6, borderRadius: 3, overflow: "hidden" },
   fill: { height: 6, borderRadius: 3 },
+});
+
+function CalorieGoalCard({ targets, onSaved }: { targets: any; onSaved: () => void }) {
+  const qc = useQueryClient();
+  const updateTargets = useUpdateNutritionTargets();
+  const [open, setOpen] = useState(!targets?.autoCalc);
+  const [sex, setSex] = useState<"male" | "female" | "">((targets?.sex as "male" | "female") ?? "");
+  const [age, setAge] = useState(targets?.ageYears ? String(targets.ageYears) : "");
+  const [activity, setActivity] = useState<string>(targets?.activityLevel ?? "");
+  const [goal, setGoal] = useState<string>(targets?.weightGoal ?? "");
+
+  const canSave = Boolean(sex && age && activity && goal);
+
+  const handleSave = () => {
+    const ageYears = parseInt(age, 10);
+    if (!sex || !activity || !goal || Number.isNaN(ageYears) || ageYears < 10 || ageYears > 100) {
+      Alert.alert("Check target details", "Choose sex, age, activity, and goal. Age should be between 10 and 100.");
+      return;
+    }
+
+    updateTargets.mutate(
+      { data: { sex, ageYears, activityLevel: activity, weightGoal: goal } as any },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: ["/api/nutrition/targets"] });
+          qc.invalidateQueries({ queryKey: ["/api/nutrition/today"] });
+          setOpen(false);
+          onSaved();
+        },
+        onError: () => Alert.alert("Could not update target", "The Guild ledger could not save this goal yet."),
+      }
+    );
+  };
+
+  return (
+    <View style={cg.card}>
+      <TouchableOpacity style={cg.summaryRow} onPress={() => setOpen((value) => !value)} activeOpacity={0.8}>
+        <View style={cg.iconBox}>
+          <Text style={cg.iconText}>#</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={cg.title}>Calorie Goal</Text>
+          <Text style={cg.subtitle}>
+            {targets?.autoCalc ? "Calculated from profile data" : "Set sex, age, activity, and goal"}
+          </Text>
+        </View>
+        <Text style={cg.chevron}>{open ? "HIDE" : "EDIT"}</Text>
+      </TouchableOpacity>
+
+      {open && (
+        <View style={cg.body}>
+          <Text style={cg.note}>
+            Targets use your height and weight from the Adventurer Profile when available. If those are missing, the ledger saves your preferences and keeps the current macro targets.
+          </Text>
+
+          <Text style={cg.fieldLabel}>Sex used for calorie formula</Text>
+          <View style={cg.twoCol}>
+            {(["male", "female"] as const).map((option) => (
+              <TouchableOpacity
+                key={option}
+                style={[cg.pill, sex === option && cg.pillActive]}
+                onPress={() => setSex(option)}
+                activeOpacity={0.8}
+              >
+                <Text style={[cg.pillText, sex === option && cg.pillTextActive]}>{option === "male" ? "Male" : "Female"}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={cg.fieldLabel}>Age</Text>
+          <TextInput
+            style={cg.input}
+            value={age}
+            onChangeText={setAge}
+            placeholder="e.g. 28"
+            placeholderTextColor="#6f6559"
+            keyboardType="number-pad"
+          />
+
+          <Text style={cg.fieldLabel}>Activity Level</Text>
+          <View style={cg.optionStack}>
+            {ACTIVITY_LEVELS.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                style={[cg.optionRow, activity === option.id && cg.optionRowActive]}
+                onPress={() => setActivity(option.id)}
+                activeOpacity={0.8}
+              >
+                <View style={[cg.dot, activity === option.id && cg.dotActive]} />
+                <View>
+                  <Text style={[cg.optionTitle, activity === option.id && cg.optionTitleActive]}>{option.label}</Text>
+                  <Text style={cg.optionDesc}>{option.desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={cg.fieldLabel}>Goal</Text>
+          <View style={cg.goalGrid}>
+            {WEIGHT_GOALS.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                style={[cg.goalBox, goal === option.id && cg.goalBoxActive]}
+                onPress={() => setGoal(option.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={[cg.goalTitle, goal === option.id && cg.goalTitleActive]}>{option.label}</Text>
+                <Text style={cg.goalDesc}>{option.desc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={[cg.saveBtn, (!canSave || updateTargets.isPending) && { opacity: 0.55 }]}
+            onPress={handleSave}
+            disabled={!canSave || updateTargets.isPending}
+            activeOpacity={0.85}
+          >
+            {updateTargets.isPending
+              ? <ActivityIndicator color="#000" size="small" />
+              : <Text style={cg.saveText}>CALCULATE & SAVE GOAL</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const cg = StyleSheet.create({
+  card: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", marginTop: 12 },
+  summaryRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12 },
+  iconBox: { width: 32, height: 32, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15130f", alignItems: "center", justifyContent: "center" },
+  iconText: { color: "#22c55e", fontSize: 14, fontFamily: "Inter_700Bold" },
+  title: { color: "#eee5d7", fontSize: 13, fontFamily: "Inter_700Bold" },
+  subtitle: { color: "#22c55e", fontSize: 10, marginTop: 2, fontFamily: "Inter_400Regular" },
+  chevron: { color: "#9d8f80", fontSize: 9, letterSpacing: 1.5, fontFamily: "Inter_700Bold" },
+  body: { borderTopWidth: 1, borderTopColor: "#2a2520", padding: 12, gap: 10 },
+  note: { color: "#9d8f80", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
+  fieldLabel: { color: "#8f887d", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginTop: 2 },
+  twoCol: { flexDirection: "row", gap: 8 },
+  pill: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#171510", paddingVertical: 9, alignItems: "center" },
+  pillActive: { borderColor: "#d9ad63", backgroundColor: "#d9ad6318" },
+  pillText: { color: "#9d8f80", fontSize: 12, fontFamily: "Inter_700Bold" },
+  pillTextActive: { color: "#d9ad63" },
+  input: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", color: "#eee5d7", padding: 10, fontSize: 13, fontFamily: "Inter_400Regular" },
+  optionStack: { gap: 6 },
+  optionRow: { flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 9 },
+  optionRowActive: { borderColor: "#d9ad63", backgroundColor: "#d9ad6310" },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#3b3328" },
+  dotActive: { backgroundColor: "#d9ad63" },
+  optionTitle: { color: "#eee5d7", fontSize: 12, fontFamily: "Inter_700Bold" },
+  optionTitleActive: { color: "#d9ad63" },
+  optionDesc: { color: "#8f887d", fontSize: 10, marginTop: 1, fontFamily: "Inter_400Regular" },
+  goalGrid: { flexDirection: "row", gap: 6 },
+  goalBox: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 8, alignItems: "center" },
+  goalBoxActive: { borderColor: "#d9ad63", backgroundColor: "#d9ad6318" },
+  goalTitle: { color: "#eee5d7", fontSize: 10, textAlign: "center", fontFamily: "Inter_700Bold" },
+  goalTitleActive: { color: "#d9ad63" },
+  goalDesc: { color: "#8f887d", fontSize: 9, marginTop: 2, fontFamily: "Inter_400Regular" },
+  saveBtn: { backgroundColor: "#d9ad63", alignItems: "center", justifyContent: "center", minHeight: 42, marginTop: 2 },
+  saveText: { color: "#000", fontSize: 12, letterSpacing: 1.2, fontFamily: "Inter_700Bold" },
 });
 
 function LogEntryRow({ entry, onDelete }: { entry: any; onDelete: (id: number) => void }) {
@@ -438,7 +624,9 @@ export default function NutritionScreen() {
           <View style={ns.ledgerGrid}>
             <View style={ns.ledgerBox}>
               <Text style={ns.ledgerLabel}>Goal basis</Text>
-              <Text style={ns.ledgerValue}>Profile targets</Text>
+              <Text style={ns.ledgerValue}>
+                {nutritionGoalLabel((targets as any)?.weightGoal)} - {activityLabel((targets as any)?.activityLevel)}
+              </Text>
             </View>
             <View style={ns.ledgerBox}>
               <Text style={ns.ledgerLabel}>Commission effect</Text>
@@ -474,7 +662,20 @@ export default function NutritionScreen() {
               />
             ))
           )}
+          {(targets as any)?.autoCalc && (
+            <Text style={ns.autoCalcNote}>
+              {(targets as any)?.calories ?? macroTargets.calories} kcal - {nutritionGoalLabel((targets as any)?.weightGoal)} goal
+            </Text>
+          )}
         </View>
+
+        <CalorieGoalCard
+          targets={targets as any}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["/api/nutrition/targets"] });
+            qc.invalidateQueries({ queryKey: ["/api/nutrition/today"] });
+          }}
+        />
 
         {/* Add food button */}
         <TouchableOpacity
@@ -530,6 +731,7 @@ const ns = StyleSheet.create({
   targetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 },
   remainingValue: { color: "#eee5d7", fontSize: 24, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   remainingLabel: { color: "#9d8f80", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
+  autoCalcNote: { color: "#22c55e", fontSize: 10, marginTop: 2, fontFamily: "Inter_400Regular" },
   mealHeader: { fontSize: 9, letterSpacing: 2, color: "#9d8f80", textTransform: "uppercase", marginBottom: 6, fontFamily: "Inter_400Regular" },
   addFoodBtn: { backgroundColor: "#d9ad63", padding: 14, alignItems: "center", marginTop: 12 },
   addFoodText: { color: "#000", fontWeight: "700", fontSize: 13, letterSpacing: 2, fontFamily: "Inter_700Bold" },
