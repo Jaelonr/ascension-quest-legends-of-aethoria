@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
+import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { formatGuildGrade, gradeColor } from "@/utils/ranks";
 
@@ -126,9 +127,9 @@ function AldricChatModal({
       >
         <View style={[s.chatHeader, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
           <Text style={[s.chatTitle, { color: "#d9ad63" }]}>Grandmaster Aldric</Text>
-          <Text style={[s.chatSub, { color: colors.mutedForeground }]}>Guild Hall · Aethoria</Text>
+          <Text style={[s.chatSub, { color: colors.mutedForeground }]}>Guild Hall - Aethoria</Text>
           <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-            <Text style={{ color: colors.mutedForeground, fontSize: 22 }}>✕</Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 22 }}>x</Text>
           </TouchableOpacity>
         </View>
         <ScrollView
@@ -195,14 +196,14 @@ function AldricChatModal({
           ))}
           {sendMsg.isPending && (
             <View style={[s.bubble, { backgroundColor: "#1a1814", borderColor: "#3b3328", alignSelf: "flex-start" }]}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 18 }}>· · ·</Text>
+              <Text style={{ color: colors.mutedForeground, fontSize: 18 }}>...</Text>
             </View>
           )}
         </ScrollView>
         <View style={[s.chatInputRow, { borderTopColor: colors.border, paddingBottom: insets.bottom + 8 }]}>
           <TextInput
             style={[s.chatInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-            placeholder="Report to Aldric…"
+            placeholder="Ask Aldric about Aethoria, the Gates, your record, or the next duty..."
             placeholderTextColor={colors.mutedForeground}
             value={input}
             onChangeText={setInput}
@@ -215,7 +216,7 @@ function AldricChatModal({
             onPress={send}
             disabled={sendMsg.isPending || !input.trim()}
           >
-            <Text style={{ color: "#000", fontWeight: "700", fontSize: 16 }}>→</Text>
+            <Text style={{ color: "#000", fontWeight: "700", fontSize: 11 }}>Send</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -358,30 +359,31 @@ export default function HallScreen() {
               activeOpacity={0.85}
               disabled={reporting}
             >
-              {reporting ? <ActivityIndicator color="#f1dfc6" size="small" /> : null}
+              {reporting ? <ActivityIndicator color="#f1dfc6" size="small" /> : <Feather name="message-circle" size={18} color="#f1dfc6" />}
               <Text style={s.reportBtnText}>{reporting ? "REPORTING..." : "REPORT TO THE GUILDMASTER"}</Text>
             </TouchableOpacity>
 
             {player && (
               <View style={s.statStrip}>
                 <View style={s.statCell}>
+                  <Feather name="award" size={16} color={rankColor} />
                   <Text style={[s.stripValue, { color: rankColor }]}>{formatGuildGrade(player.rank)}</Text>
                   <Text style={s.stripLabel}>Grade</Text>
                 </View>
                 <View style={s.statCell}>
+                  <Feather name="star" size={16} color="#d8c4a5" />
                   <Text style={s.stripValue}>Lv. {player.level}</Text>
                   <Text style={s.stripLabel}>Level</Text>
                 </View>
                 <View style={s.statCell}>
-                  <Text style={s.stripValue}>{player.gold.toLocaleString()}</Text>
-                  <Text style={s.stripLabel}>Gold</Text>
+                  <Feather name="activity" size={16} color="#dc7540" />
+                  <Text style={s.stripValue}>{hallAny?.player?.streakDays ?? 0} days</Text>
+                  <Text style={s.stripLabel}>Streak</Text>
                 </View>
                 <View style={[s.statCell, { borderRightWidth: 0 }]}>
-                  <Text style={s.stripValue}>{xpPct}%</Text>
-                  <Text style={s.stripLabel}>XP</Text>
-                  <View style={s.stripXpTrack}>
-                    <View style={[s.xpFill, { width: `${xpPct}%` }]} />
-                  </View>
+                  <Feather name="book-open" size={16} color="#55a6a1" />
+                  <Text style={[s.stripValue, { color: "#55a6a1" }]}>Ch. {hallAny?.campaign?.chapter ?? 1}</Text>
+                  <Text style={s.stripLabel}>Campaign</Text>
                 </View>
               </View>
             )}
@@ -471,117 +473,31 @@ export default function HallScreen() {
               </View>
             )}
 
+            {(hallAny?.equippedGear?.length ?? 0) > 0 && (
+              <View style={s.affinityPanel}>
+                <Feather name="zap" size={18} color="#53aeb0" />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.affinityLabel}>System affinity</Text>
+                  <Text style={s.affinityText} numberOfLines={2}>
+                    {hallAny.equippedGear.map((gear: any) => `${gear.name}: ${gear.elementalAffinity ?? gear.affinity ?? "latent"}`).join(" | ")}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {(hallAny?.worldEvents?.length ?? 0) > 0 && (
+              <View style={s.worldMemoryPanel}>
+                <Text style={s.worldMemoryTitle}>The world remembers</Text>
+                <Text style={s.worldMemoryText}>{hallAny.worldEvents[0]?.description}</Text>
+              </View>
+            )}
+
             <Text style={[s.footerMotto, { color: allDone ? "#69a97b" : "#7e776d" }]}>
               {allDone ? "The Guild is ready to receive your report." : "Consistency is the weapon. The next action is enough."}
             </Text>
           </>
         )}
 
-        {false && player && (
-        <>
-        {/* Player card */}
-        {isLoading ? (
-          <View style={[s.card, { backgroundColor: "#171510", borderColor: "#3b3328", height: 90 }]} />
-        ) : player ? (
-          <View style={[s.card, { backgroundColor: "#171510", borderColor: "#3b3328" }]}>
-            <View style={s.playerRow}>
-              <View>
-                <View style={[s.rankBadge, { borderColor: rankColor + "60" }]}>
-                  <Text style={[s.rankText, { color: rankColor }]}>{formatGuildGrade(player!.rank)} Adventurer</Text>
-                </View>
-                <Text style={s.playerName}>{player!.name ?? "Adventurer"}</Text>
-                <Text style={s.playerLevel}>Level {player!.level}</Text>
-              </View>
-              <View style={s.goldBlock}>
-                <Text style={s.goldAmount}>{player!.gold.toLocaleString()}</Text>
-                <Text style={s.goldLabel}>GOLD</Text>
-              </View>
-            </View>
-            <View style={s.xpRow}>
-              <Text style={s.xpLabel}>XP — {player.xp.toLocaleString()} / {player.xpToNextLevel.toLocaleString()}</Text>
-              <Text style={s.xpPct}>{xpPct}%</Text>
-            </View>
-            <View style={[s.xpTrack, { backgroundColor: "#2a2520" }]}>
-              <View style={[s.xpFill, { width: `${xpPct}%` }]} />
-            </View>
-          </View>
-        ) : null}
-
-        {/* Today's commission */}
-        {commission && (
-          <View style={[s.card, { backgroundColor: "#171510", borderColor: "#8c6a36", marginTop: 12 }]}>
-            <Text style={s.sectionLabel}>TODAY'S COMMISSION</Text>
-            <Text style={s.commissionTitle}>{commission.title ?? commission.quest?.title ?? "Active Commission"}</Text>
-            {commission.description && (
-              <Text style={[s.commissionDesc, { color: colors.mutedForeground }]}>{commission.description}</Text>
-            )}
-            {commission.tasks && commission.tasks.length > 0 && (
-              <View style={{ marginTop: 8, gap: 4 }}>
-                {(commission.tasks as any[]).map((task: any, i: number) => (
-                  <View key={i} style={s.taskRowSmall}>
-                    <Text style={{ color: task.completed ? "#22c55e" : "#d9ad63", fontSize: 12 }}>
-                      {task.completed ? "✓" : "○"}
-                    </Text>
-                    <Text style={[s.taskDescSmall, { color: task.completed ? colors.mutedForeground : colors.foreground }]}>
-                      {task.description}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-            <TouchableOpacity
-              style={s.goTrainBtn}
-              onPress={() => router.push("/(tabs)/training")}
-              activeOpacity={0.8}
-            >
-              <Text style={s.goTrainText}>GO TO TRAINING →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Daily Quest */}
-        {dailyQuest && (
-          <View style={[s.card, { backgroundColor: "#171510", borderColor: "#3b3328", marginTop: 12 }]}>
-            <Text style={s.sectionLabel}>GUILD DUTY</Text>
-            <Text style={s.commissionTitle}>{dailyQuest.title}</Text>
-            <View style={s.rewardRow}>
-              <Text style={s.rewardXp}>+{dailyQuest.xpReward} XP</Text>
-              <Text style={s.rewardGold}>+{dailyQuest.goldReward} Gold</Text>
-            </View>
-            {dailyQuest.tasks && (dailyQuest.tasks as any[]).map((t: any, i: number) => (
-              <View key={i} style={s.taskRowSmall}>
-                <Text style={{ color: t.completed ? "#22c55e" : "#6b5d4f", fontSize: 12 }}>
-                  {t.completed ? "✓" : "○"}
-                </Text>
-                <Text style={[s.taskDescSmall, { color: t.completed ? colors.mutedForeground : colors.foreground }]}>
-                  {t.description}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Nav tiles */}
-        <View style={s.navGrid}>
-          {[
-            { label: "Training Yard", icon: "⚔️", route: "/(tabs)/training" },
-            { label: "Nutrition", icon: "🍖", route: "/(tabs)/nutrition" },
-            { label: "Chronicle", icon: "📖", route: "/(tabs)/battle-log" },
-            { label: "Character", icon: "🛡️", route: "/(tabs)/inventory" },
-          ].map((item) => (
-            <TouchableOpacity
-              key={item.label}
-              style={[s.navTile, { backgroundColor: "#171510", borderColor: "#3b3328" }]}
-              onPress={() => router.push(item.route as any)}
-              activeOpacity={0.7}
-            >
-              <Text style={{ fontSize: 22 }}>{item.icon}</Text>
-              <Text style={[s.navTileLabel, { color: "#d8c4a5" }]}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        </>
-        )}
       </ScrollView>
 
       <AldricChatModal visible={aldricOpen} onClose={() => setAldricOpen(false)} initialReport={reportResult} />
@@ -659,6 +575,12 @@ const s = StyleSheet.create({
   offeringRow: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10, marginTop: 7 },
   offeringName: { color: "#d8c4a5", fontSize: 13, fontFamily: "PlayfairDisplay_700Bold" },
   offeringMeta: { color: "#8f887d", fontSize: 10, fontFamily: "Inter_400Regular", textTransform: "uppercase", marginTop: 2 },
+  affinityPanel: { flexDirection: "row", alignItems: "center", gap: 10, borderLeftWidth: 2, borderLeftColor: "#428f91", backgroundColor: "#10191a", paddingHorizontal: 12, paddingVertical: 12, marginTop: 14 },
+  affinityLabel: { color: "#73999a", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.4 },
+  affinityText: { color: "#d8e4e3", fontSize: 12, lineHeight: 17, fontFamily: "Inter_400Regular", marginTop: 2 },
+  worldMemoryPanel: { borderWidth: 1, borderColor: "#6a3028", backgroundColor: "#1b1110", padding: 12, marginTop: 14 },
+  worldMemoryTitle: { color: "#d48b73", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold" },
+  worldMemoryText: { color: "#baa9a2", fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular", marginTop: 4 },
   footerMotto: { textAlign: "center", marginTop: 14, fontSize: 11, fontFamily: "Inter_400Regular" },
   playerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
   rankBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, alignSelf: "flex-start", marginBottom: 4 },
