@@ -191,6 +191,7 @@ export default function WearablesScreen() {
   const [form, setForm] = useState<WearableForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [unitSystem, setUnitSystem] = useState<Units>("imperial");
 
   const entryCount = summary?.entries?.length ?? 0;
@@ -268,6 +269,7 @@ export default function WearablesScreen() {
         body: JSON.stringify(body),
       });
       setTodayEntry(saved);
+      setFormOpen(false);
       await loadData();
       Alert.alert("Vitals logged", "Aldric's next counsel can account for today's recovery record.");
     } catch {
@@ -328,34 +330,50 @@ export default function WearablesScreen() {
         <View style={w.sectionBlock}>
           <View style={w.summaryHeader}>
             <Text style={w.sectionTitle}>Today's Field Report</Text>
-            <Text style={todayEntry ? w.statusGood : w.statusSoon}>{todayEntry ? "Logged" : "Open"}</Text>
-          </View>
-          <View style={w.formCard}>
-            <View style={w.formGrid}>
-              <Field label="Steps" value={form.steps} onChangeText={(v) => setFormValue("steps", v)} placeholder="8500" />
-              <Field label="Sleep Hours" value={form.sleepHours} onChangeText={(v) => setFormValue("sleepHours", v)} placeholder="7.5" />
-              <Field label="HRV" value={form.hrv} onChangeText={(v) => setFormValue("hrv", v)} placeholder="55" />
-              <Field label="Resting HR" value={form.restingHr} onChangeText={(v) => setFormValue("restingHr", v)} placeholder="60" />
-              <Field label="Calories Burned" value={form.caloriesBurned} onChangeText={(v) => setFormValue("caloriesBurned", v)} placeholder="450" />
-              <Field label="Active Minutes" value={form.activeMinutes} onChangeText={(v) => setFormValue("activeMinutes", v)} placeholder="45" />
-            </View>
-            <Field
-              label={`Weight (${unitSystem === "metric" ? "kg" : "lbs"})`}
-              value={form.weight}
-              onChangeText={(v) => setFormValue("weight", v)}
-              placeholder={unitSystem === "metric" ? "80" : "175"}
-            />
-            <Field
-              label="Notes"
-              value={form.notes}
-              onChangeText={(v) => setFormValue("notes", v)}
-              placeholder="Soreness, pain, travel, or unusual fatigue"
-              keyboardType="default"
-            />
-            <TouchableOpacity style={[w.saveBtn, saving && w.disabled]} onPress={handleSave} disabled={saving} activeOpacity={0.84}>
-              {saving ? <ActivityIndicator color="#0a0908" /> : <Text style={w.saveText}>Save Recovery Record</Text>}
+            <TouchableOpacity style={w.reportToggle} onPress={() => setFormOpen((value) => !value)} activeOpacity={0.82}>
+              <Feather name={todayEntry ? "check" : "plus"} size={13} color={todayEntry ? "#4ade80" : "#d9ad63"} />
+              <Text style={todayEntry ? w.statusGood : w.statusSoon}>{todayEntry ? "Logged" : "Log Today"}</Text>
+              <Feather name={formOpen ? "chevron-up" : "chevron-down"} size={13} color="#8f887d" />
             </TouchableOpacity>
           </View>
+          {formOpen ? (
+            <View style={w.formCard}>
+              <View style={w.formGrid}>
+                <Field label="Steps" value={form.steps} onChangeText={(v) => setFormValue("steps", v)} placeholder="8500" />
+                <Field label="Sleep Hours" value={form.sleepHours} onChangeText={(v) => setFormValue("sleepHours", v)} placeholder="7.5" />
+                <Field label="HRV" value={form.hrv} onChangeText={(v) => setFormValue("hrv", v)} placeholder="55" />
+                <Field label="Resting HR" value={form.restingHr} onChangeText={(v) => setFormValue("restingHr", v)} placeholder="60" />
+                <Field label="Calories Burned" value={form.caloriesBurned} onChangeText={(v) => setFormValue("caloriesBurned", v)} placeholder="450" />
+                <Field label="Active Minutes" value={form.activeMinutes} onChangeText={(v) => setFormValue("activeMinutes", v)} placeholder="45" />
+              </View>
+              <Field
+                label={`Weight (${unitSystem === "metric" ? "kg" : "lbs"})`}
+                value={form.weight}
+                onChangeText={(v) => setFormValue("weight", v)}
+                placeholder={unitSystem === "metric" ? "80" : "175"}
+              />
+              <Field
+                label="Notes"
+                value={form.notes}
+                onChangeText={(v) => setFormValue("notes", v)}
+                placeholder="Soreness, pain, travel, or unusual fatigue"
+                keyboardType="default"
+              />
+              <View style={w.formActions}>
+                <TouchableOpacity style={[w.saveBtn, saving && w.disabled]} onPress={handleSave} disabled={saving} activeOpacity={0.84}>
+                  {saving ? <ActivityIndicator color="#0a0908" /> : <Text style={w.saveText}>Save Recovery Record</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity style={w.cancelBtn} onPress={() => setFormOpen(false)} activeOpacity={0.82}>
+                  <Text style={w.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={w.collapsedReport}>
+              <Text style={w.collapsedReportTitle}>{todayEntry ? "Recovery record saved for today." : "No recovery record yet."}</Text>
+              <Text style={w.collapsedReportText}>{todayEntry ? "Open the report if you need to revise steps, sleep, readiness, or notes." : "Open the field report to log steps, sleep, HRV, active minutes, weight, or recovery notes."}</Text>
+            </View>
+          )}
         </View>
 
         <View style={w.sectionBlock}>
@@ -453,6 +471,7 @@ const w = StyleSheet.create({
   summaryHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 },
   sectionTitle: { color: "#d9ad63", fontSize: 14, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
   sectionBlock: { marginTop: 16 },
+  reportToggle: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", paddingHorizontal: 8, paddingVertical: 5 },
   statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   statCard: { width: "48.6%", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12 },
   statHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 7 },
@@ -466,6 +485,12 @@ const w = StyleSheet.create({
   input: { borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", color: "#eee5d7", minHeight: 42, paddingHorizontal: 10, fontSize: 13 },
   saveBtn: { minHeight: 46, alignItems: "center", justifyContent: "center", backgroundColor: "#d9ad63", borderWidth: 1, borderColor: "#f0c77a", marginTop: 2 },
   saveText: { color: "#0a0908", fontFamily: "Inter_700Bold", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
+  formActions: { gap: 8 },
+  cancelBtn: { minHeight: 38, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09" },
+  cancelText: { color: "#8f887d", fontSize: 12, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  collapsedReport: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12 },
+  collapsedReportTitle: { color: "#d8c4a5", fontSize: 13, fontFamily: "Inter_700Bold" },
+  collapsedReportText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
   disabled: { opacity: 0.7 },
   statusGood: { color: "#4ade80", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   statusSoon: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
