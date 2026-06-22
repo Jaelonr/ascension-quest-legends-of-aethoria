@@ -261,6 +261,15 @@ export default function SettingsScreen() {
     updateSettings({ ...settings, [key]: value });
   };
 
+  const setMeasurementSystem = (units: MobileSettings["units"]) => {
+    updateSettings({
+      ...settings,
+      units,
+      weightUnit: units === "metric" ? "kg" : "lbs",
+      distanceUnit: units === "metric" ? "km" : "mi",
+    });
+  };
+
   const showCopy = (key: keyof typeof LEGAL_COPY) => {
     Alert.alert(LEGAL_COPY[key].title, LEGAL_COPY[key].body);
   };
@@ -335,14 +344,56 @@ export default function SettingsScreen() {
             label="Imperial"
             description="Default for this build: pounds, inches, miles, and calories."
             active={settings.units === "imperial"}
-            onPress={() => setSetting("units", "imperial")}
+            onPress={() => setMeasurementSystem("imperial")}
           />
           <Choice
             label="Metric"
             description="Kilograms, centimeters, and kilometers for players who prefer metric display."
             active={settings.units === "metric"}
-            onPress={() => setSetting("units", "metric")}
+            onPress={() => setMeasurementSystem("metric")}
           />
+          <View style={s.inlinePanel}>
+            <View style={s.inlineHeading}>
+              <Feather name="bar-chart-2" size={14} color="#d9ad63" />
+              <View style={{ flex: 1 }}>
+                <Text style={s.inlineTitle}>Weight Unit</Text>
+                <Text style={s.inlineDesc}>Used for lifts, biometrics, and workout logs.</Text>
+              </View>
+            </View>
+            <View style={s.segmentRow}>
+              {(["lbs", "kg"] as const).map((unit) => (
+                <TouchableOpacity
+                  key={unit}
+                  style={[s.segmentButton, settings.weightUnit === unit && s.segmentButtonActive]}
+                  onPress={() => setSetting("weightUnit", unit)}
+                  activeOpacity={0.82}
+                >
+                  <Text style={[s.segmentText, settings.weightUnit === unit && s.segmentTextActive]}>{unit}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View style={s.inlinePanel}>
+            <View style={s.inlineHeading}>
+              <Feather name="activity" size={14} color="#d9ad63" />
+              <View style={{ flex: 1 }}>
+                <Text style={s.inlineTitle}>Distance Unit</Text>
+                <Text style={s.inlineDesc}>Used for cardio, route records, and travel summaries.</Text>
+              </View>
+            </View>
+            <View style={s.segmentRow}>
+              {(["mi", "km"] as const).map((unit) => (
+                <TouchableOpacity
+                  key={unit}
+                  style={[s.segmentButton, settings.distanceUnit === unit && s.segmentButtonActive]}
+                  onPress={() => setSetting("distanceUnit", unit)}
+                  activeOpacity={0.82}
+                >
+                  <Text style={[s.segmentText, settings.distanceUnit === unit && s.segmentTextActive]}>{unit}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
           <Choice
             label="Balanced Narrative"
             description="Keeps the RPG flavor present while staying quick to read."
@@ -644,6 +695,11 @@ const s = StyleSheet.create({
   chipActive: { borderColor: "#d9ad63", backgroundColor: "#24190d" },
   chipText: { color: "#9d8f80", fontSize: 11, fontFamily: "Inter_700Bold" },
   chipTextActive: { color: "#f1dfc6" },
+  segmentRow: { flexDirection: "row", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#080706", overflow: "hidden" },
+  segmentButton: { flex: 1, minHeight: 38, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderRightColor: "#2a2520" },
+  segmentButtonActive: { backgroundColor: "#24190d" },
+  segmentText: { color: "#8f887d", fontSize: 12, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  segmentTextActive: { color: "#f1dfc6" },
   swatchGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   swatchButton: { width: "30%", minWidth: 86, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 8, alignItems: "center", gap: 6 },
   swatchButtonActive: { borderColor: "#d9ad63", backgroundColor: "#1a140d" },

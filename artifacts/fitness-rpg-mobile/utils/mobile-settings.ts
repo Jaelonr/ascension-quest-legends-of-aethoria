@@ -1,11 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type Units = "imperial" | "metric";
+export type WeightUnit = "lbs" | "kg";
+export type DistanceUnit = "mi" | "km";
 export type NarrativeMode = "balanced" | "immersive" | "technical";
 export type AccentColor = "gold" | "cyan" | "green" | "orange" | "red" | "purple";
 
 export type MobileSettings = {
   units: Units;
+  weightUnit: WeightUnit;
+  distanceUnit: DistanceUnit;
   narrativeMode: NarrativeMode;
   accentColor: AccentColor;
   soundsEnabled: boolean;
@@ -27,6 +31,8 @@ export const MOBILE_SETTINGS_KEY = "ascension-quest-mobile-settings";
 
 export const DEFAULT_MOBILE_SETTINGS: MobileSettings = {
   units: "imperial",
+  weightUnit: "lbs",
+  distanceUnit: "mi",
   narrativeMode: "balanced",
   accentColor: "gold",
   soundsEnabled: true,
@@ -45,7 +51,10 @@ export const DEFAULT_MOBILE_SETTINGS: MobileSettings = {
 };
 
 export function mergeMobileSettings(value: Partial<MobileSettings> | null): MobileSettings {
-  return { ...DEFAULT_MOBILE_SETTINGS, ...(value ?? {}) };
+  const merged = { ...DEFAULT_MOBILE_SETTINGS, ...(value ?? {}) };
+  if (!value?.weightUnit) merged.weightUnit = merged.units === "metric" ? "kg" : "lbs";
+  if (!value?.distanceUnit) merged.distanceUnit = merged.units === "metric" ? "km" : "mi";
+  return merged;
 }
 
 export async function loadMobileSettings(): Promise<MobileSettings> {
