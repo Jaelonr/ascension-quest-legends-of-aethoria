@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { formatGuildGrade, gradeColor } from "@/utils/ranks";
+import { LEGAL_COPY, type LegalCopyKey } from "@/utils/legal-copy";
 
 const PAPER_DOLL = require("../../assets/images/aethoria-equipment-paper-doll.png");
 
@@ -338,6 +339,7 @@ export default function CharacterScreen() {
   const inventorySummary = char?.inventorySummary ?? { items: 0, gear: 0, equippedGear: 0 };
   const appearance = char?.appearance ?? { aura: null, cosmeticCount: 0 };
   const recordedEquipment = realEquipment.filter((item) => item.available !== false);
+  const showLegalCopy = (key: LegalCopyKey) => Alert.alert(LEGAL_COPY[key].title, LEGAL_COPY[key].body);
   const activeOfferings = ((storeSections as any)?.[offeringSection] ?? []) as any[];
   const offeringCounts = OFFERING_SECTION_META.reduce<Record<string, number>>((acc, section) => {
     acc[section.key] = (((storeSections as any)?.[section.key] ?? []) as any[]).length;
@@ -761,6 +763,22 @@ export default function CharacterScreen() {
               <Text style={cs.profileBtnTitle}>Open Guild Settings</Text>
               <Text style={cs.profileBtnText}>Manage account access, units, privacy, health imports, and production readiness.</Text>
             </TouchableOpacity>
+
+            <View style={cs.infoPanel}>
+              <Text style={cs.infoTitle}>Data And Privacy</Text>
+              <TouchableOpacity style={cs.privacyRow} onPress={() => showLegalCopy("privacy")} activeOpacity={0.8}>
+                <Text style={cs.privacyTitle}>Privacy Policy</Text>
+                <Text style={cs.privacyText}>What the app stores and why.</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={cs.privacyRow} onPress={() => showLegalCopy("terms")} activeOpacity={0.8}>
+                <Text style={cs.privacyTitle}>Terms And Disclaimer</Text>
+                <Text style={cs.privacyText}>Fitness guidance boundaries and health notes.</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={cs.privacyRow} onPress={() => showLegalCopy("data")} activeOpacity={0.8}>
+                <Text style={cs.privacyTitle}>Export Or Delete Data</Text>
+                <Text style={cs.privacyText}>Production data-control roadmap.</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -922,6 +940,9 @@ const cs = StyleSheet.create({
   profileBtn: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 12, marginTop: 12 },
   profileBtnTitle: { color: "#d9ad63", fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   profileBtnText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
+  privacyRow: { borderTopWidth: 1, borderTopColor: "#2a2520", paddingVertical: 10 },
+  privacyTitle: { color: "#d9ad63", fontSize: 12, fontFamily: "Inter_700Bold" },
+  privacyText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 3 },
   empty: { borderWidth: 1, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 8, marginTop: 8 },
   emptyIcon: { width: 36, height: 36, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },

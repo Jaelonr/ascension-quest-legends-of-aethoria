@@ -9,6 +9,7 @@ import {
   type AccentColor,
   type MobileSettings,
 } from "@/utils/mobile-settings";
+import { LEGAL_COPY } from "@/utils/legal-copy";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -22,29 +23,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const LEGAL_COPY = {
-  privacy: {
-    title: "Privacy Policy",
-    body:
-      "Ascension Quest may store account details, training logs, nutrition entries, biometrics you enter, equipment access, imported health records, Guildmaster memories, and gameplay progression. This data powers commissions, rewards, Chronicle records, and practical guidance.",
-  },
-  terms: {
-    title: "Terms And Health Disclaimer",
-    body:
-      "Ascension Quest provides general training and nutrition guidance for motivation and planning. It is not medical advice. Do not train through sharp, worsening, or concerning pain; medical concerns belong with qualified professionals.",
-  },
-  data: {
-    title: "Data Export And Deletion",
-    body:
-      "Production export and deletion workflows should include workouts, nutrition, biometrics, wearable imports, character progression, Chronicle records, and Guildmaster memories. This mobile build exposes the user-facing surface while the backend workflow is finalized.",
-  },
-  checklist: {
-    title: "Configuration Checklist",
-    body:
-      "Before launch: verify Clerk authentication, Google sign-in redirects, PostgreSQL migrations, OpenAI fallback behavior, mock-mode isolation, legal copy review, app versioning, and export/delete workflows.",
-  },
-};
 
 const REMINDER_TIMES = ["06:00", "07:00", "08:00", "09:00", "12:00", "15:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
 
