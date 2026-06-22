@@ -4,6 +4,8 @@ import {
   useGetArmory,
   useEquipGear,
   useGetPlayerStyleIdentity,
+  useGetStoreSections,
+  usePurchaseStoreItem,
 } from "@workspace/api-client-react";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -85,7 +87,14 @@ const SLOT_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   title: "award",
   aura_cosmetic: "sun",
 };
-type TabKey = "gear" | "inventory" | "identity";
+type TabKey = "gear" | "inventory" | "offerings" | "identity";
+
+const OFFERING_SECTION_META = [
+  { key: "permanent", label: "Hall Shop", note: "Always available while supplies remain.", icon: "shopping-bag" },
+  { key: "daily", label: "Daily", note: "A rotating tray of short-term utilities.", icon: "sun" },
+  { key: "weekly", label: "Weekly", note: "Longer-cycle relics, sidegrades, and curios.", icon: "calendar" },
+  { key: "raid", label: "Raid", note: "Items unlocked by dangerous campaign work.", icon: "shield" },
+] as const satisfies Array<{ key: string; label: string; note: string; icon: keyof typeof Feather.glyphMap }>;
 
 const PAPER_DOLL_SLOTS: Array<{ slot: string; label: string; aliases: string[]; side: "left" | "right" | "support"; icon: keyof typeof Feather.glyphMap; x?: number; y?: number }> = [
   { slot: "head", label: "Head", aliases: ["head", "helmet", "helm", "hood", "circlet"], side: "left", icon: "hard-drive", x: 50, y: 9 },
@@ -274,10 +283,15 @@ export default function CharacterScreen() {
   const { data: char, loading: charLoading } = useCharSummary();
   const { data: armory, isLoading: armoryLoading } = useGetArmory();
   const { data: inventory, isLoading: inventoryLoading } = useGetInventory();
+  const { data: storeSections, isLoading: storeLoading } = useGetStoreSections({
+    query: { queryKey: ["/api/store/sections"] },
+  });
   const { data: identity } = useGetPlayerStyleIdentity();
   const equipGear = useEquipGear();
+  const purchaseItem = usePurchaseStoreItem();
 
   const [selectedGear, setSelectedGear] = useState<any | null>(null);
+  const [offeringSection, setOfferingSection] = useState<(typeof OFFERING_SECTION_META)[number]["key"]>("permanent");
 
   const handleEquip = (gearId: number, _slot: string) => {
     equipGear.mutate(
@@ -289,6 +303,24 @@ export default function CharacterScreen() {
           setSelectedGear(null);
         },
         onError: () => Alert.alert("Error", "Could not equip item."),
+      }
+    );
+  };
+
+  const handlePurchase = (itemId: number) => {
+    purchaseItem.mutate(
+      { data: { itemId, quantity: 1 } },
+      {
+        onSuccess: (res: any) => {
+          Alert.alert("Item Acquired", res?.message ?? "The Hall has released the item to your inventory.");
+          qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+          qc.invalidateQueries({ queryKey: ["/api/player"] });
+          qc.invalidateQueries({ queryKey: ["/api/store/sections"] });
+          qc.invalidateQueries({ queryKey: ["/api/character/summary"] });
+        },
+        onError: (err: any) => {
+          Alert.alert("Purchase Failed", err?.message ?? "The Hall will not release that item yet.");
+        },
       }
     );
   };
@@ -306,6 +338,11 @@ export default function CharacterScreen() {
   const inventorySummary = char?.inventorySummary ?? { items: 0, gear: 0, equippedGear: 0 };
   const appearance = char?.appearance ?? { aura: null, cosmeticCount: 0 };
   const recordedEquipment = realEquipment.filter((item) => item.available !== false);
+  const activeOfferings = ((storeSections as any)?.[offeringSection] ?? []) as any[];
+  const offeringCounts = OFFERING_SECTION_META.reduce<Record<string, number>>((acc, section) => {
+    acc[section.key] = (((storeSections as any)?.[section.key] ?? []) as any[]).length;
+    return acc;
+  }, {});
 
   const identityTotal = identity
     ? ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"]
@@ -387,14 +424,14 @@ export default function CharacterScreen() {
         </View>
 
         <View style={cs.tabs}>
-          {(["gear", "inventory", "identity"] as const).map((t) => (
+          {(["gear", "inventory", "offerings", "identity"] as const).map((t) => (
             <TouchableOpacity
               key={t}
               style={[cs.tab, tab === t && cs.tabActive]}
               onPress={() => setTab(t)}
             >
               <Text style={[cs.tabText, { color: tab === t ? "#d9ad63" : "#6b5d4f" }]}>
-                {t === "gear" ? "Gear" : t === "inventory" ? "Inventory" : "Identity"}
+                {t === "gear" ? "Gear" : t === "inventory" ? "Bag" : t === "offerings" ? "Offerings" : "Identity"}
               </Text>
             </TouchableOpacity>
           ))}
@@ -499,6 +536,107 @@ export default function CharacterScreen() {
                     </Text>
                   </View>
                 )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Offerings tab */}
+        {tab === "offerings" && (
+          <View style={[cs.offeringsCard, { borderColor: "#6b4d2f" }]}>
+            <View style={cs.offeringsIntro}>
+              <View style={cs.offeringsIcon}>
+                <Feather name="shopping-bag" size={17} color="#d9ad63" />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={cs.offeringsTitle}>The Hall's Offerings</Text>
+                <Text style={cs.offeringsCopy}>
+                  The Hall is no common shop. Aldric says useful artifacts surface for adventurers who keep returning.
+                </Text>
+              </View>
+            </View>
+
+            <View style={cs.offerSectionTabs}>
+              {OFFERING_SECTION_META.map((section) => {
+                const active = offeringSection === section.key;
+                return (
+                  <TouchableOpacity
+                    key={section.key}
+                    style={[cs.offerSectionTab, active && cs.offerSectionTabActive]}
+                    onPress={() => setOfferingSection(section.key)}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name={section.icon} size={12} color={active ? "#d9ad63" : "#6b5d4f"} />
+                    <Text style={[cs.offerSectionTabText, { color: active ? "#d9ad63" : "#8f887d" }]} numberOfLines={1}>
+                      {section.label}
+                    </Text>
+                    {offeringCounts[section.key] > 0 && (
+                      <Text style={cs.offerCount}>{offeringCounts[section.key]}</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={cs.offerSectionHeader}>
+              <Text style={cs.offerSectionTitle}>
+                {OFFERING_SECTION_META.find((section) => section.key === offeringSection)?.label}
+              </Text>
+              <Text style={cs.offerSectionNote}>
+                {OFFERING_SECTION_META.find((section) => section.key === offeringSection)?.note}
+              </Text>
+            </View>
+
+            {storeLoading ? (
+              <ActivityIndicator color="#d9ad63" style={{ marginTop: 20 }} />
+            ) : activeOfferings.length === 0 ? (
+              <View style={[cs.empty, { borderColor: "#3b3328" }]}>
+                <View style={cs.emptyIcon}>
+                  <Feather name="moon" size={20} color="#6b5d4f" />
+                </View>
+                <Text style={[cs.emptyTitle, { color: colors.foreground }]}>Nothing revealed yet</Text>
+                <Text style={[cs.emptyDesc, { color: colors.mutedForeground }]}>
+                  The Hall has no items in this section right now. Commissions and campaigns can unlock more.
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {activeOfferings.map((item: any) => {
+                  const rarityColor = RARITY_COLORS[item.rarity ?? "common"] ?? "#9ca3af";
+                  const locked = item.meetsRequirements === false || item.locked === true;
+                  const category = item.category ?? item.itemType ?? "utility";
+                  const cost = item.priceGold ?? item.costGold ?? item.goldCost ?? item.price ?? 0;
+                  return (
+                    <View key={`${offeringSection}-${item.id}`} style={[cs.offerItem, { borderColor: rarityColor + "45" }]}>
+                      <View style={[cs.offerItemIcon, { borderColor: rarityColor + "70" }]}>
+                        <Feather name={(SLOT_ICONS[item.slot] ?? "package") as keyof typeof Feather.glyphMap} size={16} color={rarityColor} />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[cs.itemName, { color: rarityColor }]} numberOfLines={1}>
+                          {item.displayName ?? item.name}
+                        </Text>
+                        <Text style={cs.itemMeta}>{category} - {item.rarity ?? "common"}</Text>
+                        <Text style={[cs.itemDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
+                          {item.description ?? item.loreText ?? "A useful Hall offering for the road ahead."}
+                        </Text>
+                        {item.styleAffinity ? (
+                          <Text style={cs.offerAffinity}>{item.styleAffinity} affinity</Text>
+                        ) : null}
+                      </View>
+                      <View style={cs.offerActionColumn}>
+                        <Text style={cs.offerCost}>{cost} g</Text>
+                        <TouchableOpacity
+                          style={[cs.buyBtn, locked && cs.buyBtnDisabled]}
+                          disabled={locked || purchaseItem.isPending}
+                          onPress={() => handlePurchase(item.id)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[cs.buyBtnText, locked && cs.buyBtnTextDisabled]}>{locked ? "Locked" : "Buy"}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -614,6 +752,10 @@ export default function CharacterScreen() {
             <TouchableOpacity style={cs.profileBtn} onPress={() => router.push("/profile" as any)} activeOpacity={0.8}>
               <Text style={cs.profileBtnTitle}>Open System Record</Text>
               <Text style={cs.profileBtnText}>Edit biometrics, strength marks, equipment access, and notes.</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={cs.profileBtn} onPress={() => setTab("offerings")} activeOpacity={0.8}>
+              <Text style={cs.profileBtnTitle}>Open Hall Offerings</Text>
+              <Text style={cs.profileBtnText}>Browse utilities, cosmetics, sidegrades, and relics without leaving Character.</Text>
             </TouchableOpacity>
             <TouchableOpacity style={cs.profileBtn} onPress={() => router.push("/(tabs)/settings" as any)} activeOpacity={0.8}>
               <Text style={cs.profileBtnTitle}>Open Guild Settings</Text>
@@ -736,6 +878,28 @@ const cs = StyleSheet.create({
   itemDesc: { fontSize: 12, marginTop: 4, lineHeight: 17 },
   equipBtn: { borderWidth: 1, borderColor: "#d9ad6360", paddingHorizontal: 10, paddingVertical: 6 },
   equipBtnText: { color: "#d9ad63", fontSize: 11, fontWeight: "700" },
+  offeringsCard: { borderWidth: 1, backgroundColor: "#11100e", padding: 12 },
+  offeringsIntro: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, flexDirection: "row", gap: 10, alignItems: "flex-start", marginBottom: 12 },
+  offeringsIcon: { width: 34, height: 34, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15110d", alignItems: "center", justifyContent: "center" },
+  offeringsTitle: { color: "#d9ad63", fontSize: 16, fontFamily: "PlayfairDisplay_700Bold" },
+  offeringsCopy: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
+  offerSectionTabs: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  offerSectionTab: { width: "48.8%", minHeight: 42, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingHorizontal: 8, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 6 },
+  offerSectionTabActive: { borderColor: "#d9ad63", backgroundColor: "#1b1511" },
+  offerSectionTabText: { flex: 1, minWidth: 0, fontSize: 10, textTransform: "uppercase", letterSpacing: 1, fontFamily: "Inter_700Bold" },
+  offerCount: { minWidth: 18, overflow: "hidden", textAlign: "center", borderWidth: 1, borderColor: "#6b4d2f", color: "#d9ad63", fontSize: 9, paddingHorizontal: 4, paddingVertical: 1, fontFamily: "Inter_700Bold" },
+  offerSectionHeader: { borderBottomWidth: 1, borderBottomColor: "#3b3328", paddingBottom: 10, marginBottom: 10 },
+  offerSectionTitle: { color: "#eee5d7", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold" },
+  offerSectionNote: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 3 },
+  offerItem: { borderWidth: 1, backgroundColor: "#171510", padding: 10, flexDirection: "row", alignItems: "center", gap: 10 },
+  offerItemIcon: { width: 34, height: 34, borderWidth: 1, backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
+  offerAffinity: { color: "#49a3a0", fontSize: 10, marginTop: 4, textTransform: "capitalize", fontFamily: "Inter_700Bold" },
+  offerActionColumn: { alignItems: "flex-end", gap: 8 },
+  offerCost: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold" },
+  buyBtn: { minWidth: 54, alignItems: "center", borderWidth: 1, borderColor: "#d9ad6360", backgroundColor: "#1b1511", paddingHorizontal: 10, paddingVertical: 7 },
+  buyBtnDisabled: { borderColor: "#3b3328", backgroundColor: "#0c0b09" },
+  buyBtnText: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  buyBtnTextDisabled: { color: "#6b5d4f" },
   identityCard: { borderWidth: 1, padding: 14 },
   sectionLabel: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", textTransform: "uppercase", marginBottom: 10, fontFamily: "Inter_400Regular" },
   dominantStyle: { fontSize: 16, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 6 },
