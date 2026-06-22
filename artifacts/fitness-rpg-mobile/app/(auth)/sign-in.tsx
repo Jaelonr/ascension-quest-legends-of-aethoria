@@ -51,6 +51,22 @@ function getAuthErrorMessage(error: unknown) {
   return "Google sign-in could not be completed. Check that Google sign-in is enabled for this app.";
 }
 
+function getEmailAuthErrorMessage(error: unknown, fallback: string) {
+  if (
+    error &&
+    typeof error === "object" &&
+    "errors" in error &&
+    Array.isArray((error as { errors?: unknown }).errors)
+  ) {
+    const firstError = (error as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0];
+    return firstError?.longMessage || firstError?.message || fallback;
+  }
+
+  if (error instanceof Error) return error.message;
+
+  return fallback;
+}
+
 export default function SignInScreen() {
   const { signIn, errors, fetchStatus } = useSignIn();
   const { startSSOFlow } = useSSO();
@@ -62,6 +78,12 @@ export default function SignInScreen() {
   const [verifyCode, setVerifyCode] = useState("");
   const [ssoLoading, setSsoLoading] = useState<"google" | "apple" | null>(null);
   const [ssoError, setSsoError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [resetCodeSent, setResetCodeSent] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetCodeSentAt, setResetCodeSentAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -72,32 +94,126 @@ export default function SignInScreen() {
   }, []);
 
   const handleEmailSignIn = async () => {
-    const { error } = await signIn.password({ emailAddress: email, password });
-    if (error) return;
+    try {
+      setEmailError(null);
+      const { error } = await signIn.password({ emailAddress: email.trim(), password });
+      if (error) {
+        setEmailError(getEmailAuthErrorMessage(error, "Sign-in failed. Check your email and password."));
+        return;
+      }
 
-    if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) return;
-          router.replace("/(tabs)" as never);
-        },
-      });
+      if (signIn.status === "complete") {
+        await finalizeSignIn();
+      }
+    } catch (err) {
+      setEmailError(getEmailAuthErrorMessage(err, "Sign-in failed. Check your email and password."));
+    }
+  };
+
+  const finalizeSignIn = async () => {
+    const { error } = await signIn.finalize({
+      navigate: ({ decorateUrl }) => {
+        const url = decorateUrl("/");
+        if (url.startsWith("http")) return;
+        router.replace("/(tabs)" as never);
+      },
+    });
+    if (error) {
+      setEmailError(getEmailAuthErrorMessage(error, "Sign-in could not be completed."));
     }
   };
 
   const handleVerify = async () => {
-    await signIn.mfa.verifyEmailCode({ code: verifyCode });
-    if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) return;
-          router.replace("/(tabs)" as never);
-        },
-      });
+    try {
+      setEmailError(null);
+      const { error } = await signIn.mfa.verifyEmailCode({ code: verifyCode });
+      if (error) {
+        setEmailError(getEmailAuthErrorMessage(error, "That verification code could not be accepted."));
+        return;
+      }
+      if (signIn.status === "complete") {
+        await finalizeSignIn();
+      }
+    } catch (err) {
+      setEmailError(getEmailAuthErrorMessage(err, "That verification code could not be accepted."));
     }
   };
+
+  const startPasswordReset = async () => {
+    try {
+      const identifier = (resetEmail || email).trim();
+      setEmailError(null);
+      if (!identifier) {
+        setEmailError("Enter the email address attached to your account first.");
+        return;
+      }
+
+      const { error: createError } = await signIn.create({ identifier });
+      if (createError) {
+        setEmailError(getEmailAuthErrorMessage(createError, "A reset code could not be requested for that email."));
+        return;
+      }
+
+      const { error: sendCodeError } = await signIn.resetPasswordEmailCode.sendCode();
+      if (sendCodeError) {
+        setEmailError(getEmailAuthErrorMessage(sendCodeError, "A reset code could not be sent to that email."));
+        return;
+      }
+
+      setResetEmail(identifier);
+      setResetCodeSent(true);
+      setResetCodeSentAt(new Date());
+    } catch (err) {
+      setEmailError(getEmailAuthErrorMessage(err, "A reset code could not be sent to that email."));
+    }
+  };
+
+  const verifyResetCode = async () => {
+    try {
+      setEmailError(null);
+      const { error } = await signIn.resetPasswordEmailCode.verifyCode({ code: resetCode });
+      if (error) {
+        setEmailError(getEmailAuthErrorMessage(error, "That reset code could not be accepted."));
+      }
+    } catch (err) {
+      setEmailError(getEmailAuthErrorMessage(err, "That reset code could not be accepted."));
+    }
+  };
+
+  const submitNewPassword = async () => {
+    try {
+      setEmailError(null);
+      const { error } = await signIn.resetPasswordEmailCode.submitPassword({
+        password: newPassword,
+        signOutOfOtherSessions: true,
+      });
+      if (error) {
+        setEmailError(getEmailAuthErrorMessage(error, "That password could not be saved."));
+        return;
+      }
+
+      if (signIn.status === "complete") {
+        await finalizeSignIn();
+      } else if (signIn.status === "needs_second_factor") {
+        setEmailError("Your password was reset, but this account requires another verification step.");
+      } else {
+        setEmailError("Your password was reset, but sign-in could not be completed automatically. Try signing in again.");
+      }
+    } catch (err) {
+      setEmailError(getEmailAuthErrorMessage(err, "That password could not be saved."));
+    }
+  };
+
+  const resetPasswordFlow = () => {
+    setResetCodeSent(false);
+    setResetCode("");
+    setNewPassword("");
+    setResetCodeSentAt(null);
+    setEmailError(null);
+    signIn.reset();
+  };
+
+  const isLoading = fetchStatus === "fetching";
 
   const handleSSOSignIn = useCallback(
     async (strategy: "oauth_google" | "oauth_apple") => {
@@ -145,6 +261,7 @@ export default function SignInScreen() {
         {errors.fields.code && (
           <Text style={styles.error}>{errors.fields.code.message}</Text>
         )}
+        {emailError && <Text style={styles.error}>{emailError}</Text>}
         <Pressable
           style={[
             styles.primaryBtn,
@@ -172,7 +289,117 @@ export default function SignInScreen() {
     );
   }
 
-  const isLoading = fetchStatus === "fetching";
+  if (resetCodeSent || signIn.status === "needs_new_password") {
+    const canVerifyReset = resetCode.length >= 6 && !isLoading;
+    const canSubmitNewPassword = newPassword.length >= 8 && !isLoading;
+
+    return (
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: COLORS.background }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 32 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.rank}>?</Text>
+            <Text style={styles.title}>
+              {signIn.status === "needs_new_password" ? "Set New Password" : "Check Your Email"}
+            </Text>
+            <Text style={styles.subtitle}>
+              {signIn.status === "needs_new_password"
+                ? "Choose a new password for your Ascension Quest account."
+                : `A reset code was sent to ${resetEmail}.`}
+            </Text>
+            {resetCodeSentAt && signIn.status !== "needs_new_password" && (
+              <Text style={styles.hint}>
+                Sent at {resetCodeSentAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
+                Check spam or promotions if it is not in your inbox.
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.card}>
+            {signIn.status === "needs_new_password" ? (
+              <>
+                <Text style={styles.label}>New Password</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newPassword}
+                  placeholder="Min 8 characters"
+                  placeholderTextColor={COLORS.muted}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                />
+                {errors.fields.password && (
+                  <Text style={styles.error}>{errors.fields.password.message}</Text>
+                )}
+                {emailError && <Text style={styles.error}>{emailError}</Text>}
+
+                <Pressable
+                  style={[styles.primaryBtn, !canSubmitNewPassword && styles.btnDisabled]}
+                  onPress={submitNewPassword}
+                  disabled={!canSubmitNewPassword}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={COLORS.background} />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Set Password & Sign In</Text>
+                  )}
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Reset Code</Text>
+                <TextInput
+                  style={styles.input}
+                  value={resetCode}
+                  placeholder="000000"
+                  placeholderTextColor={COLORS.muted}
+                  onChangeText={setResetCode}
+                  keyboardType="numeric"
+                  autoComplete="one-time-code"
+                  textContentType="oneTimeCode"
+                />
+                {errors.fields.code && (
+                  <Text style={styles.error}>{errors.fields.code.message}</Text>
+                )}
+                {emailError && <Text style={styles.error}>{emailError}</Text>}
+
+                <Pressable
+                  style={[styles.primaryBtn, !canVerifyReset && styles.btnDisabled]}
+                  onPress={verifyResetCode}
+                  disabled={!canVerifyReset}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={COLORS.background} />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Verify Code</Text>
+                  )}
+                </Pressable>
+
+                <Pressable style={styles.textBtn} onPress={startPasswordReset}>
+                  <Text style={styles.textBtnText}>Send another code to {resetEmail}</Text>
+                </Pressable>
+              </>
+            )}
+
+            <Pressable style={styles.textBtn} onPress={resetPasswordFlow}>
+              <Text style={styles.textBtnText}>Back to sign in</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
+
   const canSubmit = email.length > 0 && password.length > 0 && !isLoading;
 
   return (
@@ -227,6 +454,7 @@ export default function SignInScreen() {
           {errors.fields.password && (
             <Text style={styles.error}>{errors.fields.password.message}</Text>
           )}
+          {emailError && <Text style={styles.error}>{emailError}</Text>}
 
           <Pressable
             style={[styles.primaryBtn, !canSubmit && styles.btnDisabled]}
@@ -238,6 +466,16 @@ export default function SignInScreen() {
             ) : (
               <Text style={styles.primaryBtnText}>Sign In</Text>
             )}
+          </Pressable>
+
+          <Pressable
+            style={styles.textBtn}
+            onPress={() => {
+              setResetEmail(email.trim());
+              void startPasswordReset();
+            }}
+          >
+            <Text style={styles.textBtnText}>Forgot or need to set your password?</Text>
           </Pressable>
 
           <View style={styles.dividerRow}>
@@ -329,6 +567,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 280,
+  },
+  hint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: COLORS.muted,
+    textAlign: "center",
+    lineHeight: 18,
+    maxWidth: 300,
   },
   card: {
     backgroundColor: COLORS.card,
