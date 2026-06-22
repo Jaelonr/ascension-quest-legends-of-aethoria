@@ -28,10 +28,14 @@ const PAPER_DOLL = require("../../assets/images/aethoria-equipment-paper-doll.pn
 
 type CharSummary = {
   player: any;
+  identity?: any;
   gearSlots: Array<{ slot: string; label: string; item: any | null }>;
   titles: any[];
+  appearance?: { aura: string | null; cosmeticCount: number };
   biometrics: any;
+  realEquipment?: Array<{ id: number; name: string; category: string; available: boolean }>;
   inventorySummary: { items: number; gear: number; equippedGear: number };
+  settingsShortcuts?: Array<{ key: string; label: string; href: string }>;
 };
 
 function useCharSummary() {
@@ -197,6 +201,16 @@ function slotLabel(slot: string | null) {
   return PAPER_DOLL_SLOTS.find((paperSlot) => paperSlot.slot === slot)?.label ?? "Selected Slot";
 }
 
+function kgToLb(value?: number | null) {
+  return value ? `${Math.round(value * 2.20462)} lb` : "Not set";
+}
+
+function cmToImperial(value?: number | null) {
+  if (!value) return "Not set";
+  const totalInches = Math.round(value / 2.54);
+  return `${Math.floor(totalInches / 12)}'${totalInches % 12}"`;
+}
+
 export default function CharacterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -234,11 +248,17 @@ export default function CharacterScreen() {
   const playerStats = player?.stats ?? {};
   const activeTitle = char?.titles?.[0]?.name ?? "No title equipped";
   const className = player?.baseClass ?? identity?.hybridArchetype ?? "Unranked Adventurer";
+  const bio = char?.biometrics ?? {};
+  const realEquipment = char?.realEquipment ?? [];
+  const inventorySummary = char?.inventorySummary ?? { items: 0, gear: 0, equippedGear: 0 };
+  const appearance = char?.appearance ?? { aura: null, cosmeticCount: 0 };
+  const recordedEquipment = realEquipment.filter((item) => item.available !== false);
 
   const identityTotal = identity
     ? ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"]
         .reduce((sum, k) => sum + ((identity as any)[k] ?? 0), 0)
     : 0;
+  const dominantStyleKey = typeof identity?.dominantStyle === "string" ? identity.dominantStyle : null;
 
   const isLoading = charLoading || armoryLoading;
 
@@ -445,6 +465,86 @@ export default function CharacterScreen() {
                 </View>
               );
             })}
+
+            <View style={cs.infoPanel}>
+              <Text style={cs.infoTitle}>Class Path</Text>
+              <View style={cs.infoGrid}>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Current Class</Text>
+                  <Text style={cs.infoValue}>{className}</Text>
+                </View>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Dominant Style</Text>
+                  <Text style={cs.infoValue}>{dominantStyleKey ? STYLE_META[dominantStyleKey]?.label ?? dominantStyleKey : "Still forming"}</Text>
+                </View>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Specialization</Text>
+                  <Text style={cs.infoValue}>{identity?.hybridArchetype ?? "Earned through behavior"}</Text>
+                </View>
+              </View>
+              <Text style={cs.infoNote}>
+                The System does not ask you to pick a class. It watches what you actually do, then opens paths that fit your record.
+              </Text>
+            </View>
+
+            <View style={cs.infoPanel}>
+              <Text style={cs.infoTitle}>Biometrics</Text>
+              <View style={cs.infoGrid}>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Height</Text>
+                  <Text style={cs.infoValue}>{cmToImperial(bio.heightCm)}</Text>
+                </View>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Weight</Text>
+                  <Text style={cs.infoValue}>{kgToLb(bio.weightKg)}</Text>
+                </View>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Bench</Text>
+                  <Text style={cs.infoValue}>{kgToLb(bio.bench1rm)}</Text>
+                </View>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Deadlift</Text>
+                  <Text style={cs.infoValue}>{kgToLb(bio.deadlift1rm)}</Text>
+                </View>
+              </View>
+              {bio.notes ? <Text style={cs.bioNote}>{bio.notes}</Text> : null}
+            </View>
+
+            <View style={cs.infoPanel}>
+              <Text style={cs.infoTitle}>Real Equipment Owned</Text>
+              {recordedEquipment.length ? (
+                <View style={cs.equipmentWrap}>
+                  {recordedEquipment.slice(0, 18).map((item) => (
+                    <Text key={item.id} style={cs.realEquipmentChip}>{item.name}</Text>
+                  ))}
+                </View>
+              ) : (
+                <Text style={cs.infoNote}>No equipment recorded yet.</Text>
+              )}
+            </View>
+
+            <View style={cs.infoPanel}>
+              <Text style={cs.infoTitle}>Inventory And Appearance</Text>
+              <View style={cs.infoGrid}>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Items</Text>
+                  <Text style={cs.infoValue}>{inventorySummary.items}</Text>
+                </View>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Gear</Text>
+                  <Text style={cs.infoValue}>{inventorySummary.gear}</Text>
+                </View>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Aura</Text>
+                  <Text style={cs.infoValue}>{appearance.aura ?? "None"}</Text>
+                </View>
+                <View style={cs.infoTile}>
+                  <Text style={cs.infoLabel}>Cosmetics</Text>
+                  <Text style={cs.infoValue}>{appearance.cosmeticCount}</Text>
+                </View>
+              </View>
+            </View>
+
             <TouchableOpacity style={cs.profileBtn} onPress={() => router.push("/profile" as any)} activeOpacity={0.8}>
               <Text style={cs.profileBtnTitle}>Open System Record</Text>
               <Text style={cs.profileBtnText}>Edit biometrics, strength marks, equipment access, and notes.</Text>
@@ -561,6 +661,16 @@ const cs = StyleSheet.create({
   identityBarTrack: { flex: 1, height: 4, backgroundColor: "#2a2520", borderRadius: 2, overflow: "hidden" },
   identityBarFill: { height: 4, borderRadius: 2 },
   identityBarPct: { width: 30, textAlign: "right", fontSize: 10, color: "#6b5d4f" },
+  infoPanel: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, marginTop: 12 },
+  infoTitle: { color: "#d9ad63", fontSize: 14, fontFamily: "PlayfairDisplay_700Bold", marginBottom: 8 },
+  infoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  infoTile: { width: "47.8%", borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#080706", padding: 9 },
+  infoLabel: { color: "#8f887d", fontSize: 9, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
+  infoValue: { color: "#d8c4a5", fontSize: 12, marginTop: 4, fontFamily: "Inter_700Bold" },
+  infoNote: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 8 },
+  bioNote: { color: "#d8c4a5", fontSize: 11, lineHeight: 16, marginTop: 10, borderLeftWidth: 2, borderLeftColor: "#9d3e2a", paddingLeft: 10 },
+  equipmentWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  realEquipmentChip: { borderWidth: 1, borderColor: "#3e8f5c", color: "#a8c9b0", paddingHorizontal: 8, paddingVertical: 5, fontSize: 10, fontFamily: "Inter_700Bold" },
   profileBtn: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 12, marginTop: 12 },
   profileBtnTitle: { color: "#d9ad63", fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   profileBtnText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
