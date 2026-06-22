@@ -52,6 +52,22 @@ function getAuthErrorMessage(error: unknown) {
   return "Google sign-up could not be completed. Check that Google sign-in is enabled for this app.";
 }
 
+function getEmailAuthErrorMessage(error: unknown, fallback: string) {
+  if (
+    error &&
+    typeof error === "object" &&
+    "errors" in error &&
+    Array.isArray((error as { errors?: unknown }).errors)
+  ) {
+    const firstError = (error as { errors: Array<{ longMessage?: string; message?: string }> }).errors[0];
+    return firstError?.longMessage || firstError?.message || fallback;
+  }
+
+  if (error instanceof Error) return error.message;
+
+  return fallback;
+}
+
 export default function SignUpScreen() {
   const { signUp, errors, fetchStatus } = useSignUp();
   const { startSSOFlow } = useSSO();
@@ -63,23 +79,76 @@ export default function SignUpScreen() {
   const [code, setCode] = useState("");
   const [ssoLoading, setSsoLoading] = useState(false);
   const [ssoError, setSsoError] = useState<string | null>(null);
+  const [emailFlowError, setEmailFlowError] = useState<string | null>(null);
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [lastCodeSentAt, setLastCodeSentAt] = useState<Date | null>(null);
 
   const handleSignUp = async () => {
-    const { error } = await signUp.password({ emailAddress: email, password });
-    if (error) return;
-    await signUp.verifications.sendEmailCode();
+    try {
+      setEmailFlowError(null);
+      const { error } = await signUp.password({ emailAddress: email.trim(), password });
+      if (error) {
+        setEmailFlowError(getEmailAuthErrorMessage(error, "Account creation could not be started."));
+        return;
+      }
+
+      const { error: verificationError } = await signUp.verifications.sendEmailCode();
+      if (verificationError) {
+        setEmailFlowError(
+          getEmailAuthErrorMessage(
+            verificationError,
+            "The verification email could not be sent. Check the Clerk email settings for this production instance.",
+          ),
+        );
+        return;
+      }
+
+      setLastCodeSentAt(new Date());
+      setVerificationPending(true);
+    } catch (err) {
+      setEmailFlowError(
+        getEmailAuthErrorMessage(
+          err,
+          "The verification email could not be sent. Check the email address, spam folder, and Clerk email settings.",
+        ),
+      );
+    }
   };
 
   const handleVerify = async () => {
-    await signUp.verifications.verifyEmailCode({ code });
-    if (signUp.status === "complete") {
-      await signUp.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) return;
-          router.replace("/(tabs)" as never);
-        },
-      });
+    try {
+      setEmailFlowError(null);
+      const { error } = await signUp.verifications.verifyEmailCode({ code });
+      if (error) {
+        setEmailFlowError(getEmailAuthErrorMessage(error, "That verification code could not be accepted."));
+        return;
+      }
+
+      if (signUp.status === "complete") {
+        await signUp.finalize({
+          navigate: ({ decorateUrl }) => {
+            const url = decorateUrl("/");
+            if (url.startsWith("http")) return;
+            router.replace("/(tabs)" as never);
+          },
+        });
+      }
+    } catch (err) {
+      setEmailFlowError(getEmailAuthErrorMessage(err, "That verification code could not be accepted."));
+    }
+  };
+
+  const handleResendCode = async () => {
+    try {
+      setEmailFlowError(null);
+      const { error } = await signUp.verifications.sendEmailCode();
+      if (error) {
+        setEmailFlowError(getEmailAuthErrorMessage(error, "A new verification code could not be sent."));
+        return;
+      }
+      setLastCodeSentAt(new Date());
+    } catch (err) {
+      setEmailFlowError(getEmailAuthErrorMessage(err, "A new verification code could not be sent."));
     }
   };
 
@@ -111,7 +180,7 @@ export default function SignUpScreen() {
 
   const isLoading = fetchStatus === "fetching";
   const needsVerification =
-    signUp.status === "missing_requirements" &&
+    (verificationPending || signUp.status === "missing_requirements") &&
     signUp.unverifiedFields.includes("email_address") &&
     signUp.missingFields.length === 0;
 
@@ -135,6 +204,12 @@ export default function SignUpScreen() {
             <Text style={styles.subtitle}>
               A code was sent to {email}. Enter it below to activate your account.
             </Text>
+            {lastCodeSentAt && (
+              <Text style={styles.hint}>
+                Sent at {lastCodeSentAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
+                Check spam or promotions if it is not in your inbox.
+              </Text>
+            )}
           </View>
 
           <View style={styles.card}>
@@ -152,6 +227,7 @@ export default function SignUpScreen() {
             {errors.fields.code && (
               <Text style={styles.error}>{errors.fields.code.message}</Text>
             )}
+            {emailFlowError && <Text style={styles.error}>{emailFlowError}</Text>}
 
             <Pressable
               style={[
@@ -170,9 +246,20 @@ export default function SignUpScreen() {
 
             <Pressable
               style={styles.textBtn}
-              onPress={() => signUp.verifications.sendEmailCode()}
+              onPress={handleResendCode}
             >
               <Text style={styles.textBtnText}>Resend code</Text>
+            </Pressable>
+            <Pressable
+              style={styles.textBtn}
+              onPress={() => {
+                setVerificationPending(false);
+                setEmailFlowError(null);
+                setCode("");
+                void signUp.reset();
+              }}
+            >
+              <Text style={styles.textBtnText}>Use a different email</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -234,6 +321,7 @@ export default function SignUpScreen() {
           {errors.fields.password && (
             <Text style={styles.error}>{errors.fields.password.message}</Text>
           )}
+          {emailFlowError && <Text style={styles.error}>{emailFlowError}</Text>}
 
           <Pressable
             style={[styles.primaryBtn, !canSubmit && styles.btnDisabled]}
@@ -312,6 +400,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 280,
+  },
+  hint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: COLORS.muted,
+    textAlign: "center",
+    lineHeight: 18,
+    maxWidth: 300,
   },
   card: {
     backgroundColor: COLORS.card,
