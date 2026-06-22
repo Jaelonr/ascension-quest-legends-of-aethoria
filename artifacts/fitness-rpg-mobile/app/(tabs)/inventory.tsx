@@ -26,7 +26,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { formatGuildGrade, gradeColor } from "@/utils/ranks";
-import { LEGAL_COPY, type LegalCopyKey } from "@/utils/legal-copy";
 
 const PAPER_DOLL = require("../../assets/images/aethoria-equipment-paper-doll.png");
 
@@ -374,7 +373,6 @@ export default function CharacterScreen() {
   const inventorySummary = char?.inventorySummary ?? { items: 0, gear: 0, equippedGear: 0 };
   const appearance = char?.appearance ?? { aura: null, cosmeticCount: 0 };
   const recordedEquipment = realEquipment.filter((item) => item.available !== false);
-  const showLegalCopy = (key: LegalCopyKey) => Alert.alert(LEGAL_COPY[key].title, LEGAL_COPY[key].body);
   const activeOfferings = ((storeSections as any)?.[offeringSection] ?? []) as any[];
   const offeringCounts = OFFERING_SECTION_META.reduce<Record<string, number>>((acc, section) => {
     acc[section.key] = (((storeSections as any)?.[section.key] ?? []) as any[]).length;
@@ -809,15 +807,15 @@ export default function CharacterScreen() {
 
             <View style={cs.infoPanel}>
               <Text style={cs.infoTitle}>Data And Privacy</Text>
-              <TouchableOpacity style={cs.privacyRow} onPress={() => showLegalCopy("privacy")} activeOpacity={0.8}>
+              <TouchableOpacity style={cs.privacyRow} onPress={() => router.push("/privacy" as any)} activeOpacity={0.8}>
                 <Text style={cs.privacyTitle}>Privacy Policy</Text>
                 <Text style={cs.privacyText}>What the app stores and why.</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={cs.privacyRow} onPress={() => showLegalCopy("terms")} activeOpacity={0.8}>
+              <TouchableOpacity style={cs.privacyRow} onPress={() => router.push("/terms" as any)} activeOpacity={0.8}>
                 <Text style={cs.privacyTitle}>Terms And Disclaimer</Text>
                 <Text style={cs.privacyText}>Fitness guidance boundaries and health notes.</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={cs.privacyRow} onPress={() => showLegalCopy("data")} activeOpacity={0.8}>
+              <TouchableOpacity style={cs.privacyRow} onPress={() => router.push("/data" as any)} activeOpacity={0.8}>
                 <Text style={cs.privacyTitle}>Export Or Delete Data</Text>
                 <Text style={cs.privacyText}>Production data-control roadmap.</Text>
               </TouchableOpacity>
