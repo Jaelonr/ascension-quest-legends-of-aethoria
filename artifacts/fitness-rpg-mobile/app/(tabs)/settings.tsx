@@ -554,9 +554,9 @@ export default function SettingsScreen() {
             value={settings.crashReports}
             onValueChange={(v) => setSetting("crashReports", v)}
           />
-          <Row icon="file-text" label="Privacy Policy" description="What the app stores and why." onPress={() => showCopy("privacy")} />
-          <Row icon="clipboard" label="Terms And Health Disclaimer" description="Fitness guidance boundaries." onPress={() => showCopy("terms")} />
-          <Row icon="database" label="Export Or Delete Data" description="Production user-control roadmap." onPress={() => showCopy("data")} />
+          <Row icon="file-text" label="Privacy Policy" description="What the app stores and why." onPress={() => router.push("/privacy" as any)} />
+          <Row icon="clipboard" label="Terms And Health Disclaimer" description="Fitness guidance boundaries." onPress={() => router.push("/terms" as any)} />
+          <Row icon="database" label="Export Or Delete Data" description="Production user-control roadmap." onPress={() => router.push("/data" as any)} />
         </Section>
 
         <Section icon="server" title="Production Readiness">
