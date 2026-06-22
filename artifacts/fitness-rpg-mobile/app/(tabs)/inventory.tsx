@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -21,6 +22,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { formatGuildGrade, gradeColor } from "@/utils/ranks";
+
+const PAPER_DOLL = require("../../assets/images/aethoria-equipment-paper-doll.png");
 
 type CharSummary = {
   player: any;
@@ -64,6 +67,64 @@ const SLOT_EMOJIS: Record<string, string> = {
 
 type TabKey = "gear" | "inventory" | "identity";
 
+function AttributeGrid({ stats }: { stats: any }) {
+  return (
+    <View style={cs.attributeGrid}>
+      {[
+        ["STR", stats?.strength ?? 5],
+        ["AGI", stats?.agility ?? 5],
+        ["STA", stats?.stamina ?? 5],
+        ["VIT", stats?.vitality ?? 5],
+        ["DIS", stats?.discipline ?? 5],
+        ["SEN", stats?.sense ?? 5],
+      ].map(([label, value]) => (
+        <View key={String(label)} style={cs.attributeBox}>
+          <Text style={cs.attributeValue}>{value}</Text>
+          <Text style={cs.attributeLabel}>{label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function PaperDollPanel({
+  gearSlots,
+  equippedCount,
+}: {
+  gearSlots: CharSummary["gearSlots"];
+  equippedCount: number;
+}) {
+  const total = gearSlots.length || 17;
+  const affinity =
+    gearSlots.find((slot) => {
+      const value = slot.item?.elementalAffinity ?? slot.item?.affinity;
+      return value && value !== "physical";
+    })?.item?.elementalAffinity ?? "physical";
+
+  return (
+    <View style={cs.paperDollPanel}>
+      <View style={cs.paperDollHeader}>
+        <View>
+          <Text style={cs.sectionLabel}>EQUIPMENT</Text>
+          <Text style={cs.paperDollTitle}>Armory Figure</Text>
+        </View>
+        <View style={cs.equippedBadge}>
+          <Text style={cs.equippedBadgeLabel}>Equipped</Text>
+          <Text style={cs.equippedBadgeValue}>{equippedCount}/{total}</Text>
+        </View>
+      </View>
+      <View style={cs.paperDollFrame}>
+        <Image source={PAPER_DOLL} style={cs.paperDollImage} resizeMode="contain" />
+        <View style={cs.affinityBadge}>
+          <Text style={cs.affinityLabel}>Affinity</Text>
+          <Text style={cs.affinityValue}>{affinity}</Text>
+        </View>
+      </View>
+      <Text style={cs.paperDollNote}>A neutral vessel for the adventurer's raiment. The gear tells the story.</Text>
+    </View>
+  );
+}
+
 export default function CharacterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -94,6 +155,10 @@ export default function CharacterScreen() {
   const player = char?.player;
   const rankColor = gradeColor(player?.rank);
   const xpPct = player ? Math.min(100, Math.round((player.xp / Math.max(1, player.xpToNextLevel)) * 100)) : 0;
+  const equippedCount = char?.gearSlots.filter((slot) => slot.item).length ?? 0;
+  const playerStats = player?.stats ?? {};
+  const activeTitle = char?.titles?.[0]?.name ?? "No title equipped";
+  const className = player?.baseClass ?? identity?.hybridArchetype ?? "Unranked Adventurer";
 
   const identityTotal = identity
     ? ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"]
@@ -108,19 +173,18 @@ export default function CharacterScreen() {
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <Text style={cs.headerSub}>CHARACTER</Text>
-        <Text style={cs.headerTitle}>{player?.name ?? "Adventurer"}</Text>
+        <Text style={cs.headerTitle}>Adventurer Record</Text>
 
-        {/* Player stats */}
         {player && (
           <View style={[cs.card, { backgroundColor: "#171510", borderColor: "#3b3328" }]}>
             <View style={cs.statsRow}>
               <View style={cs.statBlock}>
+                <Text style={cs.nameText}>{player.name ?? "Adventurer"}</Text>
                 <View style={[cs.rankPill, { borderColor: rankColor + "60" }]}>
                   <Text style={[cs.rankText, { color: rankColor }]}>{formatGuildGrade(player.rank)}</Text>
                 </View>
-                <Text style={cs.levelText}>Level {player.level}</Text>
+                <Text style={cs.levelText}>Level {player.level} · {className}</Text>
               </View>
               <View style={cs.statsGrid}>
                 {[
@@ -143,21 +207,20 @@ export default function CharacterScreen() {
             <View style={[cs.xpTrack, { backgroundColor: "#2a2520" }]}>
               <View style={[cs.xpFill, { width: `${xpPct}%` }]} />
             </View>
+            <View style={cs.titleRow}>
+              <Text style={cs.titleLabel}>Title</Text>
+              <Text style={cs.titleValue}>{activeTitle}</Text>
+            </View>
           </View>
         )}
 
-        {/* Titles */}
-        {char?.titles && char.titles.length > 0 && (
-          <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-            {char.titles.slice(0, 3).map((t: any, i: number) => (
-              <View key={i} style={[cs.titleBadge, { borderColor: "#8c6a3660" }]}>
-                <Text style={cs.titleText}>{t.name ?? t}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        <PaperDollPanel gearSlots={char?.gearSlots ?? []} equippedCount={equippedCount} />
 
-        {/* Tabs */}
+        <View style={[cs.card, { backgroundColor: "#171510", borderColor: "#3b3328" }]}>
+          <Text style={cs.sectionLabel}>ATTRIBUTES</Text>
+          <AttributeGrid stats={playerStats} />
+        </View>
+
         <View style={cs.tabs}>
           {(["gear", "inventory", "identity"] as const).map((t) => (
             <TouchableOpacity
@@ -166,7 +229,7 @@ export default function CharacterScreen() {
               onPress={() => setTab(t)}
             >
               <Text style={[cs.tabText, { color: tab === t ? "#d9ad63" : "#6b5d4f" }]}>
-                {t === "gear" ? "⚔ Gear" : t === "inventory" ? "🎒 Inventory" : "🔥 Identity"}
+                {t === "gear" ? "Gear" : t === "inventory" ? "Inventory" : "Identity"}
               </Text>
             </TouchableOpacity>
           ))}
@@ -319,7 +382,8 @@ const cs = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: "900", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2, marginBottom: 16 },
   card: { borderWidth: 1, padding: 14, marginBottom: 12 },
   statsRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
-  statBlock: { justifyContent: "center", gap: 6 },
+  statBlock: { flex: 1, justifyContent: "center", gap: 6 },
+  nameText: { color: "#eee5d7", fontSize: 20, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   rankPill: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
   rankText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, fontFamily: "Inter_700Bold" },
   levelText: { fontSize: 13, color: "#9d8f80" },
@@ -332,8 +396,27 @@ const cs = StyleSheet.create({
   xpPct: { fontSize: 10, color: "#d9ad63", fontWeight: "700" },
   xpTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
   xpFill: { height: 4, backgroundColor: "#d9ad63" },
+  titleRow: { borderTopWidth: 1, borderTopColor: "#2a2520", marginTop: 12, paddingTop: 10, flexDirection: "row", justifyContent: "space-between", gap: 12 },
+  titleLabel: { color: "#9d8f80", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 },
+  titleValue: { color: "#d8c4a5", fontSize: 12, flex: 1, textAlign: "right", fontFamily: "PlayfairDisplay_700Bold" },
   titleBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   titleText: { fontSize: 10, color: "#d9ad63", fontFamily: "Inter_400Regular" },
+  paperDollPanel: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14, marginBottom: 12 },
+  paperDollHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 },
+  paperDollTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  equippedBadge: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingHorizontal: 10, paddingVertical: 6, alignItems: "flex-end" },
+  equippedBadgeLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1 },
+  equippedBadgeValue: { color: "#d9ad63", fontSize: 13, fontWeight: "800", fontFamily: "Inter_700Bold" },
+  paperDollFrame: { position: "relative", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#000", minHeight: 430, overflow: "hidden" },
+  paperDollImage: { width: "100%", height: 430 },
+  affinityBadge: { position: "absolute", left: 10, bottom: 10, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingHorizontal: 8, paddingVertical: 5, flexDirection: "row", gap: 8 },
+  affinityLabel: { color: "#8f887d", fontSize: 10 },
+  affinityValue: { color: "#49a3a0", fontSize: 10, textTransform: "capitalize", fontWeight: "700" },
+  paperDollNote: { marginTop: 10, color: "#8f887d", fontSize: 11, lineHeight: 16 },
+  attributeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  attributeBox: { width: "30.5%", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingVertical: 10, alignItems: "center" },
+  attributeValue: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  attributeLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1 },
   tabs: { flexDirection: "row", borderWidth: 1, borderColor: "#2a2520", marginTop: 16, marginBottom: 12 },
   tab: { flex: 1, paddingVertical: 10, alignItems: "center" },
   tabActive: { borderBottomWidth: 2, borderBottomColor: "#d9ad63" },
