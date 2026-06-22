@@ -48,6 +48,15 @@ export default function TrainingScreen() {
   const commissionTravel = commission?.travel as { onFootMiles?: number; footMiles?: number; caravanMiles?: number; mountMiles?: number; returnStone?: boolean } | null | undefined;
   const commissionTasks = (commission?.tasks ?? commission?.quest?.tasks ?? []) as any[];
   const recentSessions = (sessions ?? []).slice(0, 5);
+  const evidenceTotals = recentSessions.reduce(
+    (totals, session: any) => ({
+      xp: totals.xp + (session.xpEarned ?? 0),
+      gold: totals.gold + (session.goldEarned ?? 0),
+      sets: totals.sets + (session.sets?.length ?? 0),
+      active: totals.active + ((session.status === "active" || session.status === "in_progress") ? 1 : 0),
+    }),
+    { xp: 0, gold: 0, sets: 0, active: 0 }
+  );
 
   const handleStart = (templateId: number, name: string) => {
     createSession.mutate(
@@ -157,6 +166,32 @@ export default function TrainingScreen() {
             </TouchableOpacity>
           </View>
 
+          {recentSessions.length > 0 && (
+            <View style={s.evidenceCard}>
+              <Text style={s.sectionLabel}>BATTLE EVIDENCE</Text>
+              <Text style={s.evidenceTitle}>Recent training rewards</Text>
+              <Text style={s.evidenceText}>Completed sessions become combat replays, rewards, style identity, and commission proof.</Text>
+              <View style={s.evidenceGrid}>
+                <View style={s.evidenceTile}>
+                  <Text style={[s.evidenceValue, { color: "#49a3a0" }]}>+{evidenceTotals.xp}</Text>
+                  <Text style={s.evidenceLabel}>XP</Text>
+                </View>
+                <View style={s.evidenceTile}>
+                  <Text style={[s.evidenceValue, { color: "#d9ad63" }]}>+{evidenceTotals.gold}</Text>
+                  <Text style={s.evidenceLabel}>Gold</Text>
+                </View>
+                <View style={s.evidenceTile}>
+                  <Text style={[s.evidenceValue, { color: "#d8c4a5" }]}>{evidenceTotals.sets}</Text>
+                  <Text style={s.evidenceLabel}>Sets</Text>
+                </View>
+                <View style={s.evidenceTile}>
+                  <Text style={[s.evidenceValue, { color: evidenceTotals.active ? "#d9ad63" : "#8f887d" }]}>{evidenceTotals.active}</Text>
+                  <Text style={s.evidenceLabel}>Active</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Templates header */}
           <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>AVAILABLE DRILLS</Text>
         </>
@@ -261,9 +296,12 @@ export default function TrainingScreen() {
                         {session.sets?.length ? ` · ${session.sets.length} sets` : ""}
                       </Text>
                     </View>
-                    <View style={[s.statusBadge, { borderColor: isActive ? "#d9ad6360" : "#3b332880" }]}>
-                      <Text style={{ color: isActive ? "#d9ad63" : "#6b5d4f", fontSize: 10, fontWeight: "700" }}>
-                        {isActive ? "ACTIVE →" : "DONE"}
+                    <View style={[s.sessionRewardBlock, { borderColor: isActive ? "#d9ad6360" : "#3b332880" }]}> 
+                      <Text style={[s.sessionRewardXp, isActive && { color: "#d9ad63" }]}> 
+                        {isActive ? "ACTIVE" : `+${session.xpEarned ?? 0} XP`}
+                      </Text>
+                      <Text style={s.sessionRewardGold}>
+                        {isActive ? "Continue" : `+${session.goldEarned ?? 0} G`}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -307,6 +345,13 @@ const s = StyleSheet.create({
   actionTitle: { color: "#eee5d7", fontSize: 14, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   actionText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 2, fontFamily: "Inter_400Regular" },
   actionState: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  evidenceCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14, marginBottom: 16 },
+  evidenceTitle: { color: "#d9ad63", fontSize: 16, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  evidenceText: { color: "#cfc5b8", fontSize: 12, lineHeight: 18, marginTop: 4, fontFamily: "Inter_400Regular" },
+  evidenceGrid: { flexDirection: "row", gap: 8, marginTop: 12 },
+  evidenceTile: { flex: 1, borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", paddingVertical: 10, alignItems: "center" },
+  evidenceValue: { fontSize: 16, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  evidenceLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, marginTop: 2, fontFamily: "Inter_400Regular" },
   commissionBanner: { borderWidth: 1, backgroundColor: "#15130f", padding: 14, marginBottom: 16 },
   bannerLabel: { fontSize: 9, letterSpacing: 2, color: "#d9ad63", textTransform: "uppercase", marginBottom: 4, fontFamily: "Inter_400Regular" },
   bannerTitle: { fontSize: 14, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
@@ -330,6 +375,9 @@ const s = StyleSheet.create({
   sessionRow: { borderWidth: 1, padding: 12, flexDirection: "row", alignItems: "center", gap: 10 },
   sessionName: { fontSize: 13, fontWeight: "700", fontFamily: "Inter_700Bold" },
   sessionMeta: { fontSize: 11, marginTop: 2 },
+  sessionRewardBlock: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 5, alignItems: "flex-end", minWidth: 78 },
+  sessionRewardXp: { color: "#49a3a0", fontSize: 10, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  sessionRewardGold: { color: "#d9ad63", fontSize: 10, fontWeight: "700", fontFamily: "Inter_700Bold", marginTop: 2 },
   statusBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
 });
 
