@@ -199,6 +199,10 @@ export default function SignUpScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
+            <View style={styles.brandSeal}>
+              <Text style={styles.brandName}>Ascension Quest</Text>
+              <Text style={styles.brandSub}>Legends of Aethoria</Text>
+            </View>
             <Text style={styles.rank}>SYSTEM</Text>
             <Text style={styles.title}>Verify Your Email</Text>
             <Text style={styles.subtitle}>
@@ -283,6 +287,10 @@ export default function SignUpScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
+          <View style={styles.brandSeal}>
+            <Text style={styles.brandName}>Ascension Quest</Text>
+            <Text style={styles.brandSub}>Legends of Aethoria</Text>
+          </View>
           <Text style={styles.rank}>SYSTEM</Text>
           <Text style={styles.title}>Begin Your Journey</Text>
           <Text style={styles.subtitle}>
@@ -385,6 +393,32 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     gap: 10,
   },
+  brandSeal: {
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#6f4b2a",
+    backgroundColor: "#090705",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    marginBottom: 6,
+    minWidth: 230,
+  },
+  brandName: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: COLORS.foreground,
+    letterSpacing: 1.1,
+    textAlign: "center",
+  },
+  brandSub: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: COLORS.primary,
+    letterSpacing: 2.6,
+    textTransform: "uppercase",
+    marginTop: 4,
+    textAlign: "center",
+  },
   rank: {
     fontSize: 11,
     letterSpacing: 4,
@@ -421,6 +455,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 20,
     gap: 4,
+    borderLeftColor: COLORS.primary,
+    borderLeftWidth: 2,
   },
   label: {
     fontSize: 11,

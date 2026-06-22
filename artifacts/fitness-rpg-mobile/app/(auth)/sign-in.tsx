@@ -307,6 +307,10 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
+            <View style={styles.brandSeal}>
+              <Text style={styles.brandName}>Ascension Quest</Text>
+              <Text style={styles.brandSub}>Legends of Aethoria</Text>
+            </View>
             <Text style={styles.rank}>SYSTEM</Text>
             <Text style={styles.title}>
               {signIn.status === "needs_new_password" ? "Set New Password" : "Check Your Email"}
@@ -418,6 +422,10 @@ export default function SignInScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
+          <View style={styles.brandSeal}>
+            <Text style={styles.brandName}>Ascension Quest</Text>
+            <Text style={styles.brandSub}>Legends of Aethoria</Text>
+          </View>
           <Text style={styles.rank}>SYSTEM</Text>
           <Text style={styles.title}>Welcome Back, Adventurer</Text>
           <Text style={styles.subtitle}>
@@ -527,7 +535,7 @@ export default function SignInScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>New to the realm? </Text>
+          <Text style={styles.footerText}>New to Aethoria? </Text>
           <Pressable onPress={() => router.push("/(auth)/sign-up" as never)}>
             <Text style={styles.footerLink}>Create Account</Text>
           </Pressable>
@@ -553,6 +561,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 32,
     gap: 10,
+  },
+  brandSeal: {
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#6f4b2a",
+    backgroundColor: "#090705",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    marginBottom: 6,
+    minWidth: 230,
+  },
+  brandName: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: COLORS.foreground,
+    letterSpacing: 1.1,
+    textAlign: "center",
+  },
+  brandSub: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: COLORS.primary,
+    letterSpacing: 2.6,
+    textTransform: "uppercase",
+    marginTop: 4,
+    textAlign: "center",
   },
   rank: {
     fontSize: 11,
@@ -590,6 +624,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 20,
     gap: 4,
+    borderLeftColor: COLORS.primary,
+    borderLeftWidth: 2,
   },
   label: {
     fontSize: 11,
