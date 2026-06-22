@@ -190,8 +190,8 @@ function PaperDollPanel({
     <View style={cs.paperDollPanel}>
       <View style={cs.paperDollHeader}>
         <View>
-          <Text style={cs.sectionLabel}>EQUIPMENT</Text>
-          <Text style={cs.paperDollTitle}>Armory Figure</Text>
+          <Text style={cs.sectionLabel}>ARMORY</Text>
+          <Text style={cs.paperDollTitle}>Loadout</Text>
         </View>
         <View style={cs.equippedBadge}>
           <Text style={cs.equippedBadgeLabel}>Equipped</Text>
@@ -247,7 +247,7 @@ function PaperDollPanel({
       <View style={cs.supportSlotGrid}>
         {normalizedSlots.filter((slot) => slot.side === "support").map((slot) => <SlotButton key={slot.slot} slot={slot} />)}
       </View>
-      <Text style={cs.paperDollNote}>Tap a slot to inspect matching gear. The figure stays neutral; the equipment carries the identity.</Text>
+      <Text style={cs.paperDollNote}>The gear tells the story.</Text>
     </View>
   );
 }

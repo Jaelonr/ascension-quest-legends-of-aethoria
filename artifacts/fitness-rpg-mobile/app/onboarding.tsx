@@ -50,7 +50,7 @@ const SLIDES: Slide[] = [
   {
     type: "world",
     text: "The world danger level is critical.",
-    subtext: "A great enemy gathers beyond the horizon. Aldric knows you are summoned, but not what the System truly is.",
+    subtext: "A great enemy gathers beyond the horizon. Aldric knows you are summoned, but not who or what called you here.",
   },
   {
     type: "final",
