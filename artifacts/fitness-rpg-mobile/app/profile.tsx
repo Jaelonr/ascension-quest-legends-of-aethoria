@@ -272,6 +272,15 @@ export default function ProfileScreen() {
     !!form.sex &&
     !!form.activityLevel &&
     !!form.goalFocus;
+  const scanRequirements = [
+    { label: "Name", complete: form.name.trim().length > 1 },
+    { label: "Age", complete: Number(form.ageYears) >= 10 && Number(form.ageYears) <= 100 },
+    { label: "Sex", complete: !!form.sex },
+    { label: "Activity", complete: !!form.activityLevel },
+    { label: "Path", complete: !!form.goalFocus },
+  ];
+  const completedScanRequirements = scanRequirements.filter((item) => item.complete).length;
+  const scanProgress = completedScanRequirements / scanRequirements.length;
 
   const save = () => {
     const toKg = (value: string) => {
@@ -369,6 +378,30 @@ export default function ProfileScreen() {
       <Text style={s.kicker}>SYSTEM RECORD</Text>
       <Text style={s.title}>System Record</Text>
       <Text style={s.subtitle}>Biometrics, strength marks, and equipment access.</Text>
+
+      <View style={s.assessmentCard}>
+        <View style={s.assessmentTop}>
+          <View>
+            <Text style={s.assessmentKicker}>Adventurer Assessment</Text>
+            <Text style={s.assessmentTitle}>{player?.setupCompleted ? "Record Established" : "Initial Scan Pending"}</Text>
+          </View>
+          <Text style={scanReady || player?.setupCompleted ? s.assessmentReady : s.assessmentOpen}>
+            {completedScanRequirements}/{scanRequirements.length}
+          </Text>
+        </View>
+        <View style={s.assessmentTrack}>
+          <View style={[s.assessmentFill, { width: `${Math.round(scanProgress * 100)}%` }]} />
+        </View>
+        <View style={s.requirementRow}>
+          {scanRequirements.map((item) => (
+            <View key={item.label} style={[s.requirementChip, item.complete && s.requirementChipDone]}>
+              <Text style={[s.requirementText, item.complete && s.requirementTextDone]}>
+                {item.complete ? "OK " : ""}{item.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
 
       <View style={s.unitCard}>
         <Text style={s.unitLabel}>Unit System</Text>
@@ -571,6 +604,19 @@ const s = StyleSheet.create({
   kicker: { color: "#9d8f80", fontSize: 9, letterSpacing: 3, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   title: { color: "#eee5d7", fontSize: 26, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
   subtitle: { color: "#9f9586", fontSize: 12, marginTop: 4, marginBottom: 16, fontFamily: "Inter_400Regular" },
+  assessmentCard: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071615", padding: 12, marginBottom: 12 },
+  assessmentTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+  assessmentKicker: { color: "#7ddce4", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  assessmentTitle: { color: "#eee5d7", fontSize: 16, marginTop: 3, fontFamily: "PlayfairDisplay_700Bold" },
+  assessmentOpen: { color: "#7ddce4", borderWidth: 1, borderColor: "#235e66", paddingHorizontal: 8, paddingVertical: 4, fontSize: 10, fontFamily: "Inter_700Bold" },
+  assessmentReady: { color: "#4ade80", borderWidth: 1, borderColor: "#166534", paddingHorizontal: 8, paddingVertical: 4, fontSize: 10, fontFamily: "Inter_700Bold" },
+  assessmentTrack: { height: 5, backgroundColor: "#020706", overflow: "hidden", marginTop: 12 },
+  assessmentFill: { height: 5, backgroundColor: "#7ddce4" },
+  requirementRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  requirementChip: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#020706", paddingHorizontal: 8, paddingVertical: 5 },
+  requirementChipDone: { borderColor: "#166534", backgroundColor: "#08210f" },
+  requirementText: { color: "#7ddce4", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.8 },
+  requirementTextDone: { color: "#86efac" },
   unitCard: { flexDirection: "row", justifyContent: "space-between", gap: 12, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12, marginBottom: 12 },
   unitLabel: { color: "#8f887d", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 },
   unitValue: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold" },
