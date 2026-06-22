@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { customFetch } from "@workspace/api-client-react";
+import { loadMobileSettings, type Units } from "@/utils/mobile-settings";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -100,6 +101,9 @@ function toField(value: number | null | undefined) {
   return value == null ? "" : String(value);
 }
 
+const kgToLbs = (kg: number) => Math.round(kg * 2.20462 * 10) / 10;
+const lbsToKg = (lbs: number) => Math.round((lbs / 2.20462) * 100) / 100;
+
 function buildForm(entry: WearableEntry | null): WearableForm {
   if (!entry) return EMPTY_FORM;
   return {
@@ -187,6 +191,7 @@ export default function WearablesScreen() {
   const [form, setForm] = useState<WearableForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [unitSystem, setUnitSystem] = useState<Units>("imperial");
 
   const entryCount = summary?.entries?.length ?? 0;
   const readinessLabel = useMemo(() => {
@@ -207,7 +212,11 @@ export default function WearablesScreen() {
       ]);
       setSummary(summaryData);
       setTodayEntry(todayData);
-      setForm(buildForm(todayData));
+      const nextForm = buildForm(todayData);
+      if (unitSystem === "imperial" && todayData?.weight != null) {
+        nextForm.weight = String(kgToLbs(todayData.weight));
+      }
+      setForm(nextForm);
     } catch {
       Alert.alert("Vitals unavailable", "The Guild could not load recovery records right now.");
     } finally {
@@ -216,8 +225,14 @@ export default function WearablesScreen() {
   };
 
   useEffect(() => {
-    loadData();
+    loadMobileSettings()
+      .then((settings) => setUnitSystem(settings.units))
+      .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [unitSystem]);
 
   const setFormValue = (key: keyof WearableForm, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -242,7 +257,7 @@ export default function WearablesScreen() {
     if (restingHr !== undefined) body.restingHr = restingHr;
     if (caloriesBurned !== undefined) body.caloriesBurned = caloriesBurned;
     if (activeMinutes !== undefined) body.activeMinutes = activeMinutes;
-    if (weight !== undefined) body.weight = weight;
+    if (weight !== undefined) body.weight = unitSystem === "imperial" ? lbsToKg(weight) : weight;
     if (form.notes.trim()) body.notes = form.notes.trim();
 
     setSaving(true);
@@ -324,7 +339,12 @@ export default function WearablesScreen() {
               <Field label="Calories Burned" value={form.caloriesBurned} onChangeText={(v) => setFormValue("caloriesBurned", v)} placeholder="450" />
               <Field label="Active Minutes" value={form.activeMinutes} onChangeText={(v) => setFormValue("activeMinutes", v)} placeholder="45" />
             </View>
-            <Field label="Weight" value={form.weight} onChangeText={(v) => setFormValue("weight", v)} placeholder="175" />
+            <Field
+              label={`Weight (${unitSystem === "metric" ? "kg" : "lbs"})`}
+              value={form.weight}
+              onChangeText={(v) => setFormValue("weight", v)}
+              placeholder={unitSystem === "metric" ? "80" : "175"}
+            />
             <Field
               label="Notes"
               value={form.notes}
@@ -386,6 +406,11 @@ export default function WearablesScreen() {
                     {entry.hrv != null ? <Text style={w.historyValue}>HRV {entry.hrv}</Text> : null}
                     {entry.restingHr != null ? <Text style={w.historyValue}>Resting {entry.restingHr} bpm</Text> : null}
                     {entry.activeMinutes != null ? <Text style={w.historyValue}>Active {entry.activeMinutes}m</Text> : null}
+                    {entry.weight != null ? (
+                      <Text style={w.historyValue}>
+                        Weight {unitSystem === "imperial" ? kgToLbs(entry.weight) : entry.weight}{unitSystem === "imperial" ? " lbs" : " kg"}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               ))}

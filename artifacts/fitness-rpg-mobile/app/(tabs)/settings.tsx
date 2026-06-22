@@ -1,8 +1,13 @@
 import { useAuth, useClerk } from "@clerk/expo";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { useResetPlayer } from "@workspace/api-client-react";
 import { clearMobileOnboarding } from "@/utils/onboarding";
+import {
+  DEFAULT_MOBILE_SETTINGS,
+  loadMobileSettings,
+  saveMobileSettings,
+  type MobileSettings,
+} from "@/utils/mobile-settings";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -16,31 +21,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-type Units = "imperial" | "metric";
-type NarrativeMode = "balanced" | "immersive" | "technical";
-
-type MobileSettings = {
-  units: Units;
-  narrativeMode: NarrativeMode;
-  soundsEnabled: boolean;
-  reducedMotion: boolean;
-  compactMode: boolean;
-  analyticsEnabled: boolean;
-  crashReports: boolean;
-};
-
-const STORAGE_KEY = "ascension-quest-mobile-settings";
-
-const DEFAULT_SETTINGS: MobileSettings = {
-  units: "imperial",
-  narrativeMode: "balanced",
-  soundsEnabled: true,
-  reducedMotion: false,
-  compactMode: false,
-  analyticsEnabled: true,
-  crashReports: true,
-};
 
 const LEGAL_COPY = {
   privacy: {
@@ -64,10 +44,6 @@ const LEGAL_COPY = {
       "Before launch: verify Clerk authentication, Google sign-in redirects, PostgreSQL migrations, OpenAI fallback behavior, mock-mode isolation, legal copy review, app versioning, and export/delete workflows.",
   },
 };
-
-function mergeSettings(value: Partial<MobileSettings> | null): MobileSettings {
-  return { ...DEFAULT_SETTINGS, ...(value ?? {}) };
-}
 
 function Section({
   icon,
@@ -199,7 +175,7 @@ export default function SettingsScreen() {
     },
   });
 
-  const [settings, setSettings] = useState<MobileSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<MobileSettings>(DEFAULT_MOBILE_SETTINGS);
   const [loaded, setLoaded] = useState(false);
 
   const environment = useMemo(() => {
@@ -212,10 +188,10 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     let mounted = true;
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
+    loadMobileSettings()
+      .then((next) => {
         if (!mounted) return;
-        setSettings(mergeSettings(raw ? JSON.parse(raw) : null));
+        setSettings(next);
       })
       .catch(() => undefined)
       .finally(() => mounted && setLoaded(true));
@@ -226,7 +202,7 @@ export default function SettingsScreen() {
 
   const updateSettings = (next: MobileSettings) => {
     setSettings(next);
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => undefined);
+    saveMobileSettings(next).catch(() => undefined);
   };
 
   const setSetting = <K extends keyof MobileSettings>(key: K, value: MobileSettings[K]) => {
