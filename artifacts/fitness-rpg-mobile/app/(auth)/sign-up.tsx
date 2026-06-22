@@ -248,7 +248,7 @@ export default function SignUpScreen() {
               style={styles.textBtn}
               onPress={handleResendCode}
             >
-              <Text style={styles.textBtnText}>Resend code</Text>
+              <Text style={styles.textBtnText}>Send another code to {email}</Text>
             </Pressable>
             <Pressable
               style={styles.textBtn}
@@ -259,7 +259,7 @@ export default function SignUpScreen() {
                 void signUp.reset();
               }}
             >
-              <Text style={styles.textBtnText}>Use a different email</Text>
+              <Text style={styles.textBtnText}>Change email address</Text>
             </Pressable>
           </View>
         </ScrollView>
