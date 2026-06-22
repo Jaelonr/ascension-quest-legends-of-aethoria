@@ -4,8 +4,9 @@ import {
   useGetNutritionLogs,
   useCreateNutritionLog,
   useDeleteNutritionLog,
+  searchFood,
 } from "@workspace/api-client-react";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -110,8 +111,49 @@ function AddFoodModal({ visible, onClose }: { visible: boolean; onClose: () => v
   const [protein, setProtein] = useState("");
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
+  const [searchQ, setSearchQ] = useState("");
+  const [foodResults, setFoodResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [portionGrams, setPortionGrams] = useState("100");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reset = () => { setName(""); setCalories(""); setProtein(""); setCarbs(""); setFat(""); };
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (searchQ.trim().length < 3) {
+      setFoodResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await searchFood({ q: searchQ.trim() });
+        setFoodResults(results as any[]);
+      } catch {
+        setFoodResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 450);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQ]);
+
+  const applyFoodResult = (item: any) => {
+    const grams = parseFloat(portionGrams) || 100;
+    const ratio = grams / 100;
+    const displayName = String(item.name ?? "").split(" · ")[0].split(" Â· ")[0].split(" Ã‚Â· ")[0];
+    setName(displayName);
+    setCalories(String(Math.round((item.calories100g ?? 0) * ratio)));
+    setProtein(String(Math.round((item.protein100g ?? 0) * ratio * 10) / 10));
+    setCarbs(String(Math.round((item.carbs100g ?? 0) * ratio * 10) / 10));
+    setFat(String(Math.round((item.fat100g ?? 0) * ratio * 10) / 10));
+    setSearchQ("");
+    setFoodResults([]);
+  };
 
   const handleQuickAdd = (q: typeof QUICK_ADDS[0]) => {
     createLog.mutate(
@@ -186,6 +228,47 @@ function AddFoodModal({ visible, onClose }: { visible: boolean; onClose: () => v
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+
+          {/* Food search */}
+          <View>
+            <Text style={[af.sectionLabel, { color: colors.mutedForeground }]}>GUILD FOOD DATABASE</Text>
+            <Text style={af.searchHelp}>Search common foods and dishes, then adjust the serving size before logging.</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TextInput
+                style={[af.input, { flex: 1, color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
+                placeholder="Search chicken rice, oats, yogurt..."
+                placeholderTextColor={colors.mutedForeground}
+                value={searchQ}
+                onChangeText={setSearchQ}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TextInput
+                style={[af.input, af.gramsInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
+                placeholder="100g"
+                placeholderTextColor={colors.mutedForeground}
+                value={portionGrams}
+                onChangeText={setPortionGrams}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            {isSearching && <ActivityIndicator color="#d9ad63" style={{ marginVertical: 8 }} />}
+            {foodResults.length > 0 && (
+              <View style={af.resultList}>
+                {foodResults.slice(0, 8).map((item, index) => (
+                  <TouchableOpacity key={`${item.name}-${index}`} style={af.resultRow} onPress={() => applyFoodResult(item)} activeOpacity={0.75}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={af.resultName} numberOfLines={1}>{String(item.name ?? "Food").split(" · ")[0]}</Text>
+                      <Text style={af.resultMeta}>
+                        {Math.round(item.calories100g ?? 0)} kcal · {Math.round((item.protein100g ?? 0) * 10) / 10}g protein / 100g
+                      </Text>
+                    </View>
+                    <Text style={af.resultSource}>{item.source === "open_food_facts" ? "OFF" : "Guild"}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Manual entry */}
@@ -265,6 +348,13 @@ const af = StyleSheet.create({
   quickBtn: { borderWidth: 1, padding: 10, borderRadius: 4, minWidth: "30%" },
   quickBtnText: { fontSize: 12, fontWeight: "600" },
   quickBtnMeta: { fontSize: 10, marginTop: 2 },
+  searchHelp: { color: "#9d8f80", fontSize: 11, lineHeight: 16, marginBottom: 8, fontFamily: "Inter_400Regular" },
+  gramsInput: { width: 76, textAlign: "center" },
+  resultList: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", marginBottom: 8 },
+  resultRow: { flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: "#2a2520", padding: 10 },
+  resultName: { color: "#eee5d7", fontSize: 12, fontFamily: "Inter_700Bold" },
+  resultMeta: { color: "#9d8f80", fontSize: 10, marginTop: 2, fontFamily: "Inter_400Regular" },
+  resultSource: { color: "#d9ad63", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   input: { borderWidth: 1, borderRadius: 4, padding: 10, fontSize: 14, marginBottom: 8 },
   mealTypeBtn: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4 },
   mealTypeText: { fontSize: 11, fontWeight: "600" },
@@ -335,13 +425,41 @@ export default function NutritionScreen() {
       >
         {/* Header */}
         <View style={ns.header}>
-          <Text style={ns.headerSub}>NUTRITION</Text>
-          <Text style={ns.headerTitle}>Daily Rations</Text>
+          <Text style={ns.headerSub}>GUILD PROVISIONS</Text>
+          <Text style={ns.headerTitle}>Guild Provisions</Text>
+          <Text style={ns.headerDesc}>Fuel the body that carries the legend.</Text>
+        </View>
+
+        <View style={ns.ledgerCard}>
+          <Text style={ns.ledgerTitle}>Healer's Ledger</Text>
+          <Text style={ns.ledgerText}>
+            Food is not bookkeeping in Aethoria. It is recovery, preparation, and the raw material the System turns into endurance.
+          </Text>
+          <View style={ns.ledgerGrid}>
+            <View style={ns.ledgerBox}>
+              <Text style={ns.ledgerLabel}>Goal basis</Text>
+              <Text style={ns.ledgerValue}>Profile targets</Text>
+            </View>
+            <View style={ns.ledgerBox}>
+              <Text style={ns.ledgerLabel}>Commission effect</Text>
+              <Text style={ns.ledgerValue}>Meals and protein update Guild duty progress.</Text>
+            </View>
+            <View style={ns.ledgerBox}>
+              <Text style={ns.ledgerLabel}>Food sources</Text>
+              <Text style={ns.ledgerValue}>Guild database first; reputable lookup when available.</Text>
+            </View>
+          </View>
         </View>
 
         {/* Macro summary */}
         <View style={[ns.card, { backgroundColor: "#171510", borderColor: "#3b3328" }]}>
-          <Text style={ns.sectionLabel}>TODAY'S MACROS</Text>
+          <View style={ns.targetHeader}>
+            <Text style={ns.sectionLabel}>DAILY TARGETS</Text>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={ns.remainingValue}>{Math.max(0, Math.round(macroTargets.calories - current.calories))}</Text>
+              <Text style={ns.remainingLabel}>kcal remaining</Text>
+            </View>
+          </View>
           {loadingToday ? (
             <ActivityIndicator color="#d9ad63" style={{ marginVertical: 16 }} />
           ) : (
@@ -364,7 +482,7 @@ export default function NutritionScreen() {
           onPress={() => setAddModalOpen(true)}
           activeOpacity={0.8}
         >
-          <Text style={ns.addFoodText}>+ ADD FOOD</Text>
+          <Text style={ns.addFoodText}>+ RECORD PROVISIONS</Text>
         </TouchableOpacity>
 
         {/* Food log by meal */}
@@ -399,8 +517,19 @@ const ns = StyleSheet.create({
   header: { marginBottom: 16 },
   headerSub: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   headerTitle: { fontSize: 24, fontWeight: "900", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
+  headerDesc: { color: "#9f9586", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginTop: 2 },
   card: { borderWidth: 1, padding: 14 },
   sectionLabel: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", textTransform: "uppercase", marginBottom: 12, fontFamily: "Inter_400Regular" },
+  ledgerCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14, marginBottom: 16 },
+  ledgerTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  ledgerText: { color: "#cfc5b8", fontSize: 13, lineHeight: 20, marginTop: 6, fontFamily: "Inter_400Regular" },
+  ledgerGrid: { gap: 8, marginTop: 12 },
+  ledgerBox: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10 },
+  ledgerLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginBottom: 4 },
+  ledgerValue: { color: "#d8c4a5", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
+  targetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 },
+  remainingValue: { color: "#eee5d7", fontSize: 24, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  remainingLabel: { color: "#9d8f80", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   mealHeader: { fontSize: 9, letterSpacing: 2, color: "#9d8f80", textTransform: "uppercase", marginBottom: 6, fontFamily: "Inter_400Regular" },
   addFoodBtn: { backgroundColor: "#d9ad63", padding: 14, alignItems: "center", marginTop: 12 },
   addFoodText: { color: "#000", fontWeight: "700", fontSize: 13, letterSpacing: 2, fontFamily: "Inter_700Bold" },
