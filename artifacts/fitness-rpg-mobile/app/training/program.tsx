@@ -61,7 +61,7 @@ export default function TrainingProgramScreen() {
     createSession.mutate(
       { data: { name: `${day.focus} - ${day.sets}`, templateId: undefined as any } },
       {
-        onSuccess: (session: any) => router.push(`/session/${session.id}` as any),
+        onSuccess: (session: any) => router.push(`/training/session/${session.id}` as any),
         onError: () => Alert.alert("Session failed", "Could not start this program session."),
       }
     );

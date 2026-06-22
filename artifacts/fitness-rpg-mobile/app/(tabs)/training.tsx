@@ -78,7 +78,7 @@ export default function TrainingScreen() {
     createSession.mutate(
       { data: { templateId, name } },
       {
-        onSuccess: (session: any) => router.push(`/session/${session.id}`),
+        onSuccess: (session: any) => router.push(`/training/session/${session.id}` as any),
         onError: () => Alert.alert("Error", "Could not start session. Try again."),
       }
     );
@@ -317,7 +317,7 @@ export default function TrainingScreen() {
                         marginBottom: 8,
                       },
                     ]}
-                    onPress={() => isActive && router.push(`/session/${session.id}`)}
+                    onPress={() => isActive && router.push(`/training/session/${session.id}` as any)}
                     activeOpacity={isActive ? 0.7 : 1}
                   >
                     <View style={{ flex: 1 }}>
