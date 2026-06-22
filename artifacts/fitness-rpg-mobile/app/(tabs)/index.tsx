@@ -2,7 +2,6 @@ import {
   customFetch,
   useGetGuildHallToday,
   useGetGuildMasterConversation,
-  useSendGuildMasterMessage,
   useGetDailyQuest,
 } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
@@ -57,6 +56,20 @@ function usePlayer() {
 
 type ChatLine = { id: string; role: "user" | "assistant"; content: string };
 
+function parseGuildMasterStream(streamText: string) {
+  return streamText.split("\n")
+    .filter((line) => line.startsWith("data: "))
+    .map((line) => {
+      try {
+        return JSON.parse(line.slice(6)) as { content?: string };
+      } catch {
+        return {};
+      }
+    })
+    .map((event) => event.content ?? "")
+    .join("");
+}
+
 function AldricChatModal({
   visible,
   onClose,
@@ -69,10 +82,10 @@ function AldricChatModal({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { data: history } = useGetGuildMasterConversation();
-  const sendMsg = useSendGuildMasterMessage();
   const qc = useQueryClient();
   const [input, setInput] = useState("");
   const [localLines, setLocalLines] = useState<ChatLine[]>([]);
+  const [sending, setSending] = useState(false);
   const reportDetails = initialReport?.aldric;
   const reportMessage =
     reportDetails?.counsel ??
@@ -100,23 +113,35 @@ function AldricChatModal({
     }
   }, [history]);
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
-    if (!text || sendMsg.isPending) return;
+    if (!text || sending) return;
+    if (!history?.conversationId) {
+      Alert.alert("Still connecting", "The Guild Hall is loading. Try again in a moment.");
+      return;
+    }
     setInput("");
     const userLine: ChatLine = { id: Date.now().toString(), role: "user", content: text };
     setLocalLines((prev) => [...prev, userLine]);
-    sendMsg.mutate(
-      { data: { content: text, conversationId: history?.conversationId ?? 0 } },
-      {
-        onSuccess: (res: any) => {
-          const reply: ChatLine = { id: Date.now().toString() + "a", role: "assistant", content: res.message ?? res.content ?? "" };
-          setLocalLines((prev) => [...prev, reply]);
-          qc.invalidateQueries({ queryKey: ["/api/guild-master/conversation"] });
-        },
-        onError: () => Alert.alert("Error", "Aldric is unavailable right now."),
+    setSending(true);
+    try {
+      const streamText = await customFetch<string>("/api/guild-master/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text, conversationId: history.conversationId, narrativeMode: "balanced" }),
+        responseType: "text",
+      });
+      const answer = parseGuildMasterStream(streamText);
+      if (answer) {
+        const reply: ChatLine = { id: Date.now().toString() + "a", role: "assistant", content: answer };
+        setLocalLines((prev) => [...prev, reply]);
       }
-    );
+      await qc.invalidateQueries({ queryKey: ["/api/guild-master/conversation"] });
+    } catch {
+      Alert.alert("Error", "Aldric is unavailable right now.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -194,7 +219,7 @@ function AldricChatModal({
               <Text style={[s.bubbleText, { color: colors.foreground }]}>{line.content}</Text>
             </View>
           ))}
-          {sendMsg.isPending && (
+          {sending && (
             <View style={[s.bubble, { backgroundColor: "#1a1814", borderColor: "#3b3328", alignSelf: "flex-start" }]}>
               <Text style={{ color: colors.mutedForeground, fontSize: 18 }}>...</Text>
             </View>
@@ -212,9 +237,9 @@ function AldricChatModal({
             onSubmitEditing={send}
           />
           <TouchableOpacity
-            style={[s.sendBtn, { backgroundColor: "#d9ad63", opacity: sendMsg.isPending || !input.trim() ? 0.5 : 1 }]}
+            style={[s.sendBtn, { backgroundColor: "#d9ad63", opacity: sending || !input.trim() ? 0.5 : 1 }]}
             onPress={send}
-            disabled={sendMsg.isPending || !input.trim()}
+            disabled={sending || !input.trim()}
           >
             <Text style={{ color: "#000", fontWeight: "700", fontSize: 11 }}>Send</Text>
           </TouchableOpacity>
