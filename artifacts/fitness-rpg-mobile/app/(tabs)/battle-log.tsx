@@ -29,6 +29,40 @@ const STYLE_META: Record<string, { label: string; color: string; bg: string }> =
   discipline:   { label: "Discipline",   color: "#eab308", bg: "#eab30818" },
 };
 const STYLE_ORDER = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
+const MAP_FEATURES = [
+  "Regions Discovered",
+  "Roads Traveled",
+  "Gates Cleared",
+  "Boss Sites",
+  "Campaign Routes",
+  "Return Stone Journeys",
+];
+const MAP_CLUES = [
+  {
+    source: "Hall Ledger",
+    title: "Western commerce exists",
+    status: "Known",
+    text: "Aldric has mentioned that the western coast carries more coin than crowns. Details remain unconfirmed.",
+  },
+  {
+    source: "Item Lore",
+    title: "Tideglass Ring",
+    status: "Undiscovered",
+    text: "A future item description can reveal that merchants use these in N'Thaloris contracts.",
+  },
+  {
+    source: "Quest Dialogue",
+    title: "Crown of the Coast",
+    status: "Locked",
+    text: "A noble envoy or Guild embassy commission should reveal this name before it becomes common knowledge.",
+  },
+  {
+    source: "Aldric",
+    title: "The sea is different there",
+    status: "Locked",
+    text: "The people of N'Thaloris view the sea differently than surface folk. The Chronicle cannot explain more yet.",
+  },
+];
 
 const VERDICT_COLORS: Record<string, string> = {
   "Crushing Victory": "#eab308",
@@ -382,6 +416,8 @@ export default function ChronicleScreen() {
   const [selected, setSelected] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<ChronicleTab>("replays");
   const [styleFilter, setStyleFilter] = useState<string>("all");
+  const [mapZoom, setMapZoom] = useState(1);
+  const [routeActive, setRouteActive] = useState(false);
 
   const allReplays = ((chronicle?.battleReplays?.length ? chronicle.battleReplays : replays) ?? []) as any[];
   const visibleReplays = styleFilter === "all" ? allReplays : allReplays.filter((replay) => replay.dominantStyle === styleFilter);
@@ -482,13 +518,6 @@ export default function ChronicleScreen() {
     }
     return (
       <View style={ch.panelStack}>
-        <View style={ch.mapCard}>
-          <Image source={AETHORIA_MAP} style={ch.mapImage} resizeMode="cover" />
-          <View style={ch.mapOverlay}>
-            <Text style={ch.mapMarker}>Summoning marker</Text>
-            <Text style={[ch.mapMarker, ch.mapEndpoint]}>Expedition endpoint</Text>
-          </View>
-        </View>
         <View style={ch.recordCard}>
           <Text style={ch.recordMeta}>SYSTEM CARTOGRAPHY - {mapStatus}</Text>
           <Text style={ch.mapTitle}>{mapTitle}</Text>
@@ -497,18 +526,77 @@ export default function ChronicleScreen() {
             Your training fuels expeditions, but Aethoria is vast. Some journeys are walked, some are taken by caravan, and all return through the Guild's stones.
           </Text>
         </View>
+        <View style={ch.mapTools}>
+          <View>
+            <Text style={ch.recordMeta}>Known Routes</Text>
+            <Text style={ch.mapToolText}>Tap the route to show the solid expedition trail.</Text>
+          </View>
+          <View style={ch.zoomRow}>
+            <TouchableOpacity style={ch.zoomBtn} onPress={() => setMapZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}>
+              <Text style={ch.zoomText}>-</Text>
+            </TouchableOpacity>
+            <Text style={ch.zoomValue}>{Math.round(mapZoom * 100)}%</Text>
+            <TouchableOpacity style={ch.zoomBtn} onPress={() => setMapZoom((z) => Math.min(2.5, Math.round((z + 0.25) * 100) / 100))}>
+              <Text style={ch.zoomText}>+</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={ch.zoomBtn} onPress={() => setMapZoom(1)}>
+              <Text style={ch.zoomText}>R</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={ch.mapScroll}>
+          <TouchableOpacity
+            activeOpacity={0.95}
+            onPress={() => setRouteActive((value) => !value)}
+            style={[ch.mapCard, { width: `${mapZoom * 100}%` }]}
+          >
+            <Image source={AETHORIA_MAP} style={ch.mapImage} resizeMode="cover" />
+            <View style={ch.mapOverlay}>
+              <View style={[ch.routeLine, routeActive && ch.routeLineActive]} />
+              <View style={[ch.returnRouteLine, routeActive && ch.returnRouteLineActive]} />
+              <Text style={ch.mapMarker}>Summoning marker</Text>
+              <Text style={[ch.mapMarker, ch.mapEndpoint]}>Expedition endpoint</Text>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
+        <View style={ch.mapLegend}>
+          <View style={ch.legendItem}><View style={ch.legendDotted} /><Text style={ch.legendText}>Known route</Text></View>
+          <View style={ch.legendItem}><View style={ch.legendSolid} /><Text style={ch.legendText}>Highlighted on tap</Text></View>
+          <View style={ch.legendItem}><View style={ch.legendReturn} /><Text style={ch.legendText}>Return stone path</Text></View>
+        </View>
         <View style={ch.travelGrid}>
           <StatTile label="On Foot" value={`${footSteps.toLocaleString()} steps`} tone="#d9ad63" />
           <StatTile label="Effort Miles" value={footMiles.toFixed(1)} tone="#d9ad63" />
           <StatTile label="Caravan/Mount" value={`${assistedMiles.toFixed(1)} mi`} tone="#49a3a0" />
           <StatTile label="Return Stone" value="Guild Hall" tone="#c4b5fd" />
         </View>
-        {["Regions Discovered", "Roads Traveled", "Gates Cleared", "Boss Sites", "Campaign Routes", "Return Stone Journeys"].map((feature) => (
-          <View key={feature} style={ch.recordCard}>
-            <Text style={ch.recordTitle}>{feature}</Text>
-            <Text style={ch.recordMeta}>Awaiting Chronicle data</Text>
-          </View>
-        ))}
+        <View style={ch.recordCard}>
+          <Text style={ch.recordTitle}>Route Ledger</Text>
+          <Text style={ch.recordText}>On-foot effort marks only the work performed by the adventurer. Caravan and mount miles represent travel handled by roads, guides, and mounts. Every expedition endpoint returns to the Guild Hall by stone.</Text>
+        </View>
+        <View style={ch.featureGrid}>
+          {MAP_FEATURES.map((feature) => (
+            <View key={feature} style={ch.featureTile}>
+              <Text style={ch.recordTitle}>{feature}</Text>
+              <Text style={ch.recordMeta}>Awaiting Chronicle data</Text>
+            </View>
+          ))}
+        </View>
+        <View style={ch.panelStack}>
+          <Text style={[ch.sectionLabel, { marginTop: 4 }]}>DISCOVERY CLUES</Text>
+          {MAP_CLUES.map((clue) => (
+            <View key={clue.title} style={ch.recordCard}>
+              <View style={ch.recordRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={ch.recordMeta}>{clue.source}</Text>
+                  <Text style={ch.recordTitle}>{clue.title}</Text>
+                </View>
+                <Text style={ch.statePill}>{clue.status}</Text>
+              </View>
+              <Text style={ch.recordText}>{clue.text}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     );
   };
@@ -659,14 +747,33 @@ const ch = StyleSheet.create({
   recordGold: { color: "#d7a54d", fontSize: 12, fontFamily: "Inter_700Bold" },
   statePill: { borderWidth: 1, borderColor: "#6b4d2f", color: "#d8c4a5", paddingHorizontal: 8, paddingVertical: 3, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   emptyRecord: { borderWidth: 1, borderStyle: "dashed", borderColor: "#3b3328", backgroundColor: "#11100e", padding: 24, alignItems: "center", gap: 8 },
+  mapTools: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  mapToolText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 2, fontFamily: "Inter_400Regular" },
+  zoomRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  zoomBtn: { width: 32, height: 32, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
+  zoomText: { color: "#d9ad63", fontSize: 13, fontFamily: "Inter_700Bold" },
+  zoomValue: { minWidth: 46, borderWidth: 1, borderColor: "#3b3328", color: "#d8c4a5", textAlign: "center", paddingVertical: 7, fontSize: 11, fontFamily: "Inter_700Bold" },
+  mapScroll: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#070706" },
   mapCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#070706", overflow: "hidden" },
   mapImage: { width: "100%", aspectRatio: 1.58 },
   mapOverlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
+  routeLine: { position: "absolute", left: "28%", top: "53%", width: "28%", borderTopWidth: 2, borderStyle: "dashed", borderColor: "#49a3a0", transform: [{ rotate: "-28deg" }], opacity: 0.9 },
+  routeLineActive: { borderTopWidth: 5, borderStyle: "solid", opacity: 1 },
+  returnRouteLine: { position: "absolute", left: "31%", top: "55%", width: "20%", borderTopWidth: 2, borderStyle: "dashed", borderColor: "#a78bfa", transform: [{ rotate: "-39deg" }], opacity: 0.85 },
+  returnRouteLineActive: { borderTopWidth: 4, borderStyle: "solid", opacity: 1 },
   mapMarker: { position: "absolute", left: "38%", top: "42%", borderWidth: 1, borderColor: "#49a3a0", backgroundColor: "#061010dd", color: "#bde7df", fontSize: 9, paddingHorizontal: 6, paddingVertical: 3, fontFamily: "Inter_700Bold" },
   mapEndpoint: { left: "22%", top: "58%", borderColor: "#a78bfa", backgroundColor: "#10091add", color: "#ddd6fe" },
   mapTitle: { color: "#e5c386", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
   mapNote: { color: "#9f9586", fontSize: 12, lineHeight: 18, borderLeftWidth: 2, borderLeftColor: "#6b4d2f", paddingLeft: 10, marginTop: 10, fontFamily: "Inter_400Regular" },
+  mapLegend: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10, gap: 8 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 8 },
+  legendDotted: { width: 34, borderTopWidth: 2, borderStyle: "dashed", borderColor: "#49a3a0" },
+  legendSolid: { width: 34, borderTopWidth: 4, borderColor: "#49a3a0" },
+  legendReturn: { width: 34, borderTopWidth: 2, borderStyle: "dashed", borderColor: "#a78bfa" },
+  legendText: { color: "#8f887d", fontSize: 10, fontFamily: "Inter_400Regular" },
   travelGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  featureGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  featureTile: { width: "48%", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12 },
   empty: { borderWidth: 1, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   emptyDesc: { fontSize: 12, textAlign: "center", lineHeight: 18 },
