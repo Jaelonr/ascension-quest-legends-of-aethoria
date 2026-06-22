@@ -1,4 +1,4 @@
-import { useGetBiometrics, useUpdateBiometrics } from "@workspace/api-client-react";
+import { useGetBiometrics, useGetPlayer, useSetupPlayer, useUpdateBiometrics } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -46,6 +46,12 @@ const EQUIPMENT_TYPES = [
 ];
 
 type FormState = {
+  name: string;
+  ageYears: string;
+  sex: "male" | "female" | "other" | "";
+  activityLevel: "sedentary" | "light" | "moderate" | "active" | "very_active" | "";
+  weightGoal: "lose" | "maintain" | "gain";
+  goalFocus: "strength" | "allround" | "combat" | "endurance" | "";
   height: string;
   weight: string;
   bodyFatPct: string;
@@ -59,6 +65,12 @@ type FormState = {
 };
 
 const empty: FormState = {
+  name: "",
+  ageYears: "",
+  sex: "",
+  activityLevel: "",
+  weightGoal: "maintain",
+  goalFocus: "",
   height: "",
   weight: "",
   bodyFatPct: "",
@@ -69,6 +81,35 @@ const empty: FormState = {
   row1rm: "",
   equipmentTypes: [],
   notes: "",
+};
+
+const SEX_OPTIONS = [
+  { id: "male", label: "Male" },
+  { id: "female", label: "Female" },
+  { id: "other", label: "Other" },
+] as const;
+
+const ACTIVITY_OPTIONS = [
+  { id: "sedentary", label: "Low", desc: "Mostly deskbound or returning carefully." },
+  { id: "light", label: "Light", desc: "Some walking or 1-2 easy sessions weekly." },
+  { id: "moderate", label: "Moderate", desc: "3-4 sessions or regular active days." },
+  { id: "active", label: "Active", desc: "Hard training most weeks." },
+  { id: "very_active", label: "Very Active", desc: "Daily training, sport, or physical work." },
+] as const;
+
+const GOAL_OPTIONS = [
+  { id: "strength", label: "Forge Power", desc: "Strength and size.", baseClass: "warrior", weightGoal: "gain" as const, bonuses: { strength: 4, agility: 0, stamina: 0, vitality: 2, discipline: 1, sense: 0 } },
+  { id: "allround", label: "All-Around Adventurer", desc: "Balanced fitness and discipline.", baseClass: "adventurer", weightGoal: "maintain" as const, bonuses: { strength: 2, agility: 1, stamina: 1, vitality: 1, discipline: 2, sense: 0 } },
+  { id: "combat", label: "Combat Arts", desc: "Striking, grappling, and skill practice.", baseClass: "striker", weightGoal: "gain" as const, bonuses: { strength: 1, agility: 2, stamina: 1, vitality: 0, discipline: 2, sense: 1 } },
+  { id: "endurance", label: "Endurance Path", desc: "Conditioning, resilience, and recovery.", baseClass: "ranger", weightGoal: "maintain" as const, bonuses: { strength: 0, agility: 1, stamina: 4, vitality: 1, discipline: 1, sense: 1 } },
+] as const;
+
+const ACTIVITY_BONUS: Record<Exclude<FormState["activityLevel"], "">, Partial<Record<keyof (typeof GOAL_OPTIONS)[number]["bonuses"], number>>> = {
+  sedentary: {},
+  light: { discipline: 1 },
+  moderate: { strength: 1, stamina: 1, discipline: 1 },
+  active: { strength: 1, agility: 1, stamina: 1, vitality: 1, discipline: 1 },
+  very_active: { strength: 2, agility: 1, stamina: 2, vitality: 1, discipline: 1, sense: 1 },
 };
 
 const kgToLbs = (kg: number) => Math.round(kg * 2.20462 * 10) / 10;
@@ -89,6 +130,12 @@ function inToFtIn(inches: number) {
 function toForm(data: any): FormState {
   const lift = (value: number | null | undefined) => value == null ? "" : String(kgToLbs(value));
   return {
+    name: "",
+    ageYears: "",
+    sex: "",
+    activityLevel: "",
+    weightGoal: "maintain",
+    goalFocus: "",
     height: data?.heightCm != null ? String(cmToIn(data.heightCm)) : "",
     weight: data?.weightKg != null ? String(kgToLbs(data.weightKg)) : "",
     bodyFatPct: data?.bodyFatPct != null ? String(data.bodyFatPct) : "",
@@ -105,17 +152,19 @@ function toForm(data: any): FormState {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { data: player, isLoading: playerLoading } = useGetPlayer();
   const { data, isLoading } = useGetBiometrics();
   const update = useUpdateBiometrics();
+  const setupPlayer = useSetupPlayer();
   const [form, setForm] = useState<FormState>(empty);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (data) {
-      setForm(toForm(data));
+      setForm((prev) => ({ ...prev, ...toForm(data), name: prev.name || player?.name || "" }));
       setDirty(false);
     }
-  }, [data]);
+  }, [data, player?.name]);
 
   const setField = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -131,6 +180,40 @@ export default function ProfileScreen() {
     }));
     setDirty(true);
   };
+
+  const chooseGoal = (id: FormState["goalFocus"]) => {
+    const goal = GOAL_OPTIONS.find((item) => item.id === id);
+    setForm((prev) => ({
+      ...prev,
+      goalFocus: id,
+      weightGoal: goal?.weightGoal ?? prev.weightGoal,
+    }));
+    setDirty(true);
+  };
+
+  const chosenGoal = GOAL_OPTIONS.find((item) => item.id === form.goalFocus);
+  const startingStats = (() => {
+    const base = { strength: 1, agility: 1, stamina: 1, vitality: 1, discipline: 1, sense: 1 };
+    if (chosenGoal) {
+      Object.entries(chosenGoal.bonuses).forEach(([key, value]) => {
+        base[key as keyof typeof base] += value;
+      });
+    }
+    if (form.activityLevel) {
+      Object.entries(ACTIVITY_BONUS[form.activityLevel]).forEach(([key, value]) => {
+        base[key as keyof typeof base] += value ?? 0;
+      });
+    }
+    return base;
+  })();
+
+  const scanReady =
+    form.name.trim().length > 1 &&
+    Number(form.ageYears) >= 10 &&
+    Number(form.ageYears) <= 100 &&
+    !!form.sex &&
+    !!form.activityLevel &&
+    !!form.goalFocus;
 
   const save = () => {
     const toKg = (value: string) => {
@@ -166,6 +249,50 @@ export default function ProfileScreen() {
     );
   };
 
+  const completeInitialScan = () => {
+    if (!scanReady || !chosenGoal) {
+      Alert.alert("Scan incomplete", "Enter name, age, sex, activity level, and your first path before completing the scan.");
+      return;
+    }
+    const toKg = (value: string) => {
+      const parsed = numOrNull(value);
+      return parsed == null ? null : lbsToKg(parsed);
+    };
+    const toCm = (value: string) => {
+      const parsed = numOrNull(value);
+      return parsed == null ? null : inToCm(parsed);
+    };
+
+    setupPlayer.mutate(
+      {
+        data: {
+          name: form.name.trim(),
+          statBonuses: startingStats,
+          equipmentIds: [],
+          baseClass: chosenGoal.baseClass,
+          systemScan: {
+            ageYears: Number(form.ageYears),
+            sex: form.sex || undefined,
+            heightCm: toCm(form.height),
+            weightKg: toKg(form.weight),
+            activityLevel: form.activityLevel || undefined,
+            weightGoal: form.weightGoal,
+            equipmentTypes: form.equipmentTypes,
+          },
+        },
+      },
+      {
+        onSuccess: () => {
+          setDirty(false);
+          Alert.alert("System Scan complete", "Aethoria has accepted your first record.", [
+            { text: "Enter the Hall", onPress: () => router.replace("/(tabs)" as any) },
+          ]);
+        },
+        onError: () => Alert.alert("Scan failed", "The System could not finish the initial record. Try again in a moment."),
+      }
+    );
+  };
+
   const heightNum = parseFloat(form.height);
   const heightHint = Number.isFinite(heightNum) && heightNum > 0 ? inToFtIn(heightNum) : null;
   const lifts: Array<{ field: keyof FormState; label: string; placeholder: string }> = [
@@ -194,10 +321,75 @@ export default function ProfileScreen() {
         </Text>
       </View>
 
-      {isLoading ? (
+      {isLoading || playerLoading ? (
         <ActivityIndicator color="#d9ad63" style={{ marginTop: 24 }} />
       ) : (
         <>
+          <View style={s.card}>
+            <View style={s.scanHeader}>
+              <View>
+                <Text style={s.cardTitle}>Initial System Scan</Text>
+                <Text style={s.cardMeta}>Name, age, sex, activity, and first path shape the starting record. Your class is still earned through action.</Text>
+              </View>
+              <Text style={player?.setupCompleted ? s.completeBadge : s.openBadge}>{player?.setupCompleted ? "Complete" : "Open"}</Text>
+            </View>
+            <Field label="Adventurer Name" value={form.name} onChangeText={(v) => setField("name", v)} placeholder="Jaelon" suffix="" keyboardType="default" />
+            <Field label="Age" value={form.ageYears} onChangeText={(v) => setField("ageYears", v)} placeholder="30" suffix="years" />
+
+            <Text style={s.groupLabel}>Sex</Text>
+            <View style={s.optionRow}>
+              {SEX_OPTIONS.map((option) => {
+                const selected = form.sex === option.id;
+                return (
+                  <TouchableOpacity key={option.id} style={[s.optionChip, selected && s.optionChipActive]} onPress={() => setField("sex", option.id)}>
+                    <Text style={[s.optionText, selected && s.optionTextActive]}>{option.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={s.groupLabel}>Current Activity Signal</Text>
+            <View style={s.stack}>
+              {ACTIVITY_OPTIONS.map((option) => {
+                const selected = form.activityLevel === option.id;
+                return (
+                  <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => setField("activityLevel", option.id)}>
+                    <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                    <Text style={s.choiceDesc}>{option.desc}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={s.groupLabel}>First Path Forecast</Text>
+            <View style={s.stack}>
+              {GOAL_OPTIONS.map((option) => {
+                const selected = form.goalFocus === option.id;
+                return (
+                  <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => chooseGoal(option.id)}>
+                    <View style={s.choiceTop}>
+                      <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                      <Text style={s.classTag}>{option.baseClass}</Text>
+                    </View>
+                    <Text style={s.choiceDesc}>{option.desc}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={s.forecastBox}>
+              <Text style={s.forecastTitle}>Starting Attribute Forecast</Text>
+              <View style={s.forecastGrid}>
+                {Object.entries(startingStats).map(([key, value]) => (
+                  <View key={key} style={s.forecastStat}>
+                    <Text style={s.forecastValue}>{value}</Text>
+                    <Text style={s.forecastLabel}>{key.slice(0, 3).toUpperCase()}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+
           <View style={s.card}>
             <Text style={s.cardTitle}>Body Metrics</Text>
             <View style={s.fieldRow}>
@@ -246,13 +438,19 @@ export default function ProfileScreen() {
           <TouchableOpacity style={[s.saveBtn, (!dirty || update.isPending) && { opacity: 0.55 }]} onPress={save} disabled={!dirty || update.isPending}>
             {update.isPending ? <ActivityIndicator color="#0a0908" /> : <Text style={s.saveText}>Save System Record</Text>}
           </TouchableOpacity>
+
+          {!player?.setupCompleted && (
+            <TouchableOpacity style={[s.scanBtn, (!scanReady || setupPlayer.isPending) && { opacity: 0.55 }]} onPress={completeInitialScan} disabled={!scanReady || setupPlayer.isPending}>
+              {setupPlayer.isPending ? <ActivityIndicator color="#0a0908" /> : <Text style={s.scanText}>Complete Initial Scan</Text>}
+            </TouchableOpacity>
+          )}
         </>
       )}
     </ScrollView>
   );
 }
 
-function Field({ label, value, onChangeText, placeholder, suffix }: { label: string; value: string; onChangeText: (value: string) => void; placeholder: string; suffix: string }) {
+function Field({ label, value, onChangeText, placeholder, suffix, keyboardType = "decimal-pad" }: { label: string; value: string; onChangeText: (value: string) => void; placeholder: string; suffix: string; keyboardType?: "decimal-pad" | "default" }) {
   return (
     <View style={s.field}>
       <Text style={s.fieldLabel}>{label}</Text>
@@ -263,9 +461,11 @@ function Field({ label, value, onChangeText, placeholder, suffix }: { label: str
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor="#6b5d4f"
-          keyboardType="decimal-pad"
+          keyboardType={keyboardType}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
-        <Text style={s.suffix}>{suffix}</Text>
+        {suffix ? <Text style={s.suffix}>{suffix}</Text> : null}
       </View>
     </View>
   );
@@ -285,6 +485,29 @@ const s = StyleSheet.create({
   card: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14, marginBottom: 12 },
   cardTitle: { color: "#d9ad63", fontSize: 16, fontFamily: "PlayfairDisplay_700Bold", fontWeight: "900", marginBottom: 8 },
   cardMeta: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginBottom: 10 },
+  scanHeader: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
+  openBadge: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  completeBadge: { color: "#4ade80", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  groupLabel: { color: "#9d8f80", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, marginTop: 8, fontFamily: "Inter_700Bold" },
+  optionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
+  optionChip: { flexGrow: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingHorizontal: 10, paddingVertical: 10, alignItems: "center" },
+  optionChipActive: { borderColor: "#d9ad63", backgroundColor: "#d9ad6318" },
+  optionText: { color: "#8f887d", fontSize: 12, fontFamily: "Inter_700Bold" },
+  optionTextActive: { color: "#d9ad63" },
+  stack: { gap: 8, marginBottom: 8 },
+  choiceCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10 },
+  choiceCardActive: { borderColor: "#d9ad63", backgroundColor: "#d9ad6318" },
+  choiceTop: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
+  choiceTitle: { color: "#d8c4a5", fontSize: 13, fontFamily: "Inter_700Bold" },
+  choiceTitleActive: { color: "#d9ad63" },
+  choiceDesc: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
+  classTag: { color: "#49a3a0", fontSize: 10, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  forecastBox: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#080706", padding: 10, marginTop: 8 },
+  forecastTitle: { color: "#d8c4a5", fontSize: 12, fontFamily: "Inter_700Bold", marginBottom: 8 },
+  forecastGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  forecastStat: { width: "31.8%", borderWidth: 1, borderColor: "#2a2520", paddingVertical: 8, alignItems: "center" },
+  forecastValue: { color: "#d9ad63", fontSize: 16, fontFamily: "Inter_700Bold" },
+  forecastLabel: { color: "#8f887d", fontSize: 9, letterSpacing: 1 },
   fieldRow: { flexDirection: "row", gap: 10 },
   field: { flex: 1, marginBottom: 10 },
   fieldLabel: { color: "#8f887d", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 },
@@ -299,4 +522,6 @@ const s = StyleSheet.create({
   notes: { minHeight: 92, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", color: "#eee5d7", padding: 10, fontSize: 13, lineHeight: 18 },
   saveBtn: { backgroundColor: "#d9ad63", padding: 14, alignItems: "center", marginTop: 4 },
   saveText: { color: "#0a0908", fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  scanBtn: { backgroundColor: "#49a3a0", padding: 14, alignItems: "center", marginTop: 10, borderWidth: 1, borderColor: "#8be2df" },
+  scanText: { color: "#061010", fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
 });
