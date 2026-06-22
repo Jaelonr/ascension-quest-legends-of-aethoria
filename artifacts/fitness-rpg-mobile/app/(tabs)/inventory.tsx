@@ -8,7 +8,7 @@ import {
   usePurchaseStoreItem,
 } from "@workspace/api-client-react";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -89,6 +89,31 @@ const SLOT_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   aura_cosmetic: "sun",
 };
 type TabKey = "gear" | "inventory" | "offerings" | "identity";
+
+function normalizeCharacterTab(tab: string | string[] | undefined): TabKey {
+  const value = Array.isArray(tab) ? tab[0] : tab;
+  switch (value) {
+    case "armory":
+    case "gear":
+    case "loadout":
+      return "gear";
+    case "items":
+    case "item":
+    case "inventory":
+    case "bag":
+      return "inventory";
+    case "store":
+    case "shop":
+    case "offerings":
+      return "offerings";
+    case "identity":
+    case "profile":
+    case "character":
+      return "identity";
+    default:
+      return "gear";
+  }
+}
 
 const OFFERING_SECTION_META = [
   { key: "permanent", label: "Hall Shop", note: "Always available while supplies remain.", icon: "shopping-bag" },
@@ -278,7 +303,8 @@ export default function CharacterScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const router = useRouter();
-  const [tab, setTab] = useState<TabKey>("gear");
+  const { tab: requestedTab } = useLocalSearchParams<{ tab?: string | string[] }>();
+  const [tab, setTab] = useState<TabKey>(() => normalizeCharacterTab(requestedTab));
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
   const [summaryRefresh, setSummaryRefresh] = useState(0);
 
@@ -294,6 +320,10 @@ export default function CharacterScreen() {
 
   const [selectedGear, setSelectedGear] = useState<any | null>(null);
   const [offeringSection, setOfferingSection] = useState<(typeof OFFERING_SECTION_META)[number]["key"]>("permanent");
+
+  useEffect(() => {
+    setTab(normalizeCharacterTab(requestedTab));
+  }, [requestedTab]);
 
   const handleEquip = (gearId: number, _slot: string) => {
     equipGear.mutate(
