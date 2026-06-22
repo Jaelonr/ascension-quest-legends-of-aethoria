@@ -139,21 +139,21 @@ export default function TrainingScreen() {
           )}
 
           <View style={s.actionGrid}>
-            <TouchableOpacity style={s.actionCard} activeOpacity={0.8}>
+            <TouchableOpacity style={s.actionCard} activeOpacity={0.8} onPress={() => router.push("/training/program" as any)}>
               <View style={s.iconBox}><Text style={s.iconText}>8W</Text></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.actionTitle}>8-Week Campaign Program</Text>
                 <Text style={s.actionText}>Progressive strength and combat preparation</Text>
               </View>
-              <Text style={s.actionState}>Soon</Text>
+              <Text style={s.actionState}>Open</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.actionCard} activeOpacity={0.8}>
+            <TouchableOpacity style={s.actionCard} activeOpacity={0.8} onPress={() => router.push("/training/planner" as any)}>
               <View style={s.iconBox}><Text style={s.iconText}>AI</Text></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.actionTitle}>Guild Drill Planner</Text>
                 <Text style={s.actionText}>Equipment-aware plan generation for the day</Text>
               </View>
-              <Text style={[s.actionState, { color: "#49a3a0" }]}>Soon</Text>
+              <Text style={[s.actionState, { color: "#49a3a0" }]}>Open</Text>
             </TouchableOpacity>
           </View>
 
