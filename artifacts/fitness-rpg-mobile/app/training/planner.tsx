@@ -31,6 +31,13 @@ const PHASE_COLORS: Record<string, string> = {
   finisher: "#a855f7",
 };
 
+const PHASE_GROUPS: Array<{ key: string; label: string; color: string }> = [
+  { key: "warmup", label: "Warm-Up", color: "#3b82f6" },
+  { key: "main", label: "Main Lifts", color: "#ef4444" },
+  { key: "accessory", label: "Accessories", color: "#f97316" },
+  { key: "finisher", label: "Finisher", color: "#a855f7" },
+];
+
 function ExerciseCard({ exercise }: { exercise: PlanExercise }) {
   const phaseColor = PHASE_COLORS[exercise.phase] ?? "#d9ad63";
   return (
@@ -152,6 +159,10 @@ export default function TrainingPlannerScreen() {
   const generatePlan = useGenerateWorkoutPlan();
   const savePlan = useSavePlanAsTemplate();
   const { data: equipment } = useGetEquipment();
+  const groupedExercises = PHASE_GROUPS.map((phase) => ({
+    ...phase,
+    exercises: plan?.exercises.filter((exercise) => exercise.phase === phase.key) ?? [],
+  }));
 
   const generate = () => {
     generatePlan.mutate(
@@ -245,8 +256,35 @@ export default function TrainingPlannerScreen() {
             </View>
           </View>
           {plan.rpeGuide?.note ? <Text style={s.guide}>{plan.rpeGuide.note}</Text> : null}
-          {plan.exercises.map((exercise, index) => <ExerciseCard key={`${exercise.exerciseName}-${index}`} exercise={exercise} />)}
+          {groupedExercises.map((phase) => phase.exercises.length > 0 ? (
+            <View key={phase.key} style={s.phaseSection}>
+              <View style={s.phaseHeader}>
+                <View style={[s.phaseDot, { backgroundColor: phase.color }]} />
+                <Text style={[s.phaseTitle, { color: phase.color }]}>{phase.label}</Text>
+              </View>
+              {phase.exercises.map((exercise, index) => <ExerciseCard key={`${phase.key}-${exercise.exerciseName}-${index}`} exercise={exercise} />)}
+            </View>
+          ) : null)}
+          {!plan.hasBiometrics && (
+            <TouchableOpacity style={s.profileNudge} onPress={() => router.push("/profile" as any)} activeOpacity={0.82}>
+              <View style={s.profileNudgeIcon}>
+                <Text style={s.profileNudgeIconText}>!</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.profileNudgeTitle}>Set up your Adventurer Profile</Text>
+                <Text style={s.profileNudgeText}>Add strength marks and biometrics for better working-weight recommendations.</Text>
+              </View>
+              <Text style={s.profileNudgeArrow}>Open</Text>
+            </TouchableOpacity>
+          )}
         </View>
+      )}
+
+      {!plan && !generatePlan.isPending && (
+        <TouchableOpacity style={s.emptyNudge} onPress={() => router.push("/profile" as any)} activeOpacity={0.82}>
+          <Text style={s.emptyNudgeTitle}>Set up Adventurer Profile first</Text>
+          <Text style={s.emptyNudgeText}>Strength marks help the planner recommend useful loads instead of generic sessions.</Text>
+        </TouchableOpacity>
       )}
 
       <ExerciseLookupPanel />
@@ -286,6 +324,10 @@ const s = StyleSheet.create({
   secondaryBtn: { flex: 1, borderWidth: 1, borderColor: "#6b4d2f", padding: 10, alignItems: "center" },
   secondaryText: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   guide: { color: "#9f9586", fontSize: 11, lineHeight: 16, borderLeftWidth: 2, borderLeftColor: "#6b4d2f", paddingLeft: 10 },
+  phaseSection: { gap: 8 },
+  phaseHeader: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 2 },
+  phaseDot: { width: 8, height: 8, borderRadius: 4 },
+  phaseTitle: { fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.6 },
   exerciseCard: { borderWidth: 1, backgroundColor: "#11100e", padding: 12 },
   exerciseTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
   phasePill: { borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
@@ -297,6 +339,15 @@ const s = StyleSheet.create({
   subBox: { borderTopWidth: 1, borderTopColor: "#2a2520", marginTop: 8, paddingTop: 8 },
   subTitle: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", marginBottom: 4 },
   subText: { color: "#cfc5b8", fontSize: 11, lineHeight: 16 },
+  profileNudge: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#18130d", padding: 12 },
+  profileNudgeIcon: { width: 28, height: 28, borderWidth: 1, borderColor: "#eab30866", backgroundColor: "#241b08", alignItems: "center", justifyContent: "center" },
+  profileNudgeIconText: { color: "#eab308", fontSize: 15, fontFamily: "Inter_700Bold" },
+  profileNudgeTitle: { color: "#eab308", fontSize: 12, fontFamily: "Inter_700Bold" },
+  profileNudgeText: { color: "#b9a36d", fontSize: 10, lineHeight: 15, marginTop: 2 },
+  profileNudgeArrow: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  emptyNudge: { borderWidth: 1, borderStyle: "dashed", borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14, marginBottom: 14 },
+  emptyNudgeTitle: { color: "#d9ad63", fontSize: 13, fontFamily: "Inter_700Bold" },
+  emptyNudgeText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
   lookupCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14, marginTop: 14 },
   lookupHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 },
   lookupMeta: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: -4, maxWidth: 260 },
