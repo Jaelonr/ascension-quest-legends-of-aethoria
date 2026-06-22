@@ -387,7 +387,7 @@ export function GearMannequin({
       </div>
 
       <div className="grid gap-3 xl:grid-cols-[230px_minmax(360px,1fr)_230px]">
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        <div className="order-2 grid grid-cols-2 gap-2 xl:order-1 xl:grid-cols-1">
           {[...centerSlots, ...leftSlots].map((slot) => (
             <EquipmentSlot
               key={slot.slot}
@@ -399,9 +399,11 @@ export function GearMannequin({
           ))}
         </div>
 
-        <EquipmentFigure slots={paperSlots} support={support} affinity={affinity} selectedSlot={selectedSlot} onSlotSelect={onSlotSelect} />
+        <div className="order-1 xl:order-2">
+          <EquipmentFigure slots={paperSlots} support={support} affinity={affinity} selectedSlot={selectedSlot} onSlotSelect={onSlotSelect} />
+        </div>
 
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        <div className="order-3 grid grid-cols-2 gap-2 xl:grid-cols-1">
           {rightSlots.map((slot) => (
             <EquipmentSlot
               key={slot.slot}
