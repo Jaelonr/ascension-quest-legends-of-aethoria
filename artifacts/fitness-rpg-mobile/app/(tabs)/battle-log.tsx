@@ -1,10 +1,13 @@
 import {
+  customFetch,
   useGetBattleLog,
   useGetPlayerStyleIdentity,
 } from "@workspace/api-client-react";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -14,6 +17,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+
+const AETHORIA_MAP = require("../../assets/images/aethoria-map.jpg");
 
 const STYLE_META: Record<string, { label: string; color: string; bg: string }> = {
   strength:     { label: "Strength",     color: "#ef4444", bg: "#ef444418" },
@@ -32,6 +37,101 @@ const VERDICT_COLORS: Record<string, string> = {
   "Strategic Retreat":"#f97316",
   "Training Complete":"#22c55e",
 };
+
+type ChronicleSummary = {
+  worldDanger?: any;
+  battleReplays?: any[];
+  guildReports?: any[];
+  campaignProgress?: any[];
+  discoveredItems?: any[];
+  bossesDefeated?: any[];
+  titlesEarned?: any[];
+  personalRecords?: any[];
+  map?: { title?: string; description?: string; status?: string };
+  majorMilestones?: any[];
+  worldEvents?: any[];
+};
+
+type ChronicleTab = "replays" | "reports" | "campaign" | "items" | "records" | "map";
+
+function useChronicleSummary() {
+  const [data, setData] = useState<ChronicleSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    customFetch<ChronicleSummary>("/api/chronicle/summary")
+      .then((summary) => {
+        if (!cancelled) setData(summary);
+      })
+      .catch(() => {
+        if (!cancelled) setData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  return { data, loading };
+}
+
+function SystemDangerCard({ danger }: { danger: any }) {
+  if (!danger) return null;
+  const value = Math.max(0, Math.min(100, Number(danger.value ?? 100)));
+  const critical = value >= 85;
+  return (
+    <View style={[ch.dangerCard, { borderColor: critical ? "#9d3e2a" : "#6b4d2f" }]}>
+      <View style={ch.dangerHeader}>
+        <View>
+          <Text style={ch.sectionLabel}>SYSTEM READING</Text>
+          <Text style={[ch.dangerTitle, { color: critical ? "#d95f45" : "#d9ad63" }]}>World Danger: {danger.label ?? "Critical"}</Text>
+        </View>
+        <View style={[ch.dangerValueBox, { borderColor: critical ? "#9d3e2a" : "#72552e" }]}>
+          <Text style={[ch.dangerValue, { color: critical ? "#d95f45" : "#d5a557" }]}>{value}%</Text>
+        </View>
+      </View>
+      <View style={ch.dangerTrack}>
+        <View style={[ch.dangerFill, { width: `${value}%`, backgroundColor: critical ? "#9d3e2a" : "#b48432" }]} />
+      </View>
+      <Text style={ch.dangerNote}>{danger.systemNote ?? "Only the summoned adventurer can read this System-level danger index."}</Text>
+    </View>
+  );
+}
+
+function StatTile({ label, value, tone }: { label: string; value: string | number; tone: string }) {
+  return (
+    <View style={ch.statTile}>
+      <Text style={[ch.statValue, { color: tone }]}>{value}</Text>
+      <Text style={ch.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function TabGrid({ active, onSelect }: { active: ChronicleTab; onSelect: (tab: ChronicleTab) => void }) {
+  const tabs: Array<{ id: ChronicleTab; label: string }> = [
+    { id: "replays", label: "Replays" },
+    { id: "reports", label: "Reports" },
+    { id: "campaign", label: "Campaign" },
+    { id: "items", label: "Items" },
+    { id: "records", label: "Records" },
+    { id: "map", label: "Map" },
+  ];
+  return (
+    <View style={ch.tabGrid}>
+      {tabs.map((tab) => (
+        <TouchableOpacity
+          key={tab.id}
+          style={[ch.tabBtn, active === tab.id && ch.tabBtnActive]}
+          onPress={() => onSelect(tab.id)}
+          activeOpacity={0.75}
+        >
+          <Text style={[ch.tabText, active === tab.id && ch.tabTextActive]}>{tab.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
 
 function ReplayModal({ replay, onClose }: { replay: any; onClose: () => void }) {
   const insets = useSafeAreaInsets();
@@ -264,29 +364,182 @@ const rc = StyleSheet.create({
   tapHint: { fontSize: 9, color: "#4a4035", textTransform: "uppercase", letterSpacing: 2 },
 });
 
+function EmptyRecord({ title, text }: { title: string; text: string }) {
+  return (
+    <View style={ch.emptyRecord}>
+      <Text style={ch.emptyTitle}>{title}</Text>
+      <Text style={ch.emptyDesc}>{text}</Text>
+    </View>
+  );
+}
+
 export default function ChronicleScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { data: replays, isLoading } = useGetBattleLog();
   const { data: identity } = useGetPlayerStyleIdentity();
+  const { data: chronicle, loading: loadingChronicle } = useChronicleSummary();
   const [selected, setSelected] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<ChronicleTab>("replays");
+  const [styleFilter, setStyleFilter] = useState<string>("all");
 
+  const allReplays = ((chronicle?.battleReplays?.length ? chronicle.battleReplays : replays) ?? []) as any[];
+  const visibleReplays = styleFilter === "all" ? allReplays : allReplays.filter((replay) => replay.dominantStyle === styleFilter);
+  const prTotal = allReplays.reduce((sum, replay) => sum + (replay.prCount ?? 0), 0);
   const total = identity
     ? (identity.strength ?? 0) + (identity.striking ?? 0) + (identity.conditioning ?? 0)
     + (identity.grappling ?? 0) + (identity.recovery ?? 0) + (identity.discipline ?? 0)
     : 0;
+  const footSteps = Math.max(1800, Math.round((identity?.totalSessions ?? 0) * 900 + allReplays.length * 650 + prTotal * 250));
+  const footMiles = Math.max(0.8, footSteps / 2200);
+  const assistedMiles = Math.max(10, Math.round(((identity?.totalSessions ?? 0) * 1.8 + allReplays.length * 3.2 + prTotal * 1.5) * 10) / 10);
+  const mapTitle = chronicle?.map?.title && chronicle.map.title !== "Journey Map" ? chronicle.map.title : "Map of Aethoria";
+  const mapDescription = chronicle?.map?.description && chronicle.map.description !== "The Guild cartographers are preparing the map."
+    ? chronicle.map.description
+    : "The Hall's records have begun charting your passage through Aethoria. Regions, Gates, roads, and battle sites will appear here as your Chronicle grows.";
+  const mapStatus = !chronicle?.map?.status || chronicle.map.status === "placeholder" ? "Known Routes" : chronicle.map.status;
+
+  const renderPanel = () => {
+    if (activeTab === "replays") return null;
+    if (loadingChronicle) {
+      return (
+        <View style={ch.loadingPanel}>
+          <ActivityIndicator color="#d9ad63" />
+          <Text style={ch.loadingText}>Opening the wider Chronicle...</Text>
+        </View>
+      );
+    }
+    if (activeTab === "reports") {
+      const reports = chronicle?.guildReports ?? [];
+      return reports.length ? (
+        <View style={ch.panelStack}>
+          {reports.map((report) => (
+            <View key={report.id} style={ch.recordCard}>
+              <Text style={ch.recordMeta}>Guild Report {report.month}/{report.year}</Text>
+              <Text style={ch.recordText}>{report.reportText}</Text>
+            </View>
+          ))}
+        </View>
+      ) : <EmptyRecord title="No Guild reports yet" text="Monthly reports will collect your legend as the record grows." />;
+    }
+    if (activeTab === "campaign") {
+      const campaign = chronicle?.campaignProgress ?? [];
+      return campaign.length ? (
+        <View style={ch.panelStack}>
+          {campaign.map((quest) => (
+            <View key={quest.id} style={ch.recordCard}>
+              <Text style={ch.recordTitle}>{quest.title}</Text>
+              <Text style={ch.recordText}>{quest.description}</Text>
+              <Text style={ch.recordMeta}>{quest.status}</Text>
+            </View>
+          ))}
+        </View>
+      ) : <EmptyRecord title="No campaign routes marked" text="The Guild will chart routes as your legend reaches new Gates." />;
+    }
+    if (activeTab === "items") {
+      const items = chronicle?.discoveredItems ?? [];
+      return items.length ? (
+        <View style={ch.panelStack}>
+          {items.map((item) => (
+            <View key={item.id} style={ch.recordCard}>
+              <View style={ch.recordRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={ch.recordTitle}>{item.itemName}</Text>
+                  <Text style={ch.recordMeta}>{item.rarity} - {item.category}</Text>
+                </View>
+                <Text style={ch.statePill}>{item.currentState}</Text>
+              </View>
+              <Text style={ch.recordText}>{item.loreText}</Text>
+            </View>
+          ))}
+        </View>
+      ) : <EmptyRecord title="No discoveries yet" text="Items discovered through the Hall will remain here permanently." />;
+    }
+    if (activeTab === "records") {
+      const titles = chronicle?.titlesEarned ?? [];
+      const milestones = chronicle?.majorMilestones ?? [];
+      const records = chronicle?.personalRecords ?? [];
+      return (
+        <View style={ch.panelStack}>
+          <View style={ch.recordCard}>
+            <Text style={ch.recordTitle}>Titles Earned</Text>
+            {titles.length ? titles.map((title) => <Text key={title.id} style={ch.recordText}>{title.name} ({title.rarity})</Text>) : <Text style={ch.recordMeta}>No titles yet.</Text>}
+          </View>
+          <View style={ch.recordCard}>
+            <Text style={ch.recordTitle}>Major Milestones</Text>
+            {milestones.length ? milestones.map((m) => <Text key={m.id} style={ch.recordText}>{m.summary}</Text>) : <Text style={ch.recordMeta}>No milestones yet.</Text>}
+          </View>
+          {records.map((record) => (
+            <View key={record.id} style={ch.recordCard}>
+              <View style={ch.recordRow}>
+                <Text style={[ch.recordText, { flex: 1 }]}>{record.exerciseName}</Text>
+                <Text style={ch.recordGold}>{record.weight} {record.weightUnit} x {record.reps}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      );
+    }
+    return (
+      <View style={ch.panelStack}>
+        <View style={ch.mapCard}>
+          <Image source={AETHORIA_MAP} style={ch.mapImage} resizeMode="cover" />
+          <View style={ch.mapOverlay}>
+            <Text style={ch.mapMarker}>Summoning marker</Text>
+            <Text style={[ch.mapMarker, ch.mapEndpoint]}>Expedition endpoint</Text>
+          </View>
+        </View>
+        <View style={ch.recordCard}>
+          <Text style={ch.recordMeta}>SYSTEM CARTOGRAPHY - {mapStatus}</Text>
+          <Text style={ch.mapTitle}>{mapTitle}</Text>
+          <Text style={ch.recordText}>{mapDescription}</Text>
+          <Text style={ch.mapNote}>
+            Your training fuels expeditions, but Aethoria is vast. Some journeys are walked, some are taken by caravan, and all return through the Guild's stones.
+          </Text>
+        </View>
+        <View style={ch.travelGrid}>
+          <StatTile label="On Foot" value={`${footSteps.toLocaleString()} steps`} tone="#d9ad63" />
+          <StatTile label="Effort Miles" value={footMiles.toFixed(1)} tone="#d9ad63" />
+          <StatTile label="Caravan/Mount" value={`${assistedMiles.toFixed(1)} mi`} tone="#49a3a0" />
+          <StatTile label="Return Stone" value="Guild Hall" tone="#c4b5fd" />
+        </View>
+        {["Regions Discovered", "Roads Traveled", "Gates Cleared", "Boss Sites", "Campaign Routes", "Return Stone Journeys"].map((feature) => (
+          <View key={feature} style={ch.recordCard}>
+            <Text style={ch.recordTitle}>{feature}</Text>
+            <Text style={ch.recordMeta}>Awaiting Chronicle data</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#0a0908" }}>
       <FlatList
-        data={replays ?? []}
+        data={activeTab === "replays" ? visibleReplays : []}
         keyExtractor={(item: any) => String(item.id)}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
             <Text style={ch.headerSub}>CHRONICLE</Text>
-            <Text style={ch.headerTitle}>Battle History</Text>
+            <Text style={ch.headerTitle}>Chronicle</Text>
+            <Text style={ch.headerDesc}>The record of your real and fantasy journey.</Text>
+
+            <View style={ch.ledgerCard}>
+              <Text style={ch.ledgerTitle}>Aethoria's Ledger</Text>
+              <Text style={ch.ledgerText}>
+                Every replay, report, record, and discovered relic becomes part of the proof that the System cannot erase your growth.
+              </Text>
+            </View>
+
+            <SystemDangerCard danger={chronicle?.worldDanger} />
+
+            <View style={ch.statsGrid}>
+              <StatTile label="Replays" value={allReplays.length} tone="#49a3a0" />
+              <StatTile label="PRs" value={prTotal} tone="#e2ad4d" />
+              <StatTile label="Items" value={chronicle?.discoveredItems?.length ?? 0} tone="#d7a54d" />
+            </View>
 
             {/* Style identity */}
             {identity && total > 0 && (
@@ -315,16 +568,34 @@ export default function ChronicleScreen() {
               </View>
             )}
 
-            <Text style={[ch.sectionLabel, { marginTop: 16, marginBottom: 4 }]}>
-              BATTLE REPLAYS {replays ? `(${replays.length})` : ""}
-            </Text>
+            <TabGrid active={activeTab} onSelect={setActiveTab} />
+
+            {activeTab === "replays" && (
+              <>
+                <View style={ch.filterRow}>
+                  {["all", ...STYLE_ORDER].map((filter) => (
+                    <TouchableOpacity
+                      key={filter}
+                      style={[ch.filterBtn, styleFilter === filter && ch.filterBtnActive]}
+                      onPress={() => setStyleFilter(filter)}
+                    >
+                      <Text style={[ch.filterText, styleFilter === filter && ch.filterTextActive]}>{filter}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={[ch.sectionLabel, { marginTop: 16, marginBottom: 4 }]}>
+                  BATTLE REPLAYS ({visibleReplays.length})
+                </Text>
+              </>
+            )}
+            {renderPanel()}
           </>
         }
         renderItem={({ item }) => (
           <ReplayCard replay={item} onPress={() => setSelected(item)} />
         )}
         ListEmptyComponent={
-          isLoading ? null : (
+          activeTab !== "replays" ? null : isLoading ? null : (
             <View style={[ch.empty, { borderColor: "#3b3328" }]}>
               <Text style={{ fontSize: 24 }}>📖</Text>
               <Text style={[ch.emptyTitle, { color: colors.foreground }]}>No battles recorded</Text>
@@ -343,7 +614,23 @@ export default function ChronicleScreen() {
 const ch = StyleSheet.create({
   headerSub: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   headerTitle: { fontSize: 24, fontWeight: "900", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2, marginBottom: 16 },
+  headerDesc: { color: "#9f9586", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginTop: -12, marginBottom: 16 },
   sectionLabel: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", textTransform: "uppercase", marginBottom: 8, fontFamily: "Inter_400Regular" },
+  ledgerCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14, marginBottom: 14 },
+  ledgerTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  ledgerText: { color: "#cfc5b8", fontSize: 13, lineHeight: 20, marginTop: 6, fontFamily: "Inter_400Regular" },
+  dangerCard: { borderWidth: 1, backgroundColor: "#140f0e", padding: 14, marginBottom: 14 },
+  dangerHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+  dangerTitle: { fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
+  dangerValueBox: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "#120d0c" },
+  dangerValue: { fontSize: 12, fontWeight: "900", fontFamily: "Inter_700Bold" },
+  dangerTrack: { height: 8, backgroundColor: "#2a1815", overflow: "hidden", marginTop: 12 },
+  dangerFill: { height: 8 },
+  dangerNote: { color: "#b7ab9c", fontSize: 11, lineHeight: 17, marginTop: 10, fontFamily: "Inter_400Regular" },
+  statsGrid: { flexDirection: "row", gap: 8, marginBottom: 14 },
+  statTile: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12, alignItems: "center" },
+  statValue: { fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  statLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, marginTop: 4, fontFamily: "Inter_400Regular", textAlign: "center" },
   identityCard: { borderWidth: 1, padding: 14, marginBottom: 16 },
   dominantStyle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 10 },
   barRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
@@ -351,6 +638,35 @@ const ch = StyleSheet.create({
   barTrack: { flex: 1, height: 4, backgroundColor: "#2a2520", borderRadius: 2, overflow: "hidden" },
   barFill: { height: 4, borderRadius: 2 },
   barPct: { width: 30, textAlign: "right", fontSize: 10, color: "#6b5d4f" },
+  tabGrid: { flexDirection: "row", flexWrap: "wrap", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 4, gap: 4, marginBottom: 12 },
+  tabBtn: { width: "32%", minHeight: 36, alignItems: "center", justifyContent: "center", backgroundColor: "#0c0b09", borderWidth: 1, borderColor: "#1f1b16" },
+  tabBtnActive: { borderColor: "#d7a54d", backgroundColor: "#1b1711" },
+  tabText: { color: "#8f887d", fontSize: 11, fontFamily: "Inter_700Bold" },
+  tabTextActive: { color: "#d7a54d" },
+  filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 },
+  filterBtn: { borderWidth: 1, borderColor: "#3b3328", paddingHorizontal: 9, paddingVertical: 5 },
+  filterBtnActive: { borderColor: "#d7a54d" },
+  filterText: { color: "#8f887d", fontSize: 10, textTransform: "capitalize", fontFamily: "Inter_400Regular" },
+  filterTextActive: { color: "#d7a54d" },
+  loadingPanel: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 22, alignItems: "center", gap: 10 },
+  loadingText: { color: "#9d8f80", fontSize: 12, fontFamily: "Inter_400Regular" },
+  panelStack: { gap: 10 },
+  recordCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14 },
+  recordTitle: { color: "#d9ad63", fontSize: 15, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
+  recordMeta: { color: "#8f887d", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, fontFamily: "Inter_400Regular", marginTop: 4 },
+  recordText: { color: "#d8c4a5", fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular", marginTop: 4 },
+  recordRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
+  recordGold: { color: "#d7a54d", fontSize: 12, fontFamily: "Inter_700Bold" },
+  statePill: { borderWidth: 1, borderColor: "#6b4d2f", color: "#d8c4a5", paddingHorizontal: 8, paddingVertical: 3, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  emptyRecord: { borderWidth: 1, borderStyle: "dashed", borderColor: "#3b3328", backgroundColor: "#11100e", padding: 24, alignItems: "center", gap: 8 },
+  mapCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#070706", overflow: "hidden" },
+  mapImage: { width: "100%", aspectRatio: 1.58 },
+  mapOverlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
+  mapMarker: { position: "absolute", left: "38%", top: "42%", borderWidth: 1, borderColor: "#49a3a0", backgroundColor: "#061010dd", color: "#bde7df", fontSize: 9, paddingHorizontal: 6, paddingVertical: 3, fontFamily: "Inter_700Bold" },
+  mapEndpoint: { left: "22%", top: "58%", borderColor: "#a78bfa", backgroundColor: "#10091add", color: "#ddd6fe" },
+  mapTitle: { color: "#e5c386", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
+  mapNote: { color: "#9f9586", fontSize: 12, lineHeight: 18, borderLeftWidth: 2, borderLeftColor: "#6b4d2f", paddingLeft: 10, marginTop: 10, fontFamily: "Inter_400Regular" },
+  travelGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   empty: { borderWidth: 1, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   emptyDesc: { fontSize: 12, textAlign: "center", lineHeight: 18 },
