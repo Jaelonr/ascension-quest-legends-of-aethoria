@@ -1,8 +1,10 @@
 import {
   customFetch,
   useGetBattleLog,
+  useGetCampaignStory,
   useGetPlayerStyleIdentity,
 } from "@workspace/api-client-react";
+import type { CampaignStoryChapter, CampaignStoryQuest } from "@workspace/api-client-react";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -70,6 +72,27 @@ const VERDICT_COLORS: Record<string, string> = {
   "Close Victory":    "#0dcef5",
   "Strategic Retreat":"#f97316",
   "Training Complete":"#22c55e",
+};
+
+const STORY_STATUS: Record<string, { label: string; color: string }> = {
+  claimed: { label: "Completed", color: "#22c55e" },
+  completed: { label: "Reward Ready", color: "#d9ad63" },
+  active: { label: "In Progress", color: "#49a3a0" },
+  locked: { label: "???", color: "#6b5d4f" },
+};
+
+const DIFF_COLORS: Record<string, string> = {
+  wood: "#8b6f47",
+  bronze: "#b98047",
+  iron: "#a3a3a3",
+  steel: "#c7d2fe",
+  silver: "#d8dee9",
+  gold: "#d9ad63",
+  mythril: "#49a3a0",
+  ruby: "#d95f45",
+  sapphire: "#3e7f9f",
+  emerald: "#3e8f5c",
+  diamond: "#c4b5fd",
 };
 
 type ChronicleSummary = {
@@ -398,6 +421,128 @@ const rc = StyleSheet.create({
   tapHint: { fontSize: 9, color: "#4a4035", textTransform: "uppercase", letterSpacing: 2 },
 });
 
+function CampaignQuestRow({ quest }: { quest: CampaignStoryQuest }) {
+  const [open, setOpen] = useState(quest.status === "active" || quest.status === "completed");
+  const status = STORY_STATUS[quest.status] ?? STORY_STATUS.locked;
+  const isLocked = quest.status === "locked";
+  const diffColor = quest.difficulty ? DIFF_COLORS[String(quest.difficulty).toLowerCase()] ?? "#8f887d" : "#8f887d";
+
+  return (
+    <View style={[ch.campaignQuest, isLocked && { opacity: 0.55 }]}>
+      <TouchableOpacity style={ch.campaignQuestHeader} onPress={() => setOpen((value) => !value)} activeOpacity={0.75}>
+        <View style={[ch.questStatusDot, { borderColor: status.color, backgroundColor: status.color + "22" }]}>
+          <Text style={[ch.questStatusMark, { color: status.color }]}>{isLocked ? "?" : quest.status === "claimed" ? "✓" : "!"}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[ch.recordTitle, { color: isLocked ? "#6b5d4f" : "#d8c4a5" }]} numberOfLines={2}>{quest.title}</Text>
+          <Text style={[ch.recordMeta, { color: status.color }]}>{status.label}</Text>
+        </View>
+        {quest.difficulty && (
+          <View style={[ch.difficultyPill, { borderColor: diffColor + "70" }]}>
+            <Text style={[ch.difficultyText, { color: diffColor }]}>{String(quest.difficulty).toUpperCase()}</Text>
+          </View>
+        )}
+        <Text style={ch.expandMark}>{open ? "HIDE" : "OPEN"}</Text>
+      </TouchableOpacity>
+
+      {open && (
+        <View style={ch.campaignQuestBody}>
+          <Text style={[ch.recordText, isLocked && { color: "#6b5d4f", fontStyle: "italic" }]}>
+            {isLocked ? "The Chronicle has not revealed this commission yet." : quest.description}
+          </Text>
+          {!!quest.lore && !isLocked && (
+            <View style={ch.loreBox}>
+              <Text style={ch.loreLabel}>Guild Lore</Text>
+              <Text style={ch.loreText}>{quest.lore}</Text>
+            </View>
+          )}
+          {!!quest.fitnessMapping && !isLocked && (
+            <Text style={ch.objectiveText}>
+              <Text style={{ color: "#d8c4a5" }}>Objective: </Text>{quest.fitnessMapping}
+            </Text>
+          )}
+          {!isLocked && (
+            <View style={ch.rewardRow}>
+              <Text style={ch.rewardXp}>+{quest.xpReward} XP</Text>
+              <Text style={ch.rewardGold}>+{quest.goldReward} Gold</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function CampaignChapterBlock({ chapter }: { chapter: CampaignStoryChapter }) {
+  const [open, setOpen] = useState(chapter.status === "active");
+  const isLocked = chapter.status === "locked";
+  const completedCount = chapter.quests.filter((quest) => quest.status === "claimed").length;
+  const revealedCount = chapter.quests.filter((quest) => quest.status !== "locked").length;
+  const statusColor = chapter.status === "completed" ? "#22c55e" : chapter.status === "active" ? "#d9ad63" : "#6b5d4f";
+
+  return (
+    <View style={[ch.campaignChapter, { borderColor: isLocked ? "#2a2520" : "#6b4d2f" }]}>
+      <TouchableOpacity style={ch.campaignChapterHeader} onPress={() => setOpen((value) => !value)} activeOpacity={0.75}>
+        <View style={[ch.chapterSigil, { borderColor: statusColor + "70" }]}>
+          <Text style={[ch.chapterSigilText, { color: statusColor }]}>{chapter.status === "completed" ? "✓" : isLocked ? "?" : chapter.chapter}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[ch.recordTitle, { color: isLocked ? "#6b5d4f" : "#d9ad63" }]} numberOfLines={2}>
+            {isLocked ? `Chapter ${chapter.chapter} - ???` : `Ch. ${chapter.chapter}: ${chapter.chapterName}`}
+          </Text>
+          {!isLocked && <Text style={ch.recordMeta}>{completedCount}/{revealedCount} complete</Text>}
+        </View>
+        <Text style={ch.expandMark}>{open ? "HIDE" : "OPEN"}</Text>
+      </TouchableOpacity>
+      {open && (
+        <View style={ch.campaignChapterBody}>
+          {chapter.quests.map((quest) => (
+            <CampaignQuestRow key={quest.campaignId} quest={quest} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function CampaignChronicleView() {
+  const { data: story, isLoading } = useGetCampaignStory({ query: { queryKey: ["/api/campaign/story"] } });
+
+  if (isLoading) {
+    return (
+      <View style={ch.loadingPanel}>
+        <ActivityIndicator color="#d9ad63" />
+        <Text style={ch.loadingText}>Opening the campaign ledger...</Text>
+      </View>
+    );
+  }
+
+  if (!story) {
+    return <EmptyRecord title="No campaign entries yet" text="Aethoria's larger movements will be recorded here as threats are revealed." />;
+  }
+
+  return (
+    <View style={ch.panelStack}>
+      <View style={ch.campaignPosition}>
+        <Text style={ch.recordMeta}>Current Position</Text>
+        <Text style={ch.recordTitle}>
+          Chapter {story.currentChapter}
+          {story.currentQuestTitle ? ` - ${story.currentQuestTitle}` : ""}
+        </Text>
+        {story.activeMission && (
+          <View style={ch.activeMissionBox}>
+            <Text style={ch.loreLabel}>Active Mission</Text>
+            <Text style={ch.recordText}>{story.activeMission.title}</Text>
+          </View>
+        )}
+      </View>
+      {story.chapters.map((chapter) => (
+        <CampaignChapterBlock key={chapter.chapter} chapter={chapter} />
+      ))}
+    </View>
+  );
+}
+
 function EmptyRecord({ title, text }: { title: string; text: string }) {
   return (
     <View style={ch.emptyRecord}>
@@ -459,18 +604,7 @@ export default function ChronicleScreen() {
       ) : <EmptyRecord title="No Guild reports yet" text="Monthly reports will collect your legend as the record grows." />;
     }
     if (activeTab === "campaign") {
-      const campaign = chronicle?.campaignProgress ?? [];
-      return campaign.length ? (
-        <View style={ch.panelStack}>
-          {campaign.map((quest) => (
-            <View key={quest.id} style={ch.recordCard}>
-              <Text style={ch.recordTitle}>{quest.title}</Text>
-              <Text style={ch.recordText}>{quest.description}</Text>
-              <Text style={ch.recordMeta}>{quest.status}</Text>
-            </View>
-          ))}
-        </View>
-      ) : <EmptyRecord title="No campaign routes marked" text="The Guild will chart routes as your legend reaches new Gates." />;
+      return <CampaignChronicleView />;
     }
     if (activeTab === "items") {
       const items = chronicle?.discoveredItems ?? [];
@@ -746,6 +880,28 @@ const ch = StyleSheet.create({
   recordRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   recordGold: { color: "#d7a54d", fontSize: 12, fontFamily: "Inter_700Bold" },
   statePill: { borderWidth: 1, borderColor: "#6b4d2f", color: "#d8c4a5", paddingHorizontal: 8, paddingVertical: 3, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  campaignPosition: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14 },
+  campaignChapter: { borderWidth: 1, backgroundColor: "#11100e" },
+  campaignChapterHeader: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
+  chapterSigil: { width: 30, height: 30, borderWidth: 1, backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
+  chapterSigilText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  campaignChapterBody: { borderTopWidth: 1, borderTopColor: "#3b3328" },
+  campaignQuest: { borderBottomWidth: 1, borderBottomColor: "#3b3328" },
+  campaignQuestHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 12 },
+  questStatusDot: { width: 24, height: 24, borderWidth: 1, alignItems: "center", justifyContent: "center", marginTop: 2 },
+  questStatusMark: { fontSize: 10, fontFamily: "Inter_700Bold" },
+  difficultyPill: { borderWidth: 1, paddingHorizontal: 6, paddingVertical: 3, marginTop: 1 },
+  difficultyText: { fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  expandMark: { color: "#8f887d", fontSize: 9, letterSpacing: 1.2, fontFamily: "Inter_700Bold", marginTop: 6 },
+  campaignQuestBody: { borderTopWidth: 1, borderTopColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, gap: 10 },
+  loreBox: { borderLeftWidth: 2, borderLeftColor: "#9d3e2a", backgroundColor: "#1b1511", padding: 10 },
+  loreLabel: { color: "#9d8f80", fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  loreText: { color: "#cfc5b8", fontSize: 12, lineHeight: 18, fontStyle: "italic", fontFamily: "Inter_400Regular" },
+  objectiveText: { color: "#8f887d", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
+  rewardRow: { flexDirection: "row", gap: 16 },
+  rewardXp: { color: "#49a3a0", fontSize: 11, fontFamily: "Inter_700Bold" },
+  rewardGold: { color: "#d7a54d", fontSize: 11, fontFamily: "Inter_700Bold" },
+  activeMissionBox: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#0c0b09", padding: 10, marginTop: 10 },
   emptyRecord: { borderWidth: 1, borderStyle: "dashed", borderColor: "#3b3328", backgroundColor: "#11100e", padding: 24, alignItems: "center", gap: 8 },
   mapTools: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   mapToolText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 2, fontFamily: "Inter_400Regular" },
