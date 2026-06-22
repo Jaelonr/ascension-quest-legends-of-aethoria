@@ -1,4 +1,4 @@
-# Fitness RPG Version 1 Implementation Notes
+# Ascension Quest Version 1 Implementation Notes
 
 ## Architecture And Parity
 

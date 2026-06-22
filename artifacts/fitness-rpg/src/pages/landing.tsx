@@ -42,7 +42,7 @@ export default function Landing() {
         {/* Logo */}
         <div className="mb-8 relative">
           <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center shadow-[0_0_40px_hsl(var(--primary)/0.3)]">
-            <img src="/logo.svg" alt="Fitness RPG" className="w-12 h-12" />
+            <img src="/logo.svg" alt="Ascension Quest" className="w-12 h-12" />
           </div>
           <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
             <Zap className="w-3 h-3 text-black" />
@@ -53,12 +53,12 @@ export default function Landing() {
         <div className="mb-2">
           <span className="text-[10px] font-mono tracking-[0.4em] text-primary/70 uppercase">Personal</span>
         </div>
-        <h1 className="text-4xl font-serif font-bold text-foreground mb-2 leading-tight">Fitness RPG</h1>
-        <p className="text-sm font-mono text-primary mb-6 tracking-wider">─── ISEKAI EDITION ───</p>
+        <h1 className="text-4xl font-serif font-bold text-foreground mb-2 leading-tight">Ascension Quest</h1>
+        <p className="text-sm font-mono text-primary mb-6 tracking-wider">Legends of Aethoria</p>
 
         {/* Tagline */}
         <p className="text-base text-muted-foreground max-w-xs leading-relaxed mb-10">
-          You were summoned to another world. Your real-world training determines your power.{" "}
+          You were summoned to Aethoria. Your real-world training determines your power.{" "}
           <span className="text-foreground">Level up through actual fitness.</span>
         </p>
 

@@ -174,7 +174,7 @@ export default function Settings() {
         toast({ title: "Permission denied", description: "Enable notifications in your browser/device settings.", variant: "destructive" });
         return;
       }
-      sendNotification("⚔️ Fitness RPG", { body: "Notifications enabled. Your journey continues." });
+      sendNotification("Ascension Quest", { body: "Notifications enabled. Your journey continues." });
     }
     setSetting("notifications", "enabled", enabled);
   };

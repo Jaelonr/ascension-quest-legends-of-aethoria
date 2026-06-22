@@ -63,7 +63,7 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: "Fitness RPG", body: event.data.text() };
+    payload = { title: "Ascension Quest", body: event.data.text() };
   }
   const options = {
     body: payload.body ?? "",
@@ -74,7 +74,7 @@ self.addEventListener("push", (event) => {
     vibrate: [100, 50, 100],
   };
   event.waitUntil(
-    self.registration.showNotification(payload.title ?? "Fitness RPG", options)
+    self.registration.showNotification(payload.title ?? "Ascension Quest", options)
   );
 });
 
