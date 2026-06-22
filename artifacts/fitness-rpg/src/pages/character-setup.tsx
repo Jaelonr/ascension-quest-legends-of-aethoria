@@ -84,7 +84,7 @@ const GOALS = [
   },
   {
     id: "allround",
-    label: "All-Around Warrior",
+    label: "All-Around Adventurer",
     desc: "Strength, conditioning, endurance — mastery of all forms.",
     tag: "Balanced",
     color: "text-sky-400",
