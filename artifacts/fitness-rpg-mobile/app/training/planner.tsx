@@ -2,13 +2,15 @@ import {
   useGenerateWorkoutPlan,
   useSavePlanAsTemplate,
   useGetEquipment,
+  useSearchExercisesAi,
   type GeneratedPlan,
   type PlanExercise,
+  type ExerciseSearchResultExercisesItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Goal = "strength" | "hypertrophy" | "conditioning" | "striking" | "recovery" | "back_friendly_lower";
@@ -51,6 +53,91 @@ function ExerciseCard({ exercise }: { exercise: PlanExercise }) {
           ))}
         </View>
       )}
+    </View>
+  );
+}
+
+function ExerciseLookupPanel() {
+  const [query, setQuery] = useState("");
+  const [submitted, setSubmitted] = useState("");
+  const [results, setResults] = useState<ExerciseSearchResultExercisesItem[]>([]);
+  const [source, setSource] = useState<string | null>(null);
+  const search = useSearchExercisesAi();
+
+  const handleSearch = () => {
+    const q = query.trim();
+    if (!q) return;
+    setSubmitted(q);
+    setResults([]);
+    setSource(null);
+    search.mutate(
+      { data: { query: q } },
+      {
+        onSuccess: (data) => {
+          setResults(data.exercises ?? []);
+          setSource(data.source);
+        },
+        onError: () => Alert.alert("Lookup failed", "Try a more specific exercise name or check your connection."),
+      }
+    );
+  };
+
+  return (
+    <View style={s.lookupCard}>
+      <View style={s.lookupHeader}>
+        <View>
+          <Text style={s.cardTitle}>Exercise Lookup</Text>
+          <Text style={s.lookupMeta}>Find movements in the Guild library or retrieve them through the System.</Text>
+        </View>
+        {source ? <Text style={s.sourceBadge}>{source === "ai" ? "AI" : "Library"}</Text> : null}
+      </View>
+      <View style={s.lookupRow}>
+        <TextInput
+          style={s.lookupInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Bulgarian split squat..."
+          placeholderTextColor="#6b5d4f"
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+          onSubmitEditing={handleSearch}
+        />
+        <TouchableOpacity
+          style={[s.lookupBtn, (!query.trim() || search.isPending) && { opacity: 0.55 }]}
+          onPress={handleSearch}
+          disabled={!query.trim() || search.isPending}
+          activeOpacity={0.82}
+        >
+          {search.isPending ? <ActivityIndicator color="#0a0908" size="small" /> : <Text style={s.lookupBtnText}>Search</Text>}
+        </TouchableOpacity>
+      </View>
+      {search.isPending ? (
+        <View style={s.lookupState}>
+          <ActivityIndicator color="#d9ad63" size="small" />
+          <Text style={s.lookupStateText}>Consulting the System for "{submitted}"...</Text>
+        </View>
+      ) : null}
+      {!search.isPending && submitted && results.length === 0 ? (
+        <Text style={s.lookupEmpty}>No results for "{submitted}". Try another exercise name.</Text>
+      ) : null}
+      {results.length > 0 ? (
+        <View style={s.resultStack}>
+          {results.slice(0, 6).map((exercise) => (
+            <View key={exercise.id} style={s.resultCard}>
+              <View style={s.resultTop}>
+                <Text style={s.resultCategory}>{exercise.category?.replace(/_/g, " ")}</Text>
+                <Text style={s.resultMuscle}>{exercise.muscleGroup}</Text>
+              </View>
+              <Text style={s.resultName}>{exercise.name}</Text>
+              {exercise.recommendedWeightKg != null && exercise.recommendedWeightKg > 0 ? (
+                <Text style={s.resultWeight}>{exercise.recommendedWeightKg} kg recommended for you</Text>
+              ) : null}
+              {exercise.instructions ? <Text style={s.resultInstructions} numberOfLines={2}>{exercise.instructions}</Text> : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -161,6 +248,8 @@ export default function TrainingPlannerScreen() {
           {plan.exercises.map((exercise, index) => <ExerciseCard key={`${exercise.exerciseName}-${index}`} exercise={exercise} />)}
         </View>
       )}
+
+      <ExerciseLookupPanel />
     </ScrollView>
   );
 }
@@ -208,4 +297,23 @@ const s = StyleSheet.create({
   subBox: { borderTopWidth: 1, borderTopColor: "#2a2520", marginTop: 8, paddingTop: 8 },
   subTitle: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", marginBottom: 4 },
   subText: { color: "#cfc5b8", fontSize: 11, lineHeight: 16 },
+  lookupCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14, marginTop: 14 },
+  lookupHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 },
+  lookupMeta: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: -4, maxWidth: 260 },
+  sourceBadge: { color: "#49a3a0", borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071615", paddingHorizontal: 8, paddingVertical: 4, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  lookupRow: { flexDirection: "row", gap: 8 },
+  lookupInput: { flex: 1, borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", color: "#eee5d7", minHeight: 42, paddingHorizontal: 10, fontSize: 13 },
+  lookupBtn: { minWidth: 82, backgroundColor: "#d9ad63", borderWidth: 1, borderColor: "#f0c77a", alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
+  lookupBtnText: { color: "#0a0908", fontSize: 11, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  lookupState: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#18130d", padding: 10, marginTop: 10 },
+  lookupStateText: { color: "#d8c4a5", fontSize: 11, flex: 1 },
+  lookupEmpty: { color: "#8f887d", fontSize: 11, textAlign: "center", marginTop: 12 },
+  resultStack: { gap: 8, marginTop: 12 },
+  resultCard: { borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", padding: 10 },
+  resultTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 5 },
+  resultCategory: { color: "#d9ad63", borderWidth: 1, borderColor: "#6b4d2f", paddingHorizontal: 6, paddingVertical: 2, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  resultMuscle: { color: "#8f887d", fontSize: 9, textTransform: "uppercase" },
+  resultName: { color: "#eee5d7", fontSize: 13, fontFamily: "Inter_700Bold" },
+  resultWeight: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", marginTop: 5 },
+  resultInstructions: { color: "#9f9586", fontSize: 11, lineHeight: 16, marginTop: 5 },
 });
