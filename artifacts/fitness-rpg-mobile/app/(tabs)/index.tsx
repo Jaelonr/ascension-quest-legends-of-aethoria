@@ -10,6 +10,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,6 +25,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { formatGuildGrade, gradeColor } from "@/utils/ranks";
+
+const ALDRIC_IMAGE = require("../../assets/images/grandmaster-aldric.png");
 
 type PlayerSummary = { level: number; xp: number; xpToNextLevel: number; gold: number; rank: string; name: string | null };
 
@@ -162,20 +165,104 @@ function AldricChatModal({ visible, onClose }: { visible: boolean; onClose: () =
   );
 }
 
+function WorldDangerPanel({ danger }: { danger: any }) {
+  if (!danger) return null;
+  const value = Math.max(0, Math.min(100, Number(danger.value ?? 100)));
+  const critical = value >= 85;
+  return (
+    <View style={[s.dangerCard, { borderColor: critical ? "#9d3e2a" : "#6b4d2f" }]}>
+      <View style={s.dangerHeader}>
+        <View>
+          <Text style={s.sectionLabel}>SYSTEM READING</Text>
+          <Text style={[s.dangerTitle, { color: critical ? "#d95f45" : "#d9ad63" }]}>World Danger: {danger.label ?? "Critical"}</Text>
+        </View>
+        <View style={[s.dangerValueBox, { borderColor: critical ? "#9d3e2a" : "#72552e" }]}>
+          <Text style={[s.dangerValue, { color: critical ? "#d95f45" : "#d5a557" }]}>{value}%</Text>
+        </View>
+      </View>
+      <View style={s.dangerTrack}>
+        <View style={[s.dangerFill, { width: `${value}%`, backgroundColor: critical ? "#9d3e2a" : value >= 65 ? "#b45f2d" : value >= 40 ? "#b48432" : "#4f8f67" }]} />
+      </View>
+      <Text style={s.dangerNote}>{danger.systemNote}</Text>
+      <View style={s.dangerStats}>
+        <View style={s.dangerStat}><Text style={s.dangerStatLabel}>Bosses</Text><Text style={s.dangerStatValue}>{danger.defeatedBosses ?? 0}</Text></View>
+        <View style={s.dangerStat}><Text style={s.dangerStatLabel}>Threats</Text><Text style={[s.dangerStatValue, { color: "#d95f45" }]}>{danger.activeThreats ?? 0}</Text></View>
+        <View style={s.dangerStat}><Text style={s.dangerStatLabel}>Rule</Text><Text style={s.dangerStatValue}>Bosses lower it</Text></View>
+      </View>
+    </View>
+  );
+}
+
+function AldricPanel({ hall, onOpen }: { hall: any; onOpen: () => void }) {
+  const trend = hall?.counsel?.trendSummary;
+  return (
+    <View style={s.aldricPanel}>
+      <Image source={ALDRIC_IMAGE} style={s.aldricImage} resizeMode="cover" />
+      <View style={s.aldricContent}>
+        <View style={s.aldricTitleRow}>
+          <Text style={s.aldricTitle}>Grandmaster Aldric</Text>
+          <Text style={s.aldricGrade}>MYTHRIL GRADE</Text>
+        </View>
+        <Text style={s.aldricCounsel}>{hall?.counsel?.message ?? "Discipline is built in small, honored actions. Return with facts."}</Text>
+        {trend && (
+          <View style={s.trendGrid}>
+            <View style={s.trendBox}><Text style={s.trendLabel}>Recent work</Text><Text style={s.trendValue}>{trend.recentWorkouts}</Text></View>
+            <View style={s.trendBox}><Text style={s.trendLabel}>Style</Text><Text style={s.trendValue} numberOfLines={1}>{trend.dominantStyle ?? "forming"}</Text></View>
+            <View style={s.trendBox}><Text style={s.trendLabel}>PRs</Text><Text style={s.trendValue}>{trend.recentPrs}</Text></View>
+          </View>
+        )}
+        <TouchableOpacity style={s.audienceBtn} onPress={onOpen}>
+          <Text style={s.audienceBtnText}>Private Audience</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function HallScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: player, loading: playerLoading } = usePlayer();
+  const qc = useQueryClient();
+  const { data: playerData, loading: playerLoading } = usePlayer();
+  const player = playerData as PlayerSummary;
   const { data: hall, isLoading: hallLoading } = useGetGuildHallToday();
   const { data: dailyQuestData } = useGetDailyQuest();
   const [aldricOpen, setAldricOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   const isLoading = playerLoading || hallLoading;
-  const commission = hall?.commission as any;
+  const hallAny = hall as any;
+  const commission = hallAny?.commission as any;
+  const quest = commission?.quest ?? dailyQuestData;
   const dailyQuest = dailyQuestData as any;
+  const questTasks = (quest?.tasks ?? commission?.tasks ?? []) as any[];
+  const completedTasks = questTasks.filter((task) => task.completed).length;
+  const allDone = questTasks.length > 0 && completedTasks === questTasks.length;
   const xpPct = player ? Math.min(100, Math.round((player.xp / player.xpToNextLevel) * 100)) : 0;
   const rankColor = gradeColor(player?.rank);
+
+  const reportToGuildmaster = async () => {
+    if (reporting) return;
+    setReporting(true);
+    try {
+      const result = await customFetch<any>("/api/guild-hall/report", { method: "POST" });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["/api/guild-hall/today"] }),
+        qc.invalidateQueries({ queryKey: ["/api/player"] }),
+        qc.invalidateQueries({ queryKey: ["/api/daily-quest"] }),
+      ]);
+      Alert.alert(
+        result.reported ? "Commission recorded" : "Commission remains open",
+        result.counsel ?? result.aldric?.counsel ?? "Aldric has recorded your report."
+      );
+      setAldricOpen(true);
+    } catch {
+      Alert.alert("Report failed", "Your progress is safe. Try reporting again from the Guild Hall.");
+    } finally {
+      setReporting(false);
+    }
+  };
 
   return (
     <View style={[s.root, { backgroundColor: "#0a0908" }]}>
@@ -186,14 +273,152 @@ export default function HallScreen() {
         {/* Header */}
         <View style={s.headerRow}>
           <View>
-            <Text style={s.hallLabel}>GUILD HALL · AETHORIA</Text>
-            <Text style={s.hallTitle}>Ascension Quest</Text>
+            <Text style={s.hallLabel}>GUILD HALL - AETHORIA</Text>
+            <Text style={s.hallTitle}>Guild Hall</Text>
+            <Text style={s.hallSub}>Train. Fuel. Recover. Endure.</Text>
           </View>
           <TouchableOpacity style={s.aldricBtn} onPress={() => setAldricOpen(true)}>
-            <Text style={s.aldricBtnText}>⚔ Aldric</Text>
+            <Text style={s.aldricBtnText}>Aldric</Text>
           </TouchableOpacity>
         </View>
 
+        {isLoading ? (
+          <View style={s.loadingBlock}>
+            <ActivityIndicator color="#d9ad63" />
+            <Text style={s.loadingText}>Opening the Guild ledger...</Text>
+          </View>
+        ) : (
+          <>
+            <WorldDangerPanel danger={hallAny?.worldDanger} />
+            <AldricPanel hall={hallAny} onOpen={() => setAldricOpen(true)} />
+
+            <TouchableOpacity
+              style={[s.reportBtn, reporting && { opacity: 0.65 }]}
+              onPress={reportToGuildmaster}
+              activeOpacity={0.85}
+              disabled={reporting}
+            >
+              {reporting ? <ActivityIndicator color="#f1dfc6" size="small" /> : null}
+              <Text style={s.reportBtnText}>{reporting ? "REPORTING..." : "REPORT TO THE GUILDMASTER"}</Text>
+            </TouchableOpacity>
+
+            {player && (
+              <View style={s.statStrip}>
+                <View style={s.statCell}>
+                  <Text style={[s.stripValue, { color: rankColor }]}>{formatGuildGrade(player.rank)}</Text>
+                  <Text style={s.stripLabel}>Grade</Text>
+                </View>
+                <View style={s.statCell}>
+                  <Text style={s.stripValue}>Lv. {player.level}</Text>
+                  <Text style={s.stripLabel}>Level</Text>
+                </View>
+                <View style={s.statCell}>
+                  <Text style={s.stripValue}>{player.gold.toLocaleString()}</Text>
+                  <Text style={s.stripLabel}>Gold</Text>
+                </View>
+                <View style={[s.statCell, { borderRightWidth: 0 }]}>
+                  <Text style={s.stripValue}>{xpPct}%</Text>
+                  <Text style={s.stripLabel}>XP</Text>
+                  <View style={s.stripXpTrack}>
+                    <View style={[s.xpFill, { width: `${xpPct}%` }]} />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {commission && quest && (
+              <View style={[s.card, { backgroundColor: "#11100e", borderColor: "#514332", marginTop: 14, padding: 0 }]}>
+                <View style={s.commissionHeader}>
+                  <View>
+                    <Text style={s.commissionHeading}>Today's Commission</Text>
+                    <Text style={s.commissionMeta}>
+                      {completedTasks} of {questTasks.length} duties complete - {commission.category ?? "training"}
+                    </Text>
+                  </View>
+                  <Text style={s.resetLabel}>Resets at midnight</Text>
+                </View>
+
+                {commission.rationale && <Text style={s.rationale}>{commission.rationale}</Text>}
+
+                {(commission.location || commission.travel) && (
+                  <View style={s.locationGrid}>
+                    <View style={s.locationBox}>
+                      <Text style={s.locationLabel}>Location</Text>
+                      <Text style={s.locationTitle}>{commission.location?.name ?? "Guild territory"}</Text>
+                      <Text style={s.locationMeta}>{commission.location?.region ?? "Aethoria"}</Text>
+                    </View>
+                    <View style={s.locationBox}>
+                      <Text style={s.locationLabel}>Travel Ledger</Text>
+                      <Text style={s.locationTitle}>
+                        {commission.travel?.onFootMiles ?? commission.travel?.footMiles ?? 0} mi on foot
+                        {commission.travel?.caravanMiles ? ` - ${commission.travel.caravanMiles} mi by caravan` : ""}
+                        {commission.travel?.mountMiles ? ` - ${commission.travel.mountMiles} mi by mount` : ""}
+                      </Text>
+                      <Text style={s.locationMeta}>Return stone route pending Guild approval.</Text>
+                    </View>
+                  </View>
+                )}
+
+                {questTasks.map((task, index) => {
+                  const target = Number(task.target ?? 1);
+                  const current = Number(task.current ?? (task.completed ? target : 0));
+                  const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : task.completed ? 100 : 0;
+                  return (
+                    <View key={task.id ?? index} style={s.taskRow}>
+                      <View style={s.taskNumber}><Text style={s.taskNumberText}>{index + 1}</Text></View>
+                      <View style={{ flex: 1 }}>
+                        <View style={s.taskTop}>
+                          <Text style={[s.taskDesc, { color: task.completed ? "#9d8f80" : "#eee5d7" }]}>{task.description}</Text>
+                          <Text style={s.taskProgress}>{current}/{target}</Text>
+                        </View>
+                        <View style={s.taskTrack}><View style={[s.xpFill, { width: `${pct}%` }]} /></View>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                <View style={s.rewardFooter}>
+                  <View>
+                    <Text style={s.rewardLabel}>Commission reward</Text>
+                    <Text style={s.rewardXp}>+{quest.xpReward ?? commission.rewards?.xp ?? 0} XP</Text>
+                  </View>
+                  <View style={s.rewardDivider} />
+                  <View>
+                    <Text style={s.rewardLabel}>Guild gold</Text>
+                    <Text style={s.rewardGold}>+{quest.goldReward ?? commission.rewards?.gold ?? 0}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {hallAny?.hallOfferings && (
+              <View style={[s.card, { backgroundColor: "#11100e", borderColor: "#514332", marginTop: 14 }]}>
+                <View style={s.offerHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.commissionHeading}>{hallAny.hallOfferings.title}</Text>
+                    <Text style={s.offeringLore}>{hallAny.hallOfferings.lore}</Text>
+                  </View>
+                  <TouchableOpacity style={s.offerOpenBtn} onPress={() => router.push("/(tabs)/inventory" as any)}>
+                    <Text style={s.offerOpenText}>Open</Text>
+                  </TouchableOpacity>
+                </View>
+                {(hallAny.hallOfferings.preview ?? []).map((item: any) => (
+                  <View key={item.id ?? item.name} style={s.offeringRow}>
+                    <Text style={s.offeringName}>{item.name}</Text>
+                    <Text style={s.offeringMeta}>{item.rarity} - {item.goldCost} gold</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={[s.footerMotto, { color: allDone ? "#69a97b" : "#7e776d" }]}>
+              {allDone ? "The Guild is ready to receive your report." : "Consistency is the weapon. The next action is enough."}
+            </Text>
+          </>
+        )}
+
+        {false && player && (
+        <>
         {/* Player card */}
         {isLoading ? (
           <View style={[s.card, { backgroundColor: "#171510", borderColor: "#3b3328", height: 90 }]} />
@@ -202,13 +427,13 @@ export default function HallScreen() {
             <View style={s.playerRow}>
               <View>
                 <View style={[s.rankBadge, { borderColor: rankColor + "60" }]}>
-                  <Text style={[s.rankText, { color: rankColor }]}>{formatGuildGrade(player.rank)} Adventurer</Text>
+                  <Text style={[s.rankText, { color: rankColor }]}>{formatGuildGrade(player!.rank)} Adventurer</Text>
                 </View>
-                <Text style={s.playerName}>{player.name ?? "Adventurer"}</Text>
-                <Text style={s.playerLevel}>Level {player.level}</Text>
+                <Text style={s.playerName}>{player!.name ?? "Adventurer"}</Text>
+                <Text style={s.playerLevel}>Level {player!.level}</Text>
               </View>
               <View style={s.goldBlock}>
-                <Text style={s.goldAmount}>{player.gold.toLocaleString()}</Text>
+                <Text style={s.goldAmount}>{player!.gold.toLocaleString()}</Text>
                 <Text style={s.goldLabel}>GOLD</Text>
               </View>
             </View>
@@ -295,6 +520,8 @@ export default function HallScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        </>
+        )}
       </ScrollView>
 
       <AldricChatModal visible={aldricOpen} onClose={() => setAldricOpen(false)} />
@@ -307,9 +534,72 @@ const s = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 },
   hallLabel: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", fontFamily: "Inter_400Regular", textTransform: "uppercase" },
   hallTitle: { fontSize: 22, fontWeight: "900", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
+  hallSub: { fontSize: 10, letterSpacing: 2, color: "#9f9586", fontFamily: "Inter_400Regular", textTransform: "uppercase", marginTop: 2 },
   aldricBtn: { borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#15130f", paddingHorizontal: 12, paddingVertical: 6 },
   aldricBtnText: { color: "#d9ad63", fontSize: 12, fontWeight: "700", fontFamily: "Inter_700Bold" },
   card: { borderWidth: 1, borderRadius: 0, padding: 14 },
+  loadingBlock: { minHeight: 240, borderWidth: 1, borderColor: "#514332", backgroundColor: "#11100e", alignItems: "center", justifyContent: "center", gap: 12 },
+  loadingText: { color: "#9d8f80", fontSize: 12, fontFamily: "Inter_400Regular" },
+  dangerCard: { borderWidth: 1, backgroundColor: "#140f0e", padding: 14, marginBottom: 14 },
+  dangerHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+  dangerTitle: { fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
+  dangerValueBox: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "#120d0c" },
+  dangerValue: { fontSize: 12, fontWeight: "900", fontFamily: "Inter_700Bold" },
+  dangerTrack: { height: 8, backgroundColor: "#2a1815", overflow: "hidden", marginTop: 12 },
+  dangerFill: { height: 8 },
+  dangerNote: { color: "#b7ab9c", fontSize: 11, lineHeight: 17, marginTop: 10, fontFamily: "Inter_400Regular" },
+  dangerStats: { flexDirection: "row", gap: 8, marginTop: 12 },
+  dangerStat: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 8 },
+  dangerStatLabel: { color: "#80796f", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
+  dangerStatValue: { color: "#d8c4a5", fontSize: 11, fontFamily: "Inter_700Bold", marginTop: 2 },
+  aldricPanel: { overflow: "hidden", borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", marginBottom: 14 },
+  aldricImage: { width: "100%", aspectRatio: 4 / 3, backgroundColor: "#0c0b09" },
+  aldricContent: { borderTopWidth: 1, borderTopColor: "#6b4d2f", padding: 14 },
+  aldricTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  aldricTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  aldricGrade: { borderWidth: 1, borderColor: "#72552e", color: "#d5a557", fontSize: 9, fontFamily: "Inter_700Bold", paddingHorizontal: 7, paddingVertical: 3 },
+  aldricCounsel: { color: "#ded5c8", fontSize: 14, lineHeight: 22, fontFamily: "PlayfairDisplay_700Bold", marginTop: 8 },
+  trendGrid: { flexDirection: "row", gap: 6, marginTop: 12 },
+  trendBox: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 8, alignItems: "center" },
+  trendLabel: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_400Regular" },
+  trendValue: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", marginTop: 2 },
+  audienceBtn: { marginTop: 12, borderWidth: 1, borderColor: "#8c6a36", paddingVertical: 10, alignItems: "center", backgroundColor: "#15130f" },
+  audienceBtnText: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 2 },
+  reportBtn: { minHeight: 54, borderWidth: 1, borderColor: "#c08c4e", backgroundColor: "#74291f", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginBottom: 14 },
+  reportBtnText: { color: "#f1dfc6", fontSize: 14, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", letterSpacing: 1 },
+  statStrip: { flexDirection: "row", borderWidth: 1, borderColor: "#514332", backgroundColor: "#11100e", marginBottom: 14 },
+  statCell: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 64, borderRightWidth: 1, borderRightColor: "#3b3328", paddingHorizontal: 4 },
+  stripValue: { color: "#e2d8ca", fontSize: 13, fontFamily: "PlayfairDisplay_700Bold", textAlign: "center" },
+  stripLabel: { color: "#80796f", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginTop: 3 },
+  stripXpTrack: { width: "80%", height: 3, backgroundColor: "#2a2520", marginTop: 5, overflow: "hidden" },
+  commissionHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#3b3328", padding: 14, gap: 10 },
+  commissionHeading: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  commissionMeta: { color: "#8f887d", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  resetLabel: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", textAlign: "right" },
+  rationale: { color: "#b7ab9c", fontSize: 12, lineHeight: 19, fontFamily: "Inter_400Regular", padding: 14, borderBottomWidth: 1, borderBottomColor: "#3b3328" },
+  locationGrid: { gap: 8, padding: 14, borderBottomWidth: 1, borderBottomColor: "#3b3328" },
+  locationBox: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10 },
+  locationLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginBottom: 4 },
+  locationTitle: { color: "#d8c4a5", fontSize: 12, fontFamily: "Inter_700Bold", lineHeight: 17 },
+  locationMeta: { color: "#9d8f80", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 },
+  taskRow: { flexDirection: "row", gap: 10, padding: 14, borderBottomWidth: 1, borderBottomColor: "#2b261f" },
+  taskNumber: { width: 20, height: 20, borderWidth: 1, borderColor: "#6b4d2f", alignItems: "center", justifyContent: "center", marginTop: 1 },
+  taskNumberText: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold" },
+  taskTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  taskDesc: { flex: 1, fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular" },
+  taskProgress: { color: "#d8c4a5", fontSize: 10, fontFamily: "Inter_700Bold" },
+  taskTrack: { height: 4, backgroundColor: "#2a2520", marginTop: 8, overflow: "hidden" },
+  rewardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, padding: 14 },
+  rewardLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular", textAlign: "center" },
+  rewardDivider: { height: 32, width: 1, backgroundColor: "#3b3328" },
+  offerHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 10 },
+  offeringLore: { color: "#8f887d", fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular", marginTop: 4 },
+  offerOpenBtn: { borderWidth: 1, borderColor: "#6b4d2f", paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#15130f" },
+  offerOpenText: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  offeringRow: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10, marginTop: 7 },
+  offeringName: { color: "#d8c4a5", fontSize: 13, fontFamily: "PlayfairDisplay_700Bold" },
+  offeringMeta: { color: "#8f887d", fontSize: 10, fontFamily: "Inter_400Regular", textTransform: "uppercase", marginTop: 2 },
+  footerMotto: { textAlign: "center", marginTop: 14, fontSize: 11, fontFamily: "Inter_400Regular" },
   playerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
   rankBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, alignSelf: "flex-start", marginBottom: 4 },
   rankText: { fontSize: 9, fontWeight: "700", fontFamily: "Inter_700Bold", letterSpacing: 2, textTransform: "uppercase" },
