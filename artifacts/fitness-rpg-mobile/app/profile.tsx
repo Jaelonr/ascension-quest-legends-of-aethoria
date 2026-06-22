@@ -105,6 +105,37 @@ const GOAL_OPTIONS = [
   { id: "endurance", label: "Endurance Path", desc: "Conditioning, resilience, and recovery.", baseClass: "ranger", weightGoal: "maintain" as const, bonuses: { strength: 0, agility: 1, stamina: 4, vitality: 1, discipline: 1, sense: 1 } },
 ] as const;
 
+const CLASS_PATHS = [
+  {
+    id: "warrior",
+    name: "Warrior",
+    specialty: "Iron Vanguard",
+    desc: "Power first. Heavy work and hard-earned resilience open the frontline path.",
+    weights: { strength: 4, vitality: 2, discipline: 1, stamina: 1, agility: 0, sense: 0 },
+  },
+  {
+    id: "striker",
+    name: "Striker",
+    specialty: "Aether Duelist",
+    desc: "Speed, combat practice, and discipline shape a fighter who wins exchanges.",
+    weights: { agility: 3, discipline: 2, sense: 2, strength: 1, stamina: 1, vitality: 0 },
+  },
+  {
+    id: "ranger",
+    name: "Ranger",
+    specialty: "Wayfarer",
+    desc: "Conditioning and recovery make long expeditions possible.",
+    weights: { stamina: 4, sense: 2, discipline: 1, vitality: 1, agility: 1, strength: 0 },
+  },
+  {
+    id: "adventurer",
+    name: "Adventurer",
+    specialty: "Mythril Pathfinder",
+    desc: "Balanced effort keeps multiple class doors open until your record chooses one.",
+    weights: { discipline: 2, strength: 1, agility: 1, stamina: 1, vitality: 1, sense: 1 },
+  },
+] as const;
+
 const ACTIVITY_BONUS: Record<Exclude<FormState["activityLevel"], "">, Partial<Record<keyof (typeof GOAL_OPTIONS)[number]["bonuses"], number>>> = {
   sedentary: {},
   light: { discipline: 1 },
@@ -221,6 +252,18 @@ export default function ProfileScreen() {
     }
     return base;
   })();
+
+  const classForecast = CLASS_PATHS
+    .map((path) => ({
+      ...path,
+      score: Object.entries(path.weights).reduce(
+        (total, [key, weight]) => total + startingStats[key as keyof typeof startingStats] * weight,
+        0
+      ),
+    }))
+    .sort((a, b) => b.score - a.score);
+  const primaryPath = classForecast[0];
+  const maxForecastScore = Math.max(primaryPath?.score ?? 1, 1);
 
   const scanReady =
     form.name.trim().length > 1 &&
@@ -405,6 +448,40 @@ export default function ProfileScreen() {
                 ))}
               </View>
             </View>
+
+            <View style={s.pathBox}>
+              <View style={s.pathHeader}>
+                <View>
+                  <Text style={s.pathKicker}>System Forecast</Text>
+                  <Text style={s.pathTitle}>{primaryPath?.name ?? "Adventurer"} Path</Text>
+                </View>
+                <Text style={s.pathBadge}>{primaryPath?.specialty ?? "Pathfinder"}</Text>
+              </View>
+              <Text style={s.pathDesc}>
+                Your selected goal, activity, and starting attributes are shaping this result. Your class is still earned through action.
+              </Text>
+              <View style={s.pathRows}>
+                {classForecast.map((path, index) => (
+                  <View key={path.id} style={s.pathRow}>
+                    <Text style={s.pathRank}>#{index + 1}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={s.pathNameRow}>
+                        <Text style={s.pathName}>{path.name}</Text>
+                        <Text style={s.pathScore}>{Math.round(path.score)} affinity</Text>
+                      </View>
+                      <View style={s.pathTrack}>
+                        <View style={[s.pathFill, { width: `${Math.max(8, Math.min(100, (path.score / maxForecastScore) * 100))}%` }]} />
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <View style={s.nextPathBox}>
+                <Text style={s.nextPathLabel}>Specialty Glimpse</Text>
+                <Text style={s.nextPathTitle}>{primaryPath?.specialty ?? "Mythril Pathfinder"}</Text>
+                <Text style={s.nextPathText}>{primaryPath?.desc}</Text>
+              </View>
+            </View>
           </View>
 
           <View style={s.card}>
@@ -525,6 +602,24 @@ const s = StyleSheet.create({
   forecastStat: { width: "31.8%", borderWidth: 1, borderColor: "#2a2520", paddingVertical: 8, alignItems: "center" },
   forecastValue: { color: "#d9ad63", fontSize: 16, fontFamily: "Inter_700Bold" },
   forecastLabel: { color: "#8f887d", fontSize: 9, letterSpacing: 1 },
+  pathBox: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071615", padding: 12, marginTop: 10 },
+  pathHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
+  pathKicker: { color: "#7ddce4", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  pathTitle: { color: "#eee5d7", fontSize: 17, marginTop: 2, fontFamily: "PlayfairDisplay_700Bold" },
+  pathBadge: { color: "#d9ad63", borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#14100b", paddingHorizontal: 8, paddingVertical: 4, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold", maxWidth: 140, textAlign: "center" },
+  pathDesc: { color: "#b6aa9c", fontSize: 11, lineHeight: 16, marginTop: 8, fontFamily: "Inter_400Regular" },
+  pathRows: { gap: 8, marginTop: 12 },
+  pathRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  pathRank: { width: 20, color: "#6f6559", fontSize: 10, fontFamily: "Inter_700Bold" },
+  pathNameRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  pathName: { color: "#d8c4a5", fontSize: 12, fontFamily: "Inter_700Bold" },
+  pathScore: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_400Regular" },
+  pathTrack: { height: 6, backgroundColor: "#020706", borderRadius: 4, overflow: "hidden", marginTop: 4 },
+  pathFill: { height: 6, backgroundColor: "#7ddce4", borderRadius: 4 },
+  nextPathBox: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10, marginTop: 12 },
+  nextPathLabel: { color: "#8f887d", fontSize: 9, letterSpacing: 1.6, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
+  nextPathTitle: { color: "#d9ad63", fontSize: 13, marginTop: 3, fontFamily: "PlayfairDisplay_700Bold" },
+  nextPathText: { color: "#b6aa9c", fontSize: 10, lineHeight: 15, marginTop: 3, fontFamily: "Inter_400Regular" },
   fieldRow: { flexDirection: "row", gap: 10 },
   field: { flex: 1, marginBottom: 10 },
   fieldLabel: { color: "#8f887d", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 },
