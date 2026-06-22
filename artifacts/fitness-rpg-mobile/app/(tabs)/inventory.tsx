@@ -5,6 +5,7 @@ import {
   useEquipGear,
   useGetPlayerStyleIdentity,
 } from "@workspace/api-client-react";
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -65,31 +66,45 @@ const STYLE_META: Record<string, { label: string; color: string }> = {
   discipline:   { label: "Discipline",   color: "#eab308" },
 };
 
-const SLOT_EMOJIS: Record<string, string> = {
-  weapon: "⚔️", offhand: "🛡️", helmet: "🪖", chest: "🧥",
-  gloves: "🧤", boots: "👢", ring: "💍", necklace: "📿",
+const SLOT_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
+  head: "hard-drive",
+  neck: "circle",
+  shoulders: "layers",
+  cloak: "shield",
+  chest: "box",
+  arms: "activity",
+  hands: "package",
+  waist: "disc",
+  legs: "user",
+  feet: "navigation",
+  ring_left: "circle",
+  ring_right: "circle",
+  weapon: "zap",
+  offhand: "shield",
+  relic: "star",
+  title: "award",
+  aura_cosmetic: "sun",
 };
-
 type TabKey = "gear" | "inventory" | "identity";
 
-const PAPER_DOLL_SLOTS: Array<{ slot: string; label: string; aliases: string[]; side: "left" | "right" | "support"; mark: string }> = [
-  { slot: "head", label: "Head", aliases: ["head", "helmet", "helm", "hood", "circlet"], side: "left", mark: "H" },
-  { slot: "neck", label: "Neck", aliases: ["neck", "necklace", "amulet"], side: "left", mark: "N" },
-  { slot: "shoulders", label: "Shoulders", aliases: ["shoulders", "pauldrons", "mantle"], side: "left", mark: "S" },
-  { slot: "arms", label: "Arms", aliases: ["arms", "bracers", "vambraces"], side: "left", mark: "B" },
-  { slot: "waist", label: "Waist", aliases: ["waist", "belt", "sash"], side: "left", mark: "W" },
-  { slot: "legs", label: "Legs", aliases: ["legs", "pants", "greaves"], side: "left", mark: "L" },
-  { slot: "feet", label: "Feet", aliases: ["feet", "boots"], side: "left", mark: "F" },
-  { slot: "cloak", label: "Cloak", aliases: ["cloak", "cape", "back"], side: "right", mark: "C" },
-  { slot: "chest", label: "Chest", aliases: ["chest", "armor", "robe", "body"], side: "right", mark: "A" },
-  { slot: "hands", label: "Hands", aliases: ["hands", "gloves", "gloves_wraps", "wraps", "gauntlets"], side: "right", mark: "G" },
-  { slot: "ring_left", label: "Ring Left", aliases: ["ring_left", "ring"], side: "right", mark: "R" },
-  { slot: "ring_right", label: "Ring Right", aliases: ["ring_right", "ring"], side: "right", mark: "R" },
-  { slot: "weapon", label: "Weapon", aliases: ["weapon", "main_hand", "mainhand"], side: "right", mark: "W" },
-  { slot: "offhand", label: "Off Hand", aliases: ["offhand", "off_hand", "shield"], side: "support", mark: "O" },
-  { slot: "relic", label: "Relic", aliases: ["relic"], side: "support", mark: "R" },
-  { slot: "title", label: "Title", aliases: ["title", "banner"], side: "support", mark: "T" },
-  { slot: "aura_cosmetic", label: "Aura", aliases: ["aura_cosmetic", "aura", "aura_effect", "cosmetic"], side: "support", mark: "*" },
+const PAPER_DOLL_SLOTS: Array<{ slot: string; label: string; aliases: string[]; side: "left" | "right" | "support"; icon: keyof typeof Feather.glyphMap }> = [
+  { slot: "head", label: "Head", aliases: ["head", "helmet", "helm", "hood", "circlet"], side: "left", icon: "hard-drive" },
+  { slot: "neck", label: "Neck", aliases: ["neck", "necklace", "amulet"], side: "left", icon: "circle" },
+  { slot: "shoulders", label: "Shoulders", aliases: ["shoulders", "pauldrons", "mantle"], side: "left", icon: "layers" },
+  { slot: "arms", label: "Arms", aliases: ["arms", "bracers", "vambraces"], side: "left", icon: "activity" },
+  { slot: "waist", label: "Waist", aliases: ["waist", "belt", "sash"], side: "left", icon: "disc" },
+  { slot: "legs", label: "Legs", aliases: ["legs", "pants", "greaves"], side: "left", icon: "user" },
+  { slot: "feet", label: "Feet", aliases: ["feet", "boots"], side: "left", icon: "navigation" },
+  { slot: "cloak", label: "Cloak", aliases: ["cloak", "cape", "back"], side: "right", icon: "shield" },
+  { slot: "chest", label: "Chest", aliases: ["chest", "armor", "robe", "body"], side: "right", icon: "box" },
+  { slot: "hands", label: "Hands", aliases: ["hands", "gloves", "gloves_wraps", "wraps", "gauntlets"], side: "right", icon: "package" },
+  { slot: "ring_left", label: "Ring Left", aliases: ["ring_left", "ring"], side: "right", icon: "circle" },
+  { slot: "ring_right", label: "Ring Right", aliases: ["ring_right", "ring"], side: "right", icon: "circle" },
+  { slot: "weapon", label: "Weapon", aliases: ["weapon", "main_hand", "mainhand"], side: "right", icon: "zap" },
+  { slot: "offhand", label: "Off Hand", aliases: ["offhand", "off_hand", "shield"], side: "support", icon: "shield" },
+  { slot: "relic", label: "Relic", aliases: ["relic"], side: "support", icon: "star" },
+  { slot: "title", label: "Title", aliases: ["title", "banner"], side: "support", icon: "award" },
+  { slot: "aura_cosmetic", label: "Aura", aliases: ["aura_cosmetic", "aura", "aura_effect", "cosmetic"], side: "support", icon: "sun" },
 ];
 
 function AttributeGrid({ stats }: { stats: any }) {
@@ -137,18 +152,24 @@ function PaperDollPanel({
   const SlotButton = ({ slot }: { slot: (typeof normalizedSlots)[number] }) => {
     const rarityColor = slot.item ? (RARITY_COLORS[slot.item.rarity ?? "common"] ?? "#9ca3af") : "#3b3328";
     const active = activeSlot === slot.slot;
+    const affinity = slot.item?.elementalAffinity ?? slot.item?.affinity;
     return (
       <TouchableOpacity
         style={[cs.paperSlotBtn, { borderColor: active ? "#d9ad63" : rarityColor + "70", backgroundColor: active ? "#21170f" : "#0c0b09" }]}
         onPress={() => onSelectSlot(slot.slot)}
         activeOpacity={0.78}
       >
-        <Text style={[cs.paperSlotIcon, { color: slot.item ? rarityColor : "#6f685f" }]}>{slot.mark}</Text>
+        <View style={[cs.paperSlotIcon, { borderColor: slot.item ? rarityColor + "80" : "#3b3328" }]}>
+          <Feather name={slot.icon} size={13} color={slot.item ? rarityColor : "#6f685f"} />
+        </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={cs.paperSlotLabel}>{slot.label}</Text>
           <Text style={[cs.paperSlotItem, { color: slot.item ? "#eee5d7" : "#6f685f" }]} numberOfLines={1}>
             {slot.item?.displayName ?? slot.item?.name ?? "Empty"}
           </Text>
+          {affinity && (
+            <Text style={cs.paperSlotAffinity} numberOfLines={1}>{affinity} affinity</Text>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -279,7 +300,7 @@ export default function CharacterScreen() {
                 <View style={[cs.rankPill, { borderColor: rankColor + "60" }]}>
                   <Text style={[cs.rankText, { color: rankColor }]}>{formatGuildGrade(player.rank)}</Text>
                 </View>
-                <Text style={cs.levelText}>Level {player.level} · {className}</Text>
+                <Text style={cs.levelText}>Level {player.level} - {className}</Text>
               </View>
               <View style={cs.statsGrid}>
                 {[
@@ -355,7 +376,9 @@ export default function CharacterScreen() {
                       onPress={() => item && setSelectedGear(item)}
                       activeOpacity={item ? 0.7 : 1}
                     >
-                      <Text style={cs.slotEmoji}>{SLOT_EMOJIS[slot.slot] ?? "🔲"}</Text>
+                      <View style={cs.slotIconBox}>
+                        <Feather name={SLOT_ICONS[slot.slot] ?? "square"} size={17} color={item ? rarityColor : "#6f685f"} />
+                      </View>
                       <View style={{ flex: 1 }}>
                         <Text style={cs.slotLabel}>{slot.label}</Text>
                         {item ? (
@@ -367,7 +390,7 @@ export default function CharacterScreen() {
                           <Text style={cs.slotEmpty}>Empty slot</Text>
                         )}
                       </View>
-                      {item && <Text style={{ color: "#3b3328", fontSize: 16 }}>›</Text>}
+                      {item && <Feather name="chevron-right" size={16} color="#3b3328" />}
                     </TouchableOpacity>
                   );
                 })}
@@ -383,7 +406,9 @@ export default function CharacterScreen() {
               <ActivityIndicator color="#d9ad63" style={{ marginTop: 20 }} />
             ) : !inventory || (inventory as any[]).length === 0 ? (
               <View style={[cs.empty, { borderColor: "#3b3328" }]}>
-                <Text style={{ fontSize: 24 }}>🎒</Text>
+                <View style={cs.emptyIcon}>
+                  <Feather name="archive" size={20} color="#6b5d4f" />
+                </View>
                 <Text style={[cs.emptyTitle, { color: colors.foreground }]}>Inventory empty</Text>
                 <Text style={[cs.emptyDesc, { color: colors.mutedForeground }]}>
                   Purchase items from the store or earn them through combat.
@@ -406,7 +431,7 @@ export default function CharacterScreen() {
                     <View key={item.id} style={[cs.inventoryItem, { backgroundColor: "#171510", borderColor: rarityColor + "40" }]}>
                       <View style={{ flex: 1 }}>
                         <Text style={[cs.itemName, { color: rarityColor }]}>{item.displayName ?? item.name}</Text>
-                        <Text style={cs.itemMeta}>{item.category} · {item.rarity}</Text>
+                        <Text style={cs.itemMeta}>{item.category} - {item.rarity}</Text>
                         {item.description && (
                           <Text style={[cs.itemDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
                             {item.description}
@@ -445,7 +470,7 @@ export default function CharacterScreen() {
             {identity?.dominantStyle && (
               <Text style={[cs.dominantStyle, { color: STYLE_META[identity.dominantStyle]?.color ?? "#d9ad63" }]}>
                 {STYLE_META[identity.dominantStyle]?.label} Fighter
-                {identity.hybridArchetype ? ` · ${identity.hybridArchetype}` : ""}
+                {identity.hybridArchetype ? ` - ${identity.hybridArchetype}` : ""}
               </Text>
             )}
             <Text style={[cs.identityNote, { color: colors.mutedForeground }]}>
@@ -562,11 +587,11 @@ export default function CharacterScreen() {
         <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelectedGear(null)}>
           <View style={[gm.root, { backgroundColor: colors.background, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
             <TouchableOpacity style={gm.closeRow} onPress={() => setSelectedGear(null)}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 22 }}>✕</Text>
+              <Text style={{ color: colors.mutedForeground, fontSize: 22, fontWeight: "700" }}>X</Text>
             </TouchableOpacity>
             <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
               <Text style={[gm.itemRarity, { color: RARITY_COLORS[selectedGear.rarity ?? "common"] }]}>
-                {selectedGear.rarity?.toUpperCase()} · {selectedGear.slot?.replace(/_/g, " ").toUpperCase()}
+                {selectedGear.rarity?.toUpperCase()} - {selectedGear.slot?.replace(/_/g, " ").toUpperCase()}
               </Text>
               <Text style={[gm.itemName, { color: colors.foreground }]}>{selectedGear.displayName ?? selectedGear.name}</Text>
               {selectedGear.description && (
@@ -625,9 +650,10 @@ const cs = StyleSheet.create({
   paperSlotColumn: { flex: 1, gap: 6 },
   supportSlotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
   paperSlotBtn: { flex: 1, minWidth: "47%", borderWidth: 1, padding: 8, flexDirection: "row", alignItems: "center", gap: 8 },
-  paperSlotIcon: { width: 22, height: 22, borderWidth: 1, borderColor: "#3b3328", textAlign: "center", textAlignVertical: "center", fontSize: 10, fontFamily: "Inter_700Bold" },
+  paperSlotIcon: { width: 24, height: 24, borderWidth: 1, backgroundColor: "#15130f", alignItems: "center", justifyContent: "center" },
   paperSlotLabel: { fontSize: 8, color: "#8f887d", textTransform: "uppercase", letterSpacing: 1 },
   paperSlotItem: { fontSize: 10, fontFamily: "PlayfairDisplay_700Bold", marginTop: 1 },
+  paperSlotAffinity: { color: "#49a3a0", fontSize: 9, marginTop: 1, textTransform: "capitalize", fontFamily: "Inter_400Regular" },
   attributeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   attributeBox: { width: "30.5%", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingVertical: 10, alignItems: "center" },
   attributeValue: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
@@ -637,7 +663,7 @@ const cs = StyleSheet.create({
   tabActive: { borderBottomWidth: 2, borderBottomColor: "#d9ad63" },
   tabText: { fontSize: 11, fontWeight: "700", fontFamily: "Inter_700Bold" },
   gearSlot: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, padding: 12 },
-  slotEmoji: { fontSize: 22, width: 30, textAlign: "center" },
+  slotIconBox: { width: 30, height: 30, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
   slotLabel: { fontSize: 9, color: "#6b5d4f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 },
   slotItemName: { fontSize: 13, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   slotRarity: { fontSize: 9, color: "#6b5d4f", textTransform: "uppercase", marginTop: 1 },
@@ -675,6 +701,7 @@ const cs = StyleSheet.create({
   profileBtnTitle: { color: "#d9ad63", fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   profileBtnText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
   empty: { borderWidth: 1, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 8, marginTop: 8 },
+  emptyIcon: { width: 36, height: 36, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   emptyDesc: { fontSize: 12, textAlign: "center", lineHeight: 18 },
 });
