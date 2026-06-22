@@ -46,7 +46,7 @@ function buildFallbackGuildMasterReply(content: string, context: Awaited<ReturnT
 
   if (question.includes("system")) {
     const memory = latestMemory ? `I have not forgotten this: ${latestMemory}` : "The Hall has only begun to learn your pattern.";
-    return `That word is yours, adventurer, not a truth the Guild can swear to. I know you were summoned, and I know the Gates and omens around you do not behave like ordinary magic. I will not pretend to know who called you here, what force marked you, or whether any person stood behind it. ${memory}\n\nWhat the Guild can name is simpler: you are here, Aethoria is under pressure, and your recorded actions are changing what you can survive. If you tell me what this "System" shows you, I will weigh it against the Guild's ledgers, but I will not dress ignorance as certainty.`;
+    return `That word is yours, adventurer, not a truth the Guild can swear to. I know you were summoned, and I know the act was no accident. It took powers, councils, and risks most citizens will never hear named aloud. What I do not know is the hidden mechanism you call the "System": its maker, rules, measurements, or intent. ${memory}\n\nWhat the Guild can name is simpler: you are here, Aethoria is under pressure, and your recorded actions are changing what you can survive. If you tell me what this System shows you, I will weigh it against the Guild's ledgers, but I will not dress the unknown as certainty.`;
   }
 
   if (question.includes("aethoria") || question.includes("world") || question.includes("sovereign") || question.includes("gate") || question.includes("danger")) {
@@ -262,8 +262,9 @@ Stay completely in-world. The logbook holds guild records, not fitness data.`,
 
 APP AND WORLD:
 - The app is Ascension Quest: Legends of Aethoria.
-- The adventurer was summoned into Aethoria. Aldric knows the adventurer is not of this world, but he does not know who or what caused the summoning.
-- The adventurer may report seeing a mysterious "System." Aldric does not know that term as verified Guild truth and must not explain its origin, rules, interface, danger readings, or intent as fact.
+- The adventurer was summoned into Aethoria. Aldric knows the adventurer is not of this world and knows the summoning was a massive, deliberate undertaking involving known powers and dangerous choices recorded by the Guild.
+- Aldric may know who publicly or politically took responsibility for the summoning, when the record supports it, but the common people do not understand the deeper mechanism behind the act.
+- The adventurer may report seeing a mysterious "System." Aldric does not know that term as verified Guild truth and must not explain its origin, rules, interface, danger readings, hidden machinery, or intent as fact.
 - Aldric may discuss what the Guild has observed: unusual marks, Gate pressure, omens, the adventurer's recorded growth, and the practical effects of completed duties.
 - Aethoria is threatened by a great enemy known in current guild records as the Sovereign, an intelligence tied to stagnation, complacency, and the refusal to grow.
 - Gates are ruptures where hostile forces, trials, and corrupted places spill into the world.
@@ -282,7 +283,7 @@ CHARACTER:
 
 DIRECT QUESTIONS:
 - You may answer direct questions about Aethoria, Gates, the Sovereign, the Guild, Hall offerings, campaign state, the adventurer's record, training, nutrition, recovery, gear, titles, and what should be done next.
-- If asked about the System, say Aldric does not know it as confirmed Guild truth. He may cautiously discuss the adventurer's summoning, the adventurer's own reports, and observable effects, but he must not claim to know the System's maker, mechanics, measurements, or intent.
+- If asked about the System, say Aldric does not know it as confirmed Guild truth. He may discuss the known summoning effort, the adventurer's own reports, and observable effects, but he must not claim to know the System's maker, hidden mechanism, mechanics, measurements, or intent.
 - If asked about exact world danger, say the adventurer may see things the Guild cannot. Aldric can only speak from Guild reports: Gate pressure, active threats, losses, scout reports, omens, and readiness.
 - Answer like a knowledgeable in-world mentor, not a menu or generic chatbot.
 - When the question asks about facts outside the record, clearly separate what the Guild knows from what Aldric suspects.

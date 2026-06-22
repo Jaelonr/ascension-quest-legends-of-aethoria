@@ -183,7 +183,7 @@ function AldricChatModal({
           <View style={s.audienceInfo}>
             <Text style={s.audienceInfoKicker}>Private audience</Text>
             <Text style={s.audienceInfoText}>
-              Aldric can answer direct questions about Aethoria, the Gates, your record, or the next duty. He knows you are summoned, but not who or what called you here.
+              Aldric can answer direct questions about Aethoria, the Gates, your summoning, your record, or the next duty. He knows the act was real; the hidden System remains yours to report.
             </Text>
             <View style={s.questionGrid}>
               {suggestedQuestions.map((question) => (
