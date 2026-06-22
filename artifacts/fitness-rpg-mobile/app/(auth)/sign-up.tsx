@@ -203,7 +203,7 @@ export default function SignUpScreen() {
               <Text style={styles.brandName}>Ascension Quest</Text>
               <Text style={styles.brandSub}>Legends of Aethoria</Text>
             </View>
-            <Text style={styles.rank}>SYSTEM</Text>
+            <Text style={styles.rank}>PERSONAL</Text>
             <Text style={styles.title}>Verify Your Email</Text>
             <Text style={styles.subtitle}>
               A code was sent to {email}. Enter it below to activate your account.
@@ -291,11 +291,12 @@ export default function SignUpScreen() {
             <Text style={styles.brandName}>Ascension Quest</Text>
             <Text style={styles.brandSub}>Legends of Aethoria</Text>
           </View>
-          <Text style={styles.rank}>SYSTEM</Text>
+          <Text style={styles.rank}>PERSONAL</Text>
           <Text style={styles.title}>Begin Your Journey</Text>
           <Text style={styles.subtitle}>
             Create your adventurer account and answer Aethoria's call.
           </Text>
+          <Text style={styles.tagline}>Your stats are your power.</Text>
         </View>
 
         <View style={styles.card}>
@@ -425,6 +426,15 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     fontFamily: "Inter_700Bold",
     marginBottom: 4,
+  },
+  tagline: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#6f685f",
+    letterSpacing: 2.2,
+    textTransform: "uppercase",
+    textAlign: "center",
+    marginTop: 4,
   },
   title: {
     fontSize: 26,

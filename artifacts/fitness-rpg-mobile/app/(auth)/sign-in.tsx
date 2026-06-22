@@ -311,7 +311,7 @@ export default function SignInScreen() {
               <Text style={styles.brandName}>Ascension Quest</Text>
               <Text style={styles.brandSub}>Legends of Aethoria</Text>
             </View>
-            <Text style={styles.rank}>SYSTEM</Text>
+            <Text style={styles.rank}>PERSONAL</Text>
             <Text style={styles.title}>
               {signIn.status === "needs_new_password" ? "Set New Password" : "Check Your Email"}
             </Text>
@@ -426,11 +426,12 @@ export default function SignInScreen() {
             <Text style={styles.brandName}>Ascension Quest</Text>
             <Text style={styles.brandSub}>Legends of Aethoria</Text>
           </View>
-          <Text style={styles.rank}>SYSTEM</Text>
+          <Text style={styles.rank}>PERSONAL</Text>
           <Text style={styles.title}>Welcome Back, Adventurer</Text>
           <Text style={styles.subtitle}>
             Return to Aethoria and continue the record of your ascent.
           </Text>
+          <Text style={styles.tagline}>Your stats are your power.</Text>
         </View>
 
         <View style={styles.card}>
@@ -454,7 +455,7 @@ export default function SignInScreen() {
           <TextInput
             style={styles.input}
             value={password}
-            placeholder="••••••••"
+            placeholder="Password"
             placeholderTextColor={COLORS.muted}
             onChangeText={setPassword}
             secureTextEntry
@@ -594,6 +595,15 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     fontFamily: "Inter_700Bold",
     marginBottom: 4,
+  },
+  tagline: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#6f685f",
+    letterSpacing: 2.2,
+    textTransform: "uppercase",
+    textAlign: "center",
+    marginTop: 4,
   },
   title: {
     fontSize: 26,
