@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
+import { useLocalSearchParams } from "expo-router";
 
 const AETHORIA_MAP = require("../../assets/images/aethoria-map.jpg");
 
@@ -121,6 +122,36 @@ type ChronicleSummary = {
 };
 
 type ChronicleTab = "replays" | "reports" | "campaign" | "items" | "records" | "map";
+
+function normalizeChronicleTab(tab: string | string[] | undefined): ChronicleTab {
+  const value = Array.isArray(tab) ? tab[0] : tab;
+  switch (value) {
+    case "replay":
+    case "replays":
+      return "replays";
+    case "report":
+    case "reports":
+      return "reports";
+    case "campaign":
+    case "campaigns":
+    case "story":
+      return "campaign";
+    case "item":
+    case "items":
+    case "discoveries":
+      return "items";
+    case "record":
+    case "records":
+    case "prs":
+      return "records";
+    case "map":
+    case "aethoria-map":
+    case "journey-map":
+      return "map";
+    default:
+      return "replays";
+  }
+}
 
 function useChronicleSummary() {
   const [data, setData] = useState<ChronicleSummary | null>(null);
@@ -566,14 +597,19 @@ function EmptyRecord({ title, text }: { title: string; text: string }) {
 export default function ChronicleScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { tab: requestedTab } = useLocalSearchParams<{ tab?: string | string[] }>();
   const { data: replays, isLoading } = useGetBattleLog();
   const { data: identity } = useGetPlayerStyleIdentity();
   const { data: chronicle, loading: loadingChronicle } = useChronicleSummary();
   const [selected, setSelected] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<ChronicleTab>("replays");
+  const [activeTab, setActiveTab] = useState<ChronicleTab>(() => normalizeChronicleTab(requestedTab));
   const [styleFilter, setStyleFilter] = useState<string>("all");
   const [mapZoom, setMapZoom] = useState(1);
   const [routeActive, setRouteActive] = useState(false);
+
+  useEffect(() => {
+    setActiveTab(normalizeChronicleTab(requestedTab));
+  }, [requestedTab]);
 
   const allReplays = ((chronicle?.battleReplays?.length ? chronicle.battleReplays : replays) ?? []) as any[];
   const visibleReplays = styleFilter === "all" ? allReplays : allReplays.filter((replay) => replay.dominantStyle === styleFilter);
