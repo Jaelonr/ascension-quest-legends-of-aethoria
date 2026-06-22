@@ -87,20 +87,20 @@ const SLOT_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
 };
 type TabKey = "gear" | "inventory" | "identity";
 
-const PAPER_DOLL_SLOTS: Array<{ slot: string; label: string; aliases: string[]; side: "left" | "right" | "support"; icon: keyof typeof Feather.glyphMap }> = [
-  { slot: "head", label: "Head", aliases: ["head", "helmet", "helm", "hood", "circlet"], side: "left", icon: "hard-drive" },
-  { slot: "neck", label: "Neck", aliases: ["neck", "necklace", "amulet"], side: "left", icon: "circle" },
-  { slot: "shoulders", label: "Shoulders", aliases: ["shoulders", "pauldrons", "mantle"], side: "left", icon: "layers" },
-  { slot: "arms", label: "Arms", aliases: ["arms", "bracers", "vambraces"], side: "left", icon: "activity" },
-  { slot: "waist", label: "Waist", aliases: ["waist", "belt", "sash"], side: "left", icon: "disc" },
-  { slot: "legs", label: "Legs", aliases: ["legs", "pants", "greaves"], side: "left", icon: "user" },
-  { slot: "feet", label: "Feet", aliases: ["feet", "boots"], side: "left", icon: "navigation" },
-  { slot: "cloak", label: "Cloak", aliases: ["cloak", "cape", "back"], side: "right", icon: "shield" },
-  { slot: "chest", label: "Chest", aliases: ["chest", "armor", "robe", "body"], side: "right", icon: "box" },
-  { slot: "hands", label: "Hands", aliases: ["hands", "gloves", "gloves_wraps", "wraps", "gauntlets"], side: "right", icon: "package" },
-  { slot: "ring_left", label: "Ring Left", aliases: ["ring_left", "ring"], side: "right", icon: "circle" },
-  { slot: "ring_right", label: "Ring Right", aliases: ["ring_right", "ring"], side: "right", icon: "circle" },
-  { slot: "weapon", label: "Weapon", aliases: ["weapon", "main_hand", "mainhand"], side: "right", icon: "zap" },
+const PAPER_DOLL_SLOTS: Array<{ slot: string; label: string; aliases: string[]; side: "left" | "right" | "support"; icon: keyof typeof Feather.glyphMap; x?: number; y?: number }> = [
+  { slot: "head", label: "Head", aliases: ["head", "helmet", "helm", "hood", "circlet"], side: "left", icon: "hard-drive", x: 50, y: 9 },
+  { slot: "neck", label: "Neck", aliases: ["neck", "necklace", "amulet"], side: "left", icon: "circle", x: 31, y: 21 },
+  { slot: "shoulders", label: "Shoulders", aliases: ["shoulders", "pauldrons", "mantle"], side: "left", icon: "layers", x: 18, y: 32 },
+  { slot: "arms", label: "Arms", aliases: ["arms", "bracers", "vambraces"], side: "left", icon: "activity", x: 18, y: 47 },
+  { slot: "waist", label: "Waist", aliases: ["waist", "belt", "sash"], side: "left", icon: "disc", x: 18, y: 61 },
+  { slot: "legs", label: "Legs", aliases: ["legs", "pants", "greaves"], side: "left", icon: "user", x: 18, y: 74 },
+  { slot: "feet", label: "Feet", aliases: ["feet", "boots"], side: "left", icon: "navigation", x: 18, y: 86 },
+  { slot: "cloak", label: "Cloak", aliases: ["cloak", "cape", "back"], side: "right", icon: "shield", x: 72, y: 30 },
+  { slot: "chest", label: "Chest", aliases: ["chest", "armor", "robe", "body"], side: "right", icon: "box", x: 76, y: 43 },
+  { slot: "hands", label: "Hands", aliases: ["hands", "gloves", "gloves_wraps", "wraps", "gauntlets"], side: "right", icon: "package", x: 76, y: 55 },
+  { slot: "ring_left", label: "Ring Left", aliases: ["ring_left", "ring"], side: "right", icon: "circle", x: 76, y: 67 },
+  { slot: "ring_right", label: "Ring Right", aliases: ["ring_right", "ring"], side: "right", icon: "circle", x: 77, y: 79 },
+  { slot: "weapon", label: "Weapon", aliases: ["weapon", "main_hand", "mainhand"], side: "right", icon: "zap", x: 78, y: 91 },
   { slot: "offhand", label: "Off Hand", aliases: ["offhand", "off_hand", "shield"], side: "support", icon: "shield" },
   { slot: "relic", label: "Relic", aliases: ["relic"], side: "support", icon: "star" },
   { slot: "title", label: "Title", aliases: ["title", "banner"], side: "support", icon: "award" },
@@ -189,10 +189,41 @@ function PaperDollPanel({
       </View>
       <View style={cs.paperDollFrame}>
         <Image source={PAPER_DOLL} style={cs.paperDollImage} resizeMode="contain" />
+        {normalizedSlots.filter((slot) => typeof slot.x === "number" && typeof slot.y === "number").map((slot) => {
+          const rarityColor = slot.item ? (RARITY_COLORS[slot.item.rarity ?? "common"] ?? "#9ca3af") : "#6b4d2f";
+          const active = activeSlot === slot.slot;
+          const x = slot.x ?? 0;
+          const y = slot.y ?? 0;
+          return (
+            <TouchableOpacity
+              key={`hotspot-${slot.slot}`}
+              accessibilityLabel={`Show ${slot.label} gear`}
+              style={[
+                cs.paperHotspot,
+                {
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  borderColor: active ? "#f1dfc6" : rarityColor,
+                  backgroundColor: active ? "#d9ad63" : "#080706d9",
+                },
+              ]}
+              onPress={() => onSelectSlot(slot.slot)}
+              activeOpacity={0.78}
+            >
+              <Feather name={slot.icon} size={12} color={active ? "#0a0908" : rarityColor} />
+            </TouchableOpacity>
+          );
+        })}
         <View style={cs.affinityBadge}>
           <Text style={cs.affinityLabel}>Affinity</Text>
           <Text style={cs.affinityValue}>{affinity}</Text>
         </View>
+        {activeSlot ? (
+          <View style={cs.activeSlotBanner}>
+            <Text style={cs.activeSlotLabel}>Selected</Text>
+            <Text style={cs.activeSlotValue}>{slotLabel(activeSlot)}</Text>
+          </View>
+        ) : null}
       </View>
       <View style={cs.paperSlotGrid}>
         <View style={cs.paperSlotColumn}>
@@ -665,9 +696,13 @@ const cs = StyleSheet.create({
   equippedBadgeValue: { color: "#d9ad63", fontSize: 13, fontWeight: "800", fontFamily: "Inter_700Bold" },
   paperDollFrame: { position: "relative", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#000", minHeight: 430, overflow: "hidden" },
   paperDollImage: { width: "100%", height: 430 },
+  paperHotspot: { position: "absolute", width: 28, height: 28, marginLeft: -14, marginTop: -14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   affinityBadge: { position: "absolute", left: 10, bottom: 10, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingHorizontal: 8, paddingVertical: 5, flexDirection: "row", gap: 8 },
   affinityLabel: { color: "#8f887d", fontSize: 10 },
   affinityValue: { color: "#49a3a0", fontSize: 10, textTransform: "capitalize", fontWeight: "700" },
+  activeSlotBanner: { position: "absolute", right: 10, bottom: 10, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#0c0b09e6", paddingHorizontal: 9, paddingVertical: 6, alignItems: "flex-end", maxWidth: "58%" },
+  activeSlotLabel: { color: "#8f887d", fontSize: 8, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  activeSlotValue: { color: "#d9ad63", fontSize: 12, marginTop: 1, fontFamily: "PlayfairDisplay_700Bold" },
   paperDollNote: { marginTop: 10, color: "#8f887d", fontSize: 11, lineHeight: 16 },
   paperSlotGrid: { flexDirection: "row", gap: 8, marginTop: 10 },
   paperSlotColumn: { flex: 1, gap: 6 },
