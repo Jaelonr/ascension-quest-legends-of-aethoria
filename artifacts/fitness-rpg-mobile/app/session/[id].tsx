@@ -43,7 +43,21 @@ interface CompletionData {
   totalSets: number;
   combatReplay: any;
   sessionName: string;
+  missionClaimed?: {
+    title?: string;
+    xpReward?: number;
+    goldReward?: number;
+  } | null;
 }
+
+const STYLE_META: Record<string, { label: string; color: string }> = {
+  strength: { label: "Strength", color: "#ef4444" },
+  striking: { label: "Striking", color: "#f97316" },
+  conditioning: { label: "Conditioning", color: "#0dcef5" },
+  grappling: { label: "Grappling", color: "#c084fc" },
+  recovery: { label: "Recovery", color: "#22c55e" },
+  discipline: { label: "Discipline", color: "#eab308" },
+};
 
 function CombatReplayModal({
   data,
@@ -59,6 +73,19 @@ function CombatReplayModal({
   const [revealedCount, setRevealedCount] = useState(0);
   const replay = data.combatReplay;
   const events: Array<{ text: string; type: string }> = replay?.events ?? [];
+  const styleScores = replay?.styleScores && typeof replay.styleScores === "object"
+    ? replay.styleScores as Record<string, number>
+    : {};
+  const styleRows = Object.entries(STYLE_META)
+    .map(([key, meta]) => ({
+      key,
+      ...meta,
+      value: Math.max(0, Math.min(100, Number(styleScores[key] ?? 0))),
+    }))
+    .filter((row) => row.value > 0);
+  const gearDrop = replay?.gearDrop;
+  const raidImpact = replay?.raidImpact;
+  const narrativeConsequence = replay?.narrativeConsequence;
 
   useEffect(() => {
     if (!visible) { setRevealedCount(0); return; }
@@ -95,7 +122,7 @@ function CombatReplayModal({
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-          <Text style={s.replayLabel}>─── Battle Report ───</Text>
+          <Text style={s.replayLabel}>BATTLE REPORT</Text>
           <Text style={s.replayTitle}>{replay?.encounterName ?? "Battle Complete"}</Text>
           <Text style={s.replayEnemy}>vs. {replay?.enemyName ?? data.sessionName}</Text>
 
@@ -142,6 +169,69 @@ function CombatReplayModal({
                 </View>
               </View>
 
+              {styleRows.length > 0 && (
+                <View style={s.styleBreakdown}>
+                  <Text style={s.panelKicker}>COMBAT STYLE</Text>
+                  <Text style={s.panelTitle}>{replay?.playerArchetype ?? "Earned Archetype"}</Text>
+                  {styleRows.map((row) => (
+                    <View key={row.key} style={s.styleRow}>
+                      <Text style={[s.styleLabel, { color: row.color }]}>{row.label}</Text>
+                      <View style={s.styleTrack}>
+                        <View style={[s.styleFill, { width: `${row.value}%`, backgroundColor: row.color }]} />
+                      </View>
+                      <Text style={s.stylePct}>{row.value}%</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {gearDrop && (
+                <View style={s.replayInfoCard}>
+                  <Text style={s.panelKicker}>DISCOVERED RELIC</Text>
+                  <Text style={s.replayInfoTitle}>{gearDrop.name ?? "Uncatalogued Gear"}</Text>
+                  <Text style={s.replayInfoText}>
+                    {gearDrop.description ?? "The Chronicle records this discovery even if it is later sold, salvaged, or replaced."}
+                  </Text>
+                </View>
+              )}
+
+              {data.missionClaimed && (
+                <View style={s.missionCard}>
+                  <Text style={s.panelKicker}>COMMISSION REWARD</Text>
+                  <Text style={s.replayInfoTitle}>
+                    {data.missionClaimed.title ?? "Guild duty completed"}
+                  </Text>
+                  <View style={s.missionRewards}>
+                    <Text style={s.missionRewardText}>+{data.missionClaimed.xpReward ?? 0} XP</Text>
+                    <Text style={s.missionRewardText}>+{data.missionClaimed.goldReward ?? 0} Gold</Text>
+                  </View>
+                </View>
+              )}
+
+              {raidImpact && (
+                <View style={s.replayInfoCard}>
+                  <Text style={s.panelKicker}>CAMPAIGN PRESSURE</Text>
+                  <Text style={s.replayInfoTitle}>
+                    {raidImpact.title ?? "The Guild records the result"}
+                  </Text>
+                  <Text style={s.replayInfoText}>
+                    {raidImpact.description ?? "Your field work has been added to the campaign ledger."}
+                  </Text>
+                </View>
+              )}
+
+              {narrativeConsequence && (
+                <View style={s.replayInfoCard}>
+                  <Text style={s.panelKicker}>CHRONICLE MARK</Text>
+                  <Text style={s.replayInfoTitle}>
+                    {narrativeConsequence.title ?? "A consequence is recorded"}
+                  </Text>
+                  <Text style={s.replayInfoText}>
+                    {narrativeConsequence.description ?? String(narrativeConsequence)}
+                  </Text>
+                </View>
+              )}
+
               <View style={[s.verdictBadge, { borderColor: verdictColor + "60" }]}>
                 <Text style={[s.verdictText, { color: verdictColor }]}>
                   {replay?.verdict ?? "Training Complete"}
@@ -149,7 +239,7 @@ function CombatReplayModal({
               </View>
 
               <TouchableOpacity style={s.returnBtn} onPress={onClose} activeOpacity={0.8}>
-                <Text style={s.returnBtnText}>RETURN TO BASE</Text>
+                <Text style={s.returnBtnText}>RETURN TO THE HALL</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -337,6 +427,7 @@ export default function ActiveSessionScreen() {
                     totalSets: session?.sets.length ?? 0,
                     combatReplay: data.combatReplay ?? null,
                     sessionName: session?.name ?? "Battle",
+                    missionClaimed: data.missionClaimed ?? null,
                   });
                   setShowReplay(true);
                 },
@@ -817,6 +908,98 @@ const s = StyleSheet.create({
   },
   miniStatValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff" },
   miniStatLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: "#555" },
+  styleBreakdown: {
+    borderWidth: 1,
+    borderColor: "#b58a4a55",
+    backgroundColor: "#120d08cc",
+    borderRadius: 10,
+    padding: 14,
+    gap: 8,
+  },
+  panelKicker: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: "#b58a4a",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+  },
+  panelTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#f6d08a",
+    marginBottom: 2,
+  },
+  styleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  styleLabel: {
+    width: 92,
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
+  styleTrack: {
+    flex: 1,
+    height: 6,
+    backgroundColor: "#ffffff14",
+    overflow: "hidden",
+    borderRadius: 99,
+  },
+  styleFill: {
+    height: 6,
+    borderRadius: 99,
+  },
+  stylePct: {
+    width: 34,
+    textAlign: "right",
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#d6c2a0",
+  },
+  replayInfoCard: {
+    borderWidth: 1,
+    borderColor: "#6f4b2a88",
+    backgroundColor: "#090807",
+    borderRadius: 10,
+    padding: 14,
+    gap: 6,
+  },
+  replayInfoTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#f2c36b",
+  },
+  replayInfoText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#c8bfae",
+    lineHeight: 18,
+  },
+  missionCard: {
+    borderWidth: 1,
+    borderColor: "#22c55e55",
+    backgroundColor: "#07120bcc",
+    borderRadius: 10,
+    padding: 14,
+    gap: 8,
+  },
+  missionRewards: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  missionRewardText: {
+    borderWidth: 1,
+    borderColor: "#22c55e44",
+    backgroundColor: "#22c55e12",
+    color: "#86efac",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
   verdictBadge: {
     borderWidth: 1,
     borderRadius: 12,
