@@ -53,6 +53,9 @@ type FormState = {
   activityLevel: "sedentary" | "light" | "moderate" | "active" | "very_active" | "";
   weightGoal: "lose" | "maintain" | "gain";
   goalFocus: "strength" | "allround" | "combat" | "endurance" | "";
+  originFocus: "warrior" | "swift" | "precise" | "unawakened" | "";
+  trainingFrequency: "daily" | "regular" | "occasional" | "none" | "";
+  combatInstinct: "force" | "tactical" | "endure" | "speed" | "";
   height: string;
   weight: string;
   bodyFatPct: string;
@@ -72,6 +75,9 @@ const empty: FormState = {
   activityLevel: "",
   weightGoal: "maintain",
   goalFocus: "",
+  originFocus: "",
+  trainingFrequency: "",
+  combatInstinct: "",
   height: "",
   weight: "",
   bodyFatPct: "",
@@ -103,6 +109,27 @@ const GOAL_OPTIONS = [
   { id: "allround", label: "All-Around Adventurer", desc: "Balanced fitness and discipline.", baseClass: "adventurer", weightGoal: "maintain" as const, bonuses: { strength: 2, agility: 1, stamina: 1, vitality: 1, discipline: 2, sense: 0 } },
   { id: "combat", label: "Combat Arts", desc: "Striking, grappling, and skill practice.", baseClass: "striker", weightGoal: "gain" as const, bonuses: { strength: 1, agility: 2, stamina: 1, vitality: 0, discipline: 2, sense: 1 } },
   { id: "endurance", label: "Endurance Path", desc: "Conditioning, resilience, and recovery.", baseClass: "ranger", weightGoal: "maintain" as const, bonuses: { strength: 0, agility: 1, stamina: 4, vitality: 1, discipline: 1, sense: 1 } },
+] as const;
+
+const ORIGIN_OPTIONS = [
+  { id: "warrior", label: "Iron Warrior", desc: "Heavy iron was your calling before the summoning.", tag: "STR / VIT", bonuses: { strength: 3, agility: 0, stamina: 0, vitality: 2, discipline: 0, sense: 0 } },
+  { id: "swift", label: "Swift Shadow", desc: "Speed and endurance defined the body you brought here.", tag: "AGI / STA", bonuses: { strength: 0, agility: 3, stamina: 2, vitality: 0, discipline: 0, sense: 0 } },
+  { id: "precise", label: "Precise Tactician", desc: "Technique, consistency, and careful form shaped you.", tag: "DIS / SEN", bonuses: { strength: 0, agility: 0, stamina: 0, vitality: 0, discipline: 3, sense: 2 } },
+  { id: "unawakened", label: "The Unawakened", desc: "Untested, but ready to become more than you were.", tag: "Balanced", bonuses: { strength: 1, agility: 1, stamina: 1, vitality: 1, discipline: 1, sense: 0 } },
+] as const;
+
+const FREQUENCY_OPTIONS = [
+  { id: "daily", label: "Every Day", desc: "Training was already part of your daily life.", tag: "All +2", bonuses: { strength: 2, agility: 2, stamina: 2, vitality: 2, discipline: 2, sense: 2 } },
+  { id: "regular", label: "3-4x Per Week", desc: "Consistent effort. You showed up more often than not.", tag: "All +1", bonuses: { strength: 1, agility: 1, stamina: 1, vitality: 1, discipline: 1, sense: 1 } },
+  { id: "occasional", label: "1-2x Per Week", desc: "You were finding rhythm before the summoning.", tag: "Baseline", bonuses: { strength: 0, agility: 0, stamina: 0, vitality: 0, discipline: 0, sense: 0 } },
+  { id: "none", label: "Not Yet", desc: "This body begins untested, and hungry for change.", tag: "Baseline", bonuses: { strength: 0, agility: 0, stamina: 0, vitality: 0, discipline: 0, sense: 0 } },
+] as const;
+
+const INSTINCT_OPTIONS = [
+  { id: "force", label: "Raw Force", desc: "You overwhelm with power. Every rep is a war.", tag: "STR +2", bonuses: { strength: 2, agility: 0, stamina: 0, vitality: 0, discipline: 0, sense: 0 } },
+  { id: "tactical", label: "Calculated Precision", desc: "Every movement is intentional and measured.", tag: "DIS +2 / SEN +1", bonuses: { strength: 0, agility: 0, stamina: 0, vitality: 0, discipline: 2, sense: 1 } },
+  { id: "endure", label: "Relentless Pressure", desc: "You outlast what stands in front of you.", tag: "STA +2 / VIT +1", bonuses: { strength: 0, agility: 0, stamina: 2, vitality: 1, discipline: 0, sense: 0 } },
+  { id: "speed", label: "Blinding Speed", desc: "Fast, unpredictable, and hard to pin down.", tag: "AGI +2 / SEN +1", bonuses: { strength: 0, agility: 2, stamina: 0, vitality: 0, discipline: 0, sense: 1 } },
 ] as const;
 
 const CLASS_PATHS = [
@@ -169,6 +196,9 @@ function toForm(data: any, units: Units): FormState {
     activityLevel: "",
     weightGoal: "maintain",
     goalFocus: "",
+    originFocus: "",
+    trainingFrequency: "",
+    combatInstinct: "",
     height: data?.heightCm != null ? String(metric ? data.heightCm : cmToIn(data.heightCm)) : "",
     weight: data?.weightKg != null ? String(metric ? data.weightKg : kgToLbs(data.weightKg)) : "",
     bodyFatPct: data?.bodyFatPct != null ? String(data.bodyFatPct) : "",
@@ -238,13 +268,16 @@ export default function ProfileScreen() {
   };
 
   const chosenGoal = GOAL_OPTIONS.find((item) => item.id === form.goalFocus);
+  const chosenOrigin = ORIGIN_OPTIONS.find((item) => item.id === form.originFocus);
+  const chosenFrequency = FREQUENCY_OPTIONS.find((item) => item.id === form.trainingFrequency);
+  const chosenInstinct = INSTINCT_OPTIONS.find((item) => item.id === form.combatInstinct);
   const startingStats = (() => {
     const base = { strength: 1, agility: 1, stamina: 1, vitality: 1, discipline: 1, sense: 1 };
-    if (chosenGoal) {
-      Object.entries(chosenGoal.bonuses).forEach(([key, value]) => {
+    [chosenGoal, chosenOrigin, chosenFrequency, chosenInstinct].forEach((source) => {
+      Object.entries(source?.bonuses ?? {}).forEach(([key, value]) => {
         base[key as keyof typeof base] += value;
       });
-    }
+    });
     if (form.activityLevel) {
       Object.entries(ACTIVITY_BONUS[form.activityLevel]).forEach(([key, value]) => {
         base[key as keyof typeof base] += value ?? 0;
@@ -271,13 +304,19 @@ export default function ProfileScreen() {
     Number(form.ageYears) <= 100 &&
     !!form.sex &&
     !!form.activityLevel &&
-    !!form.goalFocus;
+    !!form.goalFocus &&
+    !!form.originFocus &&
+    !!form.trainingFrequency &&
+    !!form.combatInstinct;
   const scanRequirements = [
     { label: "Name", complete: form.name.trim().length > 1 },
     { label: "Age", complete: Number(form.ageYears) >= 10 && Number(form.ageYears) <= 100 },
     { label: "Sex", complete: !!form.sex },
     { label: "Activity", complete: !!form.activityLevel },
     { label: "Path", complete: !!form.goalFocus },
+    { label: "Origin", complete: !!form.originFocus },
+    { label: "History", complete: !!form.trainingFrequency },
+    { label: "Style", complete: !!form.combatInstinct },
   ];
   const completedScanRequirements = scanRequirements.filter((item) => item.complete).length;
   const scanProgress = completedScanRequirements / scanRequirements.length;
@@ -318,7 +357,7 @@ export default function ProfileScreen() {
 
   const completeInitialScan = () => {
     if (!scanReady || !chosenGoal) {
-      Alert.alert("Scan incomplete", "Enter name, age, sex, activity level, and your first path before completing the scan.");
+      Alert.alert("Scan incomplete", "Enter name, age, sex, activity, first path, origin, training history, and combat instinct before completing the scan.");
       return;
     }
     const toKg = (value: string) => {
@@ -463,6 +502,54 @@ export default function ProfileScreen() {
                     <View style={s.choiceTop}>
                       <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
                       <Text style={s.classTag}>{option.baseClass}</Text>
+                    </View>
+                    <Text style={s.choiceDesc}>{option.desc}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={s.groupLabel}>Origin Signal</Text>
+            <View style={s.stack}>
+              {ORIGIN_OPTIONS.map((option) => {
+                const selected = form.originFocus === option.id;
+                return (
+                  <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => setField("originFocus", option.id)}>
+                    <View style={s.choiceTop}>
+                      <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                      <Text style={s.classTag}>{option.tag}</Text>
+                    </View>
+                    <Text style={s.choiceDesc}>{option.desc}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={s.groupLabel}>Training History</Text>
+            <View style={s.stack}>
+              {FREQUENCY_OPTIONS.map((option) => {
+                const selected = form.trainingFrequency === option.id;
+                return (
+                  <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => setField("trainingFrequency", option.id)}>
+                    <View style={s.choiceTop}>
+                      <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                      <Text style={s.classTag}>{option.tag}</Text>
+                    </View>
+                    <Text style={s.choiceDesc}>{option.desc}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={s.groupLabel}>Combat Instinct</Text>
+            <View style={s.stack}>
+              {INSTINCT_OPTIONS.map((option) => {
+                const selected = form.combatInstinct === option.id;
+                return (
+                  <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => setField("combatInstinct", option.id)}>
+                    <View style={s.choiceTop}>
+                      <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                      <Text style={s.classTag}>{option.tag}</Text>
                     </View>
                     <Text style={s.choiceDesc}>{option.desc}</Text>
                   </TouchableOpacity>
