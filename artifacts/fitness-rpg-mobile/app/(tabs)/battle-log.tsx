@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
 
 const AETHORIA_MAP = require("../../assets/images/aethoria-map.jpg");
@@ -39,6 +40,16 @@ const MAP_FEATURES = [
   "Campaign Routes",
   "Return Stone Journeys",
 ];
+const MAP_PATH_POINTS = [
+  [42, 45],
+  [40, 48],
+  [38, 51],
+  [36, 54],
+  [34, 56],
+  [32, 58],
+  [30, 60],
+] as const;
+const RETURN_STONE_PATH = "M 30 60 C 34 54 38 49 42 45";
 const MAP_CLUES = [
   {
     source: "Hall Ledger",
@@ -573,7 +584,12 @@ export default function ChronicleScreen() {
     : 0;
   const footSteps = Math.max(1800, Math.round((identity?.totalSessions ?? 0) * 900 + allReplays.length * 650 + prTotal * 250));
   const footMiles = Math.max(0.8, footSteps / 2200);
-  const assistedMiles = Math.max(10, Math.round(((identity?.totalSessions ?? 0) * 1.8 + allReplays.length * 3.2 + prTotal * 1.5) * 10) / 10);
+  const caravanMiles = Math.max(8, Math.round(((identity?.totalSessions ?? 0) * 1.8 + allReplays.length * 3.2) * 10) / 10);
+  const mountMiles = Math.max(2, Math.round((prTotal * 1.5 + Math.max(0, allReplays.length - 1) * 0.8) * 10) / 10);
+  const assistedMiles = caravanMiles + mountMiles;
+  const pathLength = `M ${MAP_PATH_POINTS[0][0]} ${MAP_PATH_POINTS[0][1]} ` +
+    MAP_PATH_POINTS.slice(1).map((point) => `L ${point[0]} ${point[1]}`).join(" ");
+  const footRouteProgress = Math.min(72, Math.max(9, Math.round((footMiles / Math.max(1, assistedMiles + footMiles)) * 100)));
   const mapTitle = chronicle?.map?.title && chronicle.map.title !== "Journey Map" ? chronicle.map.title : "Map of Aethoria";
   const mapDescription = chronicle?.map?.description && chronicle.map.description !== "The Guild cartographers are preparing the map."
     ? chronicle.map.description
@@ -686,8 +702,52 @@ export default function ChronicleScreen() {
           >
             <Image source={AETHORIA_MAP} style={ch.mapImage} resizeMode="cover" />
             <View style={ch.mapOverlay}>
-              <View style={[ch.routeLine, routeActive && ch.routeLineActive]} />
-              <View style={[ch.returnRouteLine, routeActive && ch.returnRouteLineActive]} />
+              <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={ch.routeSvg}>
+                <Rect x="0" y="0" width="100" height="100" fill="rgba(4, 7, 8, 0.15)" />
+                <Path d={pathLength} fill="none" stroke="rgba(7, 7, 6, 0.82)" strokeDasharray="0.2 2.6" strokeWidth={0.72} strokeLinecap="round" strokeLinejoin="round" />
+                {routeActive && (
+                  <Path d={pathLength} fill="none" stroke="rgba(7, 7, 6, 0.82)" strokeWidth={1.55} strokeLinecap="round" strokeLinejoin="round" />
+                )}
+                <Path
+                  d={pathLength}
+                  fill="none"
+                  stroke="#49a3a0"
+                  strokeDasharray="0.3 2.5"
+                  strokeWidth={0.42}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={0.82}
+                />
+                {routeActive && (
+                  <Path
+                    d={pathLength}
+                    fill="none"
+                    stroke="#49a3a0"
+                    strokeDasharray="2.4 2.2"
+                    strokeWidth={0.86}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    opacity={0.9}
+                  />
+                )}
+                <Path
+                  d={pathLength}
+                  fill="none"
+                  stroke="#d9ad63"
+                  strokeDasharray={`${footRouteProgress} ${100 - footRouteProgress}`}
+                  strokeWidth={0.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <Path d={RETURN_STONE_PATH} fill="none" stroke="#a78bfa" strokeDasharray="0.3 2.4" strokeWidth={0.42} strokeLinecap="round" opacity={0.88} />
+                {routeActive && (
+                  <Path d={RETURN_STONE_PATH} fill="none" stroke="#a78bfa" strokeDasharray="1.1 1.3" strokeWidth={0.82} strokeLinecap="round" opacity={0.9} />
+                )}
+                {MAP_PATH_POINTS.slice(0, Math.max(2, Math.ceil((footRouteProgress / 100) * MAP_PATH_POINTS.length))).map(([x, y], index) => (
+                  <Circle key={`${x}-${y}`} cx={x} cy={y} r={index === 0 ? 0.8 : 0.58} fill={index === 0 ? "#49a3a0" : "#d9ad63"} stroke="#0c0b09" strokeWidth={0.28} />
+                ))}
+                <Circle cx="30" cy="60" r={0.86} fill="#a78bfa" stroke="#0c0b09" strokeWidth={0.28} />
+              </Svg>
               <Text style={ch.mapMarker}>Summoning marker</Text>
               <Text style={[ch.mapMarker, ch.mapEndpoint]}>Expedition endpoint</Text>
             </View>
@@ -701,12 +761,13 @@ export default function ChronicleScreen() {
         <View style={ch.travelGrid}>
           <StatTile label="On Foot" value={`${footSteps.toLocaleString()} steps`} tone="#d9ad63" />
           <StatTile label="Effort Miles" value={footMiles.toFixed(1)} tone="#d9ad63" />
-          <StatTile label="Caravan/Mount" value={`${assistedMiles.toFixed(1)} mi`} tone="#49a3a0" />
+          <StatTile label="Caravan" value={`${caravanMiles.toFixed(1)} mi`} tone="#49a3a0" />
+          <StatTile label="Mount" value={`${mountMiles.toFixed(1)} mi`} tone="#49a3a0" />
           <StatTile label="Return Stone" value="Guild Hall" tone="#c4b5fd" />
         </View>
         <View style={ch.recordCard}>
           <Text style={ch.recordTitle}>Route Ledger</Text>
-          <Text style={ch.recordText}>On-foot effort marks only the work performed by the adventurer. Caravan and mount miles represent travel handled by roads, guides, and mounts. Every expedition endpoint returns to the Guild Hall by stone.</Text>
+          <Text style={ch.recordText}>Gold marks on-foot effort earned from real steps. Teal routes are assisted travel handled by roads, caravans, mounts, and guides. Every expedition endpoint returns to the Guild Hall by stone, not by walking back across Aethoria.</Text>
         </View>
         <View style={ch.featureGrid}>
           {MAP_FEATURES.map((feature) => (
@@ -913,12 +974,9 @@ const ch = StyleSheet.create({
   mapCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#070706", overflow: "hidden" },
   mapImage: { width: "100%", aspectRatio: 1.58 },
   mapOverlay: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
-  routeLine: { position: "absolute", left: "28%", top: "53%", width: "28%", borderTopWidth: 2, borderStyle: "dashed", borderColor: "#49a3a0", transform: [{ rotate: "-28deg" }], opacity: 0.9 },
-  routeLineActive: { borderTopWidth: 5, borderStyle: "solid", opacity: 1 },
-  returnRouteLine: { position: "absolute", left: "31%", top: "55%", width: "20%", borderTopWidth: 2, borderStyle: "dashed", borderColor: "#a78bfa", transform: [{ rotate: "-39deg" }], opacity: 0.85 },
-  returnRouteLineActive: { borderTopWidth: 4, borderStyle: "solid", opacity: 1 },
-  mapMarker: { position: "absolute", left: "38%", top: "42%", borderWidth: 1, borderColor: "#49a3a0", backgroundColor: "#061010dd", color: "#bde7df", fontSize: 9, paddingHorizontal: 6, paddingVertical: 3, fontFamily: "Inter_700Bold" },
-  mapEndpoint: { left: "22%", top: "58%", borderColor: "#a78bfa", backgroundColor: "#10091add", color: "#ddd6fe" },
+  routeSvg: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
+  mapMarker: { position: "absolute", left: "36%", top: "38%", borderWidth: 1, borderColor: "#49a3a0", backgroundColor: "#061010dd", color: "#bde7df", fontSize: 9, paddingHorizontal: 6, paddingVertical: 3, fontFamily: "Inter_700Bold" },
+  mapEndpoint: { left: "22%", top: "60%", borderColor: "#a78bfa", backgroundColor: "#10091add", color: "#ddd6fe" },
   mapTitle: { color: "#e5c386", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
   mapNote: { color: "#9f9586", fontSize: 12, lineHeight: 18, borderLeftWidth: 2, borderLeftColor: "#6b4d2f", paddingLeft: 10, marginTop: 10, fontFamily: "Inter_400Regular" },
   mapLegend: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10, gap: 8 },
