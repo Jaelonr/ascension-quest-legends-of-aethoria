@@ -9,6 +9,13 @@ export type MobileSettings = {
   soundsEnabled: boolean;
   reducedMotion: boolean;
   compactMode: boolean;
+  notificationsEnabled: boolean;
+  workoutReminder: boolean;
+  achievementAlerts: boolean;
+  raidAlerts: boolean;
+  streakAlerts: boolean;
+  biometricLock: boolean;
+  autoLock: boolean;
   analyticsEnabled: boolean;
   crashReports: boolean;
 };
@@ -21,6 +28,13 @@ export const DEFAULT_MOBILE_SETTINGS: MobileSettings = {
   soundsEnabled: true,
   reducedMotion: false,
   compactMode: false,
+  notificationsEnabled: false,
+  workoutReminder: false,
+  achievementAlerts: true,
+  raidAlerts: true,
+  streakAlerts: true,
+  biometricLock: false,
+  autoLock: false,
   analyticsEnabled: true,
   crashReports: true,
 };

@@ -332,6 +332,67 @@ export default function SettingsScreen() {
           />
         </Section>
 
+        <Section icon="bell" title="Notifications">
+          <ToggleRow
+            icon="bell"
+            label="Push Notifications"
+            description="Preference saved here; native delivery still needs platform permission wiring."
+            value={settings.notificationsEnabled}
+            onValueChange={(v) => setSetting("notificationsEnabled", v)}
+          />
+          <ToggleRow
+            icon="clock"
+            label="Workout Reminder"
+            description="Daily training reminder preference for the production notification worker."
+            value={settings.workoutReminder}
+            onValueChange={(v) => setSetting("workoutReminder", v)}
+          />
+          <ToggleRow
+            icon="award"
+            label="Achievement Alerts"
+            description="Notify when titles, PRs, and major Chronicle marks are earned."
+            value={settings.achievementAlerts}
+            onValueChange={(v) => setSetting("achievementAlerts", v)}
+          />
+          <ToggleRow
+            icon="flag"
+            label="Raid Alerts"
+            description="Notify when Gates, bosses, or campaign pressure need attention."
+            value={settings.raidAlerts}
+            onValueChange={(v) => setSetting("raidAlerts", v)}
+          />
+          <ToggleRow
+            icon="activity"
+            label="Streak Alerts"
+            description="Warn when consistency is at risk without encouraging unsafe training."
+            value={settings.streakAlerts}
+            onValueChange={(v) => setSetting("streakAlerts", v)}
+          />
+        </Section>
+
+        <Section icon="lock" title="Security">
+          <ToggleRow
+            icon="shield"
+            label="Biometric Lock"
+            description="Preference saved; enforcement requires native secure storage and biometric unlock wiring."
+            value={settings.biometricLock}
+            onValueChange={(v) => setSetting("biometricLock", v)}
+          />
+          <ToggleRow
+            icon="clock"
+            label="Auto-Lock"
+            description="Future native guard for when the app is backgrounded."
+            value={settings.autoLock}
+            onValueChange={(v) => setSetting("autoLock", v)}
+          />
+          <Row
+            icon="alert-circle"
+            label="Security Readiness"
+            description="These settings mirror the web surface. Full device lock behavior should be implemented before production claims."
+            right={<Text style={s.statusSoon}>Planned</Text>}
+          />
+        </Section>
+
         <Section icon="activity" title="Health Imports">
           <Row
             icon="smartphone"
