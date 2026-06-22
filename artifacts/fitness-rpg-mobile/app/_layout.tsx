@@ -79,6 +79,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="session" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen name="training" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="records" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>

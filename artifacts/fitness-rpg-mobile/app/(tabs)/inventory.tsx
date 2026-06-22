@@ -5,6 +5,7 @@ import {
   useEquipGear,
   useGetPlayerStyleIdentity,
 } from "@workspace/api-client-react";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -129,6 +130,7 @@ export default function CharacterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
+  const router = useRouter();
   const [tab, setTab] = useState<TabKey>("gear");
 
   const { data: char, loading: charLoading } = useCharSummary();
@@ -345,6 +347,10 @@ export default function CharacterScreen() {
                 </View>
               );
             })}
+            <TouchableOpacity style={cs.profileBtn} onPress={() => router.push("/profile" as any)} activeOpacity={0.8}>
+              <Text style={cs.profileBtnTitle}>Open System Record</Text>
+              <Text style={cs.profileBtnText}>Edit biometrics, strength marks, equipment access, and notes.</Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -442,6 +448,9 @@ const cs = StyleSheet.create({
   identityBarTrack: { flex: 1, height: 4, backgroundColor: "#2a2520", borderRadius: 2, overflow: "hidden" },
   identityBarFill: { height: 4, borderRadius: 2 },
   identityBarPct: { width: 30, textAlign: "right", fontSize: 10, color: "#6b5d4f" },
+  profileBtn: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 12, marginTop: 12 },
+  profileBtnTitle: { color: "#d9ad63", fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  profileBtnText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
   empty: { borderWidth: 1, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 8, marginTop: 8 },
   emptyTitle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   emptyDesc: { fontSize: 12, textAlign: "center", lineHeight: 18 },
