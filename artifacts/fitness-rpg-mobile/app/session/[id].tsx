@@ -267,6 +267,7 @@ export default function ActiveSessionScreen() {
   const [openExId, setOpenExId] = useState<number | null>(null);
   const [weight, setWeight] = useState("45");
   const [reps, setReps] = useState("10");
+  const [rpe, setRpe] = useState("8");
   const [restSecs, setRestSecs] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [prFlash, setPrFlash] = useState<number | null>(null);
@@ -367,6 +368,7 @@ export default function ActiveSessionScreen() {
       const last = exSets[exSets.length - 1];
       setWeight(String(convertWeight(Number(last.weight), (last as any).weightUnit, weightUnit)));
       setReps(String(last.reps));
+      setRpe(String((last as any).rpe ?? 8));
     } else {
       const tmpl = exercises.find((e) => e.exerciseId === openExId);
       if (tmpl?.reps) {
@@ -374,6 +376,7 @@ export default function ActiveSessionScreen() {
         if (m) setReps(m[0]);
       }
       setWeight(weightUnit === "kg" ? "20" : "45");
+      setRpe("8");
     }
   }, [openExId, weightUnit]);
 
@@ -389,6 +392,7 @@ export default function ActiveSessionScreen() {
           reps: parseInt(reps, 10) || 1,
           weight: parseFloat(weight) || 0,
           weightUnit: weightUnit as WorkoutSetInputWeightUnit,
+          rpe: Math.max(1, Math.min(10, parseInt(rpe, 10) || 8)),
         },
       },
       {
@@ -601,6 +605,9 @@ export default function ActiveSessionScreen() {
                       <Text style={[s.setWeight, { color: colors.foreground }]}>
                         {set.weight}{set.weightUnit} × {set.reps}
                       </Text>
+                      {(set as any).rpe && (
+                        <Text style={[s.setRpe, { color: colors.mutedForeground }]}>RPE {(set as any).rpe}</Text>
+                      )}
                       {(set as any).isPr && (
                         <View style={s.prMini}>
                           <Text style={s.prMiniText}>⭐ PR</Text>
@@ -633,6 +640,19 @@ export default function ActiveSessionScreen() {
                         value={reps}
                         onChangeText={setReps}
                         keyboardType="number-pad"
+                        selectTextOnFocus
+                        returnKeyType="done"
+                        onSubmitEditing={() => handleLogSet(exId)}
+                      />
+                    </View>
+                    <View style={s.rpeInputGroup}>
+                      <Text style={[s.inputLabel, { color: colors.mutedForeground }]}>RPE</Text>
+                      <TextInput
+                        style={[s.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                        value={rpe}
+                        onChangeText={setRpe}
+                        keyboardType="number-pad"
+                        maxLength={2}
                         selectTextOnFocus
                         returnKeyType="done"
                         onSubmitEditing={() => handleLogSet(exId)}
@@ -781,6 +801,7 @@ const s = StyleSheet.create({
   },
   setNum: { fontSize: 11, fontFamily: "Inter_500Medium", width: 18 },
   setWeight: { fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 },
+  setRpe: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
   prMini: {
     backgroundColor: "#ffbf0015",
     borderRadius: 4,
@@ -795,6 +816,7 @@ const s = StyleSheet.create({
   },
   inputRow: { flexDirection: "row", gap: 10 },
   inputGroup: { flex: 1, gap: 4 },
+  rpeInputGroup: { width: 74, gap: 4 },
   inputLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 1.5 },
   input: {
     borderWidth: 1,
