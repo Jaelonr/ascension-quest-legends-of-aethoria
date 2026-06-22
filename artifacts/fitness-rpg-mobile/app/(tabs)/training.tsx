@@ -4,6 +4,7 @@ import {
   useCreateWorkoutSession,
   useGetGuildHallToday,
 } from "@workspace/api-client-react";
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -32,6 +33,21 @@ const MUSCLE_COLORS: Record<string, string> = {
   chest: "#ef4444", back: "#3b82f6", legs: "#a855f7",
   shoulders: "#f97316", arms: "#22c55e", core: "#eab308", full_body: "#0dcef5",
 };
+
+const EVIDENCE_OUTCOMES: Array<{ icon: keyof typeof Feather.glyphMap; title: string; text: string; color: string }> = [
+  { icon: "book-open", title: "Combat Replay", text: "Completed sessions become Chronicle battle records.", color: "#49a3a0" },
+  { icon: "award", title: "Rewards", text: "XP, gold, PRs, and titles are awarded once.", color: "#d9ad63" },
+  { icon: "activity", title: "Style Identity", text: "Training style shapes class paths and archetypes.", color: "#a855f7" },
+  { icon: "check-circle", title: "Commission Proof", text: "Relevant work advances today's Guild duty.", color: "#7cc79b" },
+];
+
+function IconBox({ name, color = "#d9ad63" }: { name: keyof typeof Feather.glyphMap; color?: string }) {
+  return (
+    <View style={s.iconBox}>
+      <Feather name={name} size={18} color={color} />
+    </View>
+  );
+}
 
 export default function TrainingScreen() {
   const colors = useColors();
@@ -85,7 +101,7 @@ export default function TrainingScreen() {
           </View>
 
           <View style={s.prepCard}>
-            <View style={s.iconBox}><Text style={s.iconText}>SH</Text></View>
+            <IconBox name="shield" />
             <View style={{ flex: 1 }}>
               <Text style={s.prepTitle}>Commission Preparation</Text>
               <Text style={s.prepText}>
@@ -98,7 +114,7 @@ export default function TrainingScreen() {
           {commission && (
             <View style={s.commissionCard}>
               <View style={s.commissionHeader}>
-                <View style={s.iconBox}><Text style={s.iconText}>FL</Text></View>
+                <IconBox name="flag" />
                 <View style={{ flex: 1 }}>
                   <View style={s.titleRow}>
                     <Text style={s.commissionTitle}>Today's Commission</Text>
@@ -149,7 +165,7 @@ export default function TrainingScreen() {
 
           <View style={s.actionGrid}>
             <TouchableOpacity style={s.actionCard} activeOpacity={0.8} onPress={() => router.push("/training/program" as any)}>
-              <View style={s.iconBox}><Text style={s.iconText}>8W</Text></View>
+              <IconBox name="calendar" />
               <View style={{ flex: 1 }}>
                 <Text style={s.actionTitle}>8-Week Campaign Program</Text>
                 <Text style={s.actionText}>Progressive strength and combat preparation</Text>
@@ -157,7 +173,7 @@ export default function TrainingScreen() {
               <Text style={s.actionState}>Open</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.actionCard} activeOpacity={0.8} onPress={() => router.push("/training/planner" as any)}>
-              <View style={s.iconBox}><Text style={s.iconText}>AI</Text></View>
+              <IconBox name="zap" color="#49a3a0" />
               <View style={{ flex: 1 }}>
                 <Text style={s.actionTitle}>Guild Drill Planner</Text>
                 <Text style={s.actionText}>Equipment-aware plan generation for the day</Text>
@@ -191,6 +207,24 @@ export default function TrainingScreen() {
               </View>
             </View>
           )}
+
+          <View style={s.outcomeCard}>
+            <Text style={s.sectionLabel}>TRAINING LEDGER</Text>
+            <Text style={s.evidenceTitle}>How effort enters the legend</Text>
+            <View style={s.outcomeStack}>
+              {EVIDENCE_OUTCOMES.map((outcome) => (
+                <View key={outcome.title} style={s.outcomeRow}>
+                  <View style={[s.outcomeIcon, { borderColor: outcome.color + "66" }]}>
+                    <Feather name={outcome.icon} size={14} color={outcome.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.outcomeTitle}>{outcome.title}</Text>
+                    <Text style={s.outcomeText}>{outcome.text}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
 
           {/* Templates header */}
           <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>AVAILABLE DRILLS</Text>
@@ -322,7 +356,6 @@ const s = StyleSheet.create({
   headerDesc: { color: "#9f9586", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginTop: 2 },
   prepCard: { flexDirection: "row", gap: 12, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14, marginBottom: 14 },
   iconBox: { width: 38, height: 38, borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#15130f", alignItems: "center", justifyContent: "center" },
-  iconText: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold" },
   prepTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   prepText: { color: "#cfc5b8", fontSize: 13, lineHeight: 20, marginTop: 4, fontFamily: "Inter_400Regular" },
   commissionCard: { borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#11100e", padding: 14, marginBottom: 14 },
@@ -352,6 +385,12 @@ const s = StyleSheet.create({
   evidenceTile: { flex: 1, borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", paddingVertical: 10, alignItems: "center" },
   evidenceValue: { fontSize: 16, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   evidenceLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, marginTop: 2, fontFamily: "Inter_400Regular" },
+  outcomeCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14, marginBottom: 16 },
+  outcomeStack: { gap: 8, marginTop: 10 },
+  outcomeRow: { flexDirection: "row", gap: 10, borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", padding: 10, alignItems: "flex-start" },
+  outcomeIcon: { width: 28, height: 28, borderWidth: 1, backgroundColor: "#15130f", alignItems: "center", justifyContent: "center" },
+  outcomeTitle: { color: "#d8c4a5", fontSize: 12, fontFamily: "Inter_700Bold" },
+  outcomeText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 2, fontFamily: "Inter_400Regular" },
   commissionBanner: { borderWidth: 1, backgroundColor: "#15130f", padding: 14, marginBottom: 16 },
   bannerLabel: { fontSize: 9, letterSpacing: 2, color: "#d9ad63", textTransform: "uppercase", marginBottom: 4, fontFamily: "Inter_400Regular" },
   bannerTitle: { fontSize: 14, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
