@@ -1,5 +1,5 @@
 import { useGetBiometrics, useGetPlayer, useSetupPlayer, useUpdateBiometrics } from "@workspace/api-client-react";
-import { loadMobileSettings, type Units } from "@/utils/mobile-settings";
+import { loadMobileSettings, type Units, type WeightUnit } from "@/utils/mobile-settings";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -186,9 +186,10 @@ function inToFtIn(inches: number) {
   return `${ft}'${rem}"`;
 }
 
-function toForm(data: any, units: Units): FormState {
-  const metric = units === "metric";
-  const lift = (value: number | null | undefined) => value == null ? "" : String(metric ? value : kgToLbs(value));
+function toForm(data: any, units: Units, weightUnit: WeightUnit): FormState {
+  const metricHeight = units === "metric";
+  const metricWeight = weightUnit === "kg";
+  const lift = (value: number | null | undefined) => value == null ? "" : String(metricWeight ? value : kgToLbs(value));
   return {
     name: "",
     ageYears: "",
@@ -199,8 +200,8 @@ function toForm(data: any, units: Units): FormState {
     originFocus: "",
     trainingFrequency: "",
     combatInstinct: "",
-    height: data?.heightCm != null ? String(metric ? data.heightCm : cmToIn(data.heightCm)) : "",
-    weight: data?.weightKg != null ? String(metric ? data.weightKg : kgToLbs(data.weightKg)) : "",
+    height: data?.heightCm != null ? String(metricHeight ? data.heightCm : cmToIn(data.heightCm)) : "",
+    weight: data?.weightKg != null ? String(metricWeight ? data.weightKg : kgToLbs(data.weightKg)) : "",
     bodyFatPct: data?.bodyFatPct != null ? String(data.bodyFatPct) : "",
     squat1rm: lift(data?.squat1rm),
     bench1rm: lift(data?.bench1rm),
@@ -222,12 +223,15 @@ export default function ProfileScreen() {
   const [form, setForm] = useState<FormState>(empty);
   const [dirty, setDirty] = useState(false);
   const [unitSystem, setUnitSystem] = useState<Units>("imperial");
+  const [weightUnitSetting, setWeightUnitSetting] = useState<WeightUnit>("lbs");
 
   useEffect(() => {
     let mounted = true;
     loadMobileSettings()
       .then((settings) => {
-        if (mounted) setUnitSystem(settings.units);
+        if (!mounted) return;
+        setUnitSystem(settings.units);
+        setWeightUnitSetting(settings.weightUnit);
       })
       .catch(() => undefined);
     return () => {
@@ -237,10 +241,10 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (data) {
-      setForm((prev) => ({ ...prev, ...toForm(data, unitSystem), name: prev.name || player?.name || "" }));
+      setForm((prev) => ({ ...prev, ...toForm(data, unitSystem, weightUnitSetting), name: prev.name || player?.name || "" }));
       setDirty(false);
     }
-  }, [data, player?.name, unitSystem]);
+  }, [data, player?.name, unitSystem, weightUnitSetting]);
 
   const setField = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -324,7 +328,7 @@ export default function ProfileScreen() {
   const save = () => {
     const toKg = (value: string) => {
       const parsed = numOrNull(value);
-      return parsed == null ? null : unitSystem === "metric" ? parsed : lbsToKg(parsed);
+      return parsed == null ? null : weightUnitSetting === "kg" ? parsed : lbsToKg(parsed);
     };
     const toCm = (value: string) => {
       const parsed = numOrNull(value);
@@ -362,7 +366,7 @@ export default function ProfileScreen() {
     }
     const toKg = (value: string) => {
       const parsed = numOrNull(value);
-      return parsed == null ? null : unitSystem === "metric" ? parsed : lbsToKg(parsed);
+      return parsed == null ? null : weightUnitSetting === "kg" ? parsed : lbsToKg(parsed);
     };
     const toCm = (value: string) => {
       const parsed = numOrNull(value);
@@ -402,7 +406,7 @@ export default function ProfileScreen() {
   const heightNum = parseFloat(form.height);
   const heightHint = unitSystem === "imperial" && Number.isFinite(heightNum) && heightNum > 0 ? inToFtIn(heightNum) : null;
   const heightUnit = unitSystem === "metric" ? "cm" : "in";
-  const weightUnit = unitSystem === "metric" ? "kg" : "lbs";
+  const displayWeightUnit = weightUnitSetting;
   const lifts: Array<{ field: keyof FormState; label: string; placeholder: string }> = [
     { field: "squat1rm", label: "Squat", placeholder: "315" },
     { field: "bench1rm", label: "Bench Press", placeholder: "225" },
@@ -444,7 +448,9 @@ export default function ProfileScreen() {
 
       <View style={s.unitCard}>
         <Text style={s.unitLabel}>Unit System</Text>
-        <Text style={s.unitValue}>{unitSystem === "metric" ? "Metric: kg / cm" : "Imperial default: lbs / inches"}</Text>
+        <Text style={s.unitValue}>
+          {unitSystem === "metric" ? "Height: cm" : "Height: inches"} / Weight: {displayWeightUnit}
+        </Text>
       </View>
 
       <View style={s.infoCard}>
@@ -608,7 +614,7 @@ export default function ProfileScreen() {
             <Text style={s.cardTitle}>Body Metrics</Text>
             <View style={s.fieldRow}>
               <Field label={`Height ${heightHint ? `(${heightHint})` : ""}`} value={form.height} onChangeText={(v) => setField("height", v)} placeholder={unitSystem === "metric" ? "178" : "70"} suffix={heightUnit} />
-              <Field label="Weight" value={form.weight} onChangeText={(v) => setField("weight", v)} placeholder={unitSystem === "metric" ? "86" : "190"} suffix={weightUnit} />
+              <Field label="Weight" value={form.weight} onChangeText={(v) => setField("weight", v)} placeholder={displayWeightUnit === "kg" ? "86" : "190"} suffix={displayWeightUnit} />
             </View>
             <Field label="Body Fat" value={form.bodyFatPct} onChangeText={(v) => setField("bodyFatPct", v)} placeholder="18" suffix="%" />
           </View>
@@ -617,7 +623,7 @@ export default function ProfileScreen() {
             <Text style={s.cardTitle}>Strength Marks</Text>
             <Text style={s.cardMeta}>These help the planner recommend reasonable loads. Leave unknown lifts blank.</Text>
             {lifts.map((lift) => (
-              <Field key={lift.field} label={lift.label} value={String(form[lift.field] ?? "")} onChangeText={(v) => setField(lift.field, v)} placeholder={unitSystem === "metric" ? String(Math.round(Number(lift.placeholder) / 2.20462)) : lift.placeholder} suffix={weightUnit} />
+              <Field key={lift.field} label={lift.label} value={String(form[lift.field] ?? "")} onChangeText={(v) => setField(lift.field, v)} placeholder={displayWeightUnit === "kg" ? String(Math.round(Number(lift.placeholder) / 2.20462)) : lift.placeholder} suffix={displayWeightUnit} />
             ))}
           </View>
 

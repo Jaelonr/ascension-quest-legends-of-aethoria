@@ -5,7 +5,7 @@ import {
   WorkoutSetInputWeightUnit,
   WorkoutSessionUpdateNarrativeIntensity,
 } from "@workspace/api-client-react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { loadMobileSettings, type WeightUnit } from "@/utils/mobile-settings";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -58,6 +58,13 @@ const STYLE_META: Record<string, { label: string; color: string }> = {
   recovery: { label: "Recovery", color: "#22c55e" },
   discipline: { label: "Discipline", color: "#eab308" },
 };
+
+function convertWeight(value: number, from: string | null | undefined, to: WeightUnit) {
+  if (from === to) return value;
+  if (from === "kg" && to === "lbs") return Math.round(value * 2.20462 * 10) / 10;
+  if (from === "lbs" && to === "kg") return Math.round((value / 2.20462) * 10) / 10;
+  return value;
+}
 
 function CombatReplayModal({
   data,
@@ -265,19 +272,28 @@ export default function ActiveSessionScreen() {
   const [prFlash, setPrFlash] = useState<number | null>(null);
   const [completion, setCompletion] = useState<CompletionData | null>(null);
   const [showReplay, setShowReplay] = useState(false);
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>("lbs");
   const [narrativeIntensity, setNarrativeIntensity] =
     useState<WorkoutSessionUpdateNarrativeIntensity>(WorkoutSessionUpdateNarrativeIntensity.balanced);
 
   useEffect(() => {
-    AsyncStorage.getItem("narrative_intensity").then((val) => {
-      if (
-        val === WorkoutSessionUpdateNarrativeIntensity.technical ||
-        val === WorkoutSessionUpdateNarrativeIntensity.balanced ||
-        val === WorkoutSessionUpdateNarrativeIntensity.immersive
-      ) {
-        setNarrativeIntensity(val as WorkoutSessionUpdateNarrativeIntensity);
-      }
-    });
+    let mounted = true;
+    loadMobileSettings()
+      .then((settings) => {
+        if (!mounted) return;
+        setWeightUnit(settings.weightUnit);
+        if (
+          settings.narrativeMode === WorkoutSessionUpdateNarrativeIntensity.technical ||
+          settings.narrativeMode === WorkoutSessionUpdateNarrativeIntensity.balanced ||
+          settings.narrativeMode === WorkoutSessionUpdateNarrativeIntensity.immersive
+        ) {
+          setNarrativeIntensity(settings.narrativeMode as WorkoutSessionUpdateNarrativeIntensity);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -349,7 +365,7 @@ export default function ActiveSessionScreen() {
     const exSets = setsByExercise.get(openExId) ?? [];
     if (exSets.length > 0) {
       const last = exSets[exSets.length - 1];
-      setWeight(String(last.weight));
+      setWeight(String(convertWeight(Number(last.weight), (last as any).weightUnit, weightUnit)));
       setReps(String(last.reps));
     } else {
       const tmpl = exercises.find((e) => e.exerciseId === openExId);
@@ -357,9 +373,9 @@ export default function ActiveSessionScreen() {
         const m = String(tmpl.reps).match(/\d+/);
         if (m) setReps(m[0]);
       }
-      setWeight("45");
+      setWeight(weightUnit === "kg" ? "20" : "45");
     }
-  }, [openExId]);
+  }, [openExId, weightUnit]);
 
   const handleLogSet = (exerciseId: number) => {
     Keyboard.dismiss();
@@ -372,7 +388,7 @@ export default function ActiveSessionScreen() {
           setNumber: exSets.length + 1,
           reps: parseInt(reps, 10) || 1,
           weight: parseFloat(weight) || 0,
-          weightUnit: "lbs" as WorkoutSetInputWeightUnit,
+          weightUnit: weightUnit as WorkoutSetInputWeightUnit,
         },
       },
       {
@@ -600,7 +616,7 @@ export default function ActiveSessionScreen() {
                 <View style={[s.inputBlock, { borderTopColor: colors.border }]}>
                   <View style={s.inputRow}>
                     <View style={s.inputGroup}>
-                      <Text style={[s.inputLabel, { color: colors.mutedForeground }]}>WEIGHT (lbs)</Text>
+                      <Text style={[s.inputLabel, { color: colors.mutedForeground }]}>WEIGHT ({weightUnit})</Text>
                       <TextInput
                         style={[s.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
                         value={weight}
