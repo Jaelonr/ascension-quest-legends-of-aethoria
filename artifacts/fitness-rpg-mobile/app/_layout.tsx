@@ -11,13 +11,14 @@ import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { hasCompletedMobileOnboarding } from "@/utils/onboarding";
 
 const apiBaseUrl =
   process.env.EXPO_PUBLIC_API_BASE_URL || `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
@@ -30,9 +31,40 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
+function useOnboardingGate(enabled: boolean) {
+  const segments = useSegments();
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    hasCompletedMobileOnboarding()
+      .then((complete) => {
+        if (cancelled) return;
+        setChecked(true);
+        const topSegment = segments[0] as string | undefined;
+        const inAuthGroup = topSegment === "(auth)";
+        const inOnboarding = topSegment === "onboarding";
+        if (!complete && !inAuthGroup && !inOnboarding) {
+          router.replace("/onboarding" as never);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, router, segments]);
+
+  return checked;
+}
+
 function DevAuthGuard() {
   const segments = useSegments();
   const router = useRouter();
+  useOnboardingGate(true);
 
   useEffect(() => {
     setAuthTokenGetter(null);
@@ -52,6 +84,7 @@ function AuthGuard() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  useOnboardingGate(isLoaded && !!isSignedIn);
 
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
@@ -77,6 +110,7 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="session" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen name="training" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />

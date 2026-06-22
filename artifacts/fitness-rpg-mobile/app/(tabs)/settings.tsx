@@ -2,6 +2,7 @@ import { useAuth, useClerk } from "@clerk/expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { useResetPlayer } from "@workspace/api-client-react";
+import { clearMobileOnboarding } from "@/utils/onboarding";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -190,7 +191,10 @@ export default function SettingsScreen() {
   const { signOut } = useClerk();
   const resetPlayer = useResetPlayer({
     mutation: {
-      onSuccess: () => router.replace("/profile" as any),
+      onSuccess: async () => {
+        await clearMobileOnboarding();
+        router.replace("/onboarding" as any);
+      },
       onError: () => Alert.alert("Reset failed", "The Guild could not recreate your character yet. Try again in a moment."),
     },
   });
