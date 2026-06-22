@@ -51,6 +51,12 @@ const WEIGHT_GOALS = [
   { id: "gain", label: "Gain Muscle", desc: "+300 kcal surplus" },
 ] as const;
 
+const SEX_OPTIONS = [
+  { id: "male", label: "Male", symbol: "M" },
+  { id: "female", label: "Female", symbol: "F" },
+  { id: "other", label: "Other", symbol: "*" },
+] as const;
+
 function nutritionGoalLabel(goal?: string | null) {
   if (goal === "lose") return "fat loss";
   if (goal === "gain") return "muscle gain";
@@ -89,8 +95,8 @@ function CalorieGoalCard({
   const updateTargets = useUpdateNutritionTargets();
   const [open, setOpen] = useState(!targets.autoCalc);
 
-  const [sex, setSex] = useState<"male" | "female" | "">(
-    (targets.sex as "male" | "female") ?? ""
+  const [sex, setSex] = useState<"male" | "female" | "other" | "">(
+    (targets.sex as "male" | "female" | "other") ?? ""
   );
   const [age, setAge] = useState(targets.ageYears?.toString() ?? "");
   const [activity, setActivity] = useState(targets.activityLevel ?? "");
@@ -109,7 +115,7 @@ function CalorieGoalCard({
       return;
     }
     updateTargets.mutate(
-      { data: { sex, ageYears: ageNum, activityLevel: activity, weightGoal: goal } as Parameters<typeof updateTargets.mutate>[0]["data"] },
+      { data: { sex, ageYears: ageNum, activityLevel: activity, weightGoal: goal } as any },
       {
         onSuccess: (data) => {
           onSaved();
@@ -153,18 +159,18 @@ function CalorieGoalCard({
           <div>
             <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">Sex</div>
             <div className="flex gap-2">
-              {(["male", "female"] as const).map(s => (
+              {SEX_OPTIONS.map(s => (
                 <button
-                  key={s}
-                  onClick={() => setSex(s)}
+                  key={s.id}
+                  onClick={() => setSex(s.id)}
                   className={cn(
                     "flex-1 py-2 rounded-lg border text-sm font-semibold transition-all capitalize",
-                    sex === s
+                    sex === s.id
                       ? "border-primary bg-primary/20 text-primary"
                       : "border-border/50 text-muted-foreground hover:border-primary/40"
                   )}
                 >
-                  {s === "male" ? "♂ Male" : "♀ Female"}
+                  {s.symbol} {s.label}
                 </button>
               ))}
             </div>

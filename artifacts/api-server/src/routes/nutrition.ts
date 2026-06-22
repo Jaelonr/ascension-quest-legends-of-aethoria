@@ -22,7 +22,7 @@ const GOAL_ADJUSTMENTS: Record<string, number> = {
 };
 
 function calcTargets(params: {
-  sex: "male" | "female";
+  sex: "male" | "female" | "other";
   ageYears: number;
   heightCm: number;
   weightKg: number;
@@ -30,10 +30,9 @@ function calcTargets(params: {
   weightGoal: string;
 }) {
   const { sex, ageYears, heightCm, weightKg, activityLevel, weightGoal } = params;
-  const bmr =
-    sex === "male"
-      ? 10 * weightKg + 6.25 * heightCm - 5 * ageYears + 5
-      : 10 * weightKg + 6.25 * heightCm - 5 * ageYears - 161;
+  const maleBmr = 10 * weightKg + 6.25 * heightCm - 5 * ageYears + 5;
+  const femaleBmr = 10 * weightKg + 6.25 * heightCm - 5 * ageYears - 161;
+  const bmr = sex === "male" ? maleBmr : sex === "female" ? femaleBmr : (maleBmr + femaleBmr) / 2;
   const tdee = bmr * (ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.55);
   const calories = Math.round(tdee + (GOAL_ADJUSTMENTS[weightGoal] ?? 0));
   const protein = Math.round(weightKg * 2.2 / 5) * 5;
@@ -89,7 +88,7 @@ router.patch("/nutrition/targets", async (req, res) => {
     const { player } = await getOrCreatePlayer(req.userId);
     const { calories, protein, carbs, fat, sex, ageYears, activityLevel, weightGoal } = req.body as {
       calories?: number; protein?: number; carbs?: number; fat?: number;
-      sex?: "male" | "female"; ageYears?: number;
+      sex?: "male" | "female" | "other"; ageYears?: number;
       activityLevel?: string; weightGoal?: string;
     };
 
@@ -121,7 +120,7 @@ router.patch("/nutrition/targets", async (req, res) => {
       ...(resolvedProtein !== undefined && { protein: resolvedProtein }),
       ...(resolvedCarbs !== undefined && { carbs: resolvedCarbs }),
       ...(resolvedFat !== undefined && { fat: resolvedFat }),
-      ...(sex !== undefined && { sex }),
+      ...(sex !== undefined && { sex: sex === "other" ? null : sex }),
       ...(ageYears !== undefined && { ageYears }),
       ...(activityLevel !== undefined && { activityLevel: activityLevel as "sedentary" | "light" | "moderate" | "active" | "very_active" }),
       ...(weightGoal !== undefined && { weightGoal: weightGoal as "lose" | "maintain" | "gain" }),

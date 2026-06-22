@@ -55,6 +55,12 @@ const WEIGHT_GOALS = [
   { id: "gain", label: "Gain Muscle", desc: "+300 kcal" },
 ] as const;
 
+const SEX_OPTIONS = [
+  { id: "male", label: "Male" },
+  { id: "female", label: "Female" },
+  { id: "other", label: "Other" },
+] as const;
+
 function nutritionGoalLabel(goal?: string | null) {
   if (goal === "lose") return "fat loss";
   if (goal === "gain") return "muscle gain";
@@ -110,7 +116,7 @@ function CalorieGoalCard({ targets, onSaved }: { targets: any; onSaved: () => vo
   const qc = useQueryClient();
   const updateTargets = useUpdateNutritionTargets();
   const [open, setOpen] = useState(!targets?.autoCalc);
-  const [sex, setSex] = useState<"male" | "female" | "">((targets?.sex as "male" | "female") ?? "");
+  const [sex, setSex] = useState<"male" | "female" | "other" | "">((targets?.sex as "male" | "female" | "other") ?? "");
   const [age, setAge] = useState(targets?.ageYears ? String(targets.ageYears) : "");
   const [activity, setActivity] = useState<string>(targets?.activityLevel ?? "");
   const [goal, setGoal] = useState<string>(targets?.weightGoal ?? "");
@@ -161,14 +167,14 @@ function CalorieGoalCard({ targets, onSaved }: { targets: any; onSaved: () => vo
 
           <Text style={cg.fieldLabel}>Sex used for calorie formula</Text>
           <View style={cg.twoCol}>
-            {(["male", "female"] as const).map((option) => (
+            {SEX_OPTIONS.map((option) => (
               <TouchableOpacity
-                key={option}
-                style={[cg.pill, sex === option && cg.pillActive]}
-                onPress={() => setSex(option)}
+                key={option.id}
+                style={[cg.pill, sex === option.id && cg.pillActive]}
+                onPress={() => setSex(option.id)}
                 activeOpacity={0.8}
               >
-                <Text style={[cg.pillText, sex === option && cg.pillTextActive]}>{option === "male" ? "Male" : "Female"}</Text>
+                <Text style={[cg.pillText, sex === option.id && cg.pillTextActive]}>{option.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
