@@ -6,7 +6,7 @@ import {
   useGetDailyQuest,
 } from "@workspace/api-client-react";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -56,7 +56,15 @@ function usePlayer() {
 
 type ChatLine = { id: string; role: "user" | "assistant"; content: string };
 
-function AldricChatModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function AldricChatModal({
+  visible,
+  onClose,
+  initialReport,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  initialReport: any | null;
+}) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { data: history } = useGetGuildMasterConversation();
@@ -64,6 +72,20 @@ function AldricChatModal({ visible, onClose }: { visible: boolean; onClose: () =
   const qc = useQueryClient();
   const [input, setInput] = useState("");
   const [localLines, setLocalLines] = useState<ChatLine[]>([]);
+  const reportDetails = initialReport?.aldric;
+  const reportMessage =
+    reportDetails?.counsel ??
+    initialReport?.counsel ??
+    (initialReport?.reported ? "The commission has been recorded." : null);
+  const suggestedQuestions = useMemo(
+    () => [
+      "What is the state of Aethoria?",
+      "What do the Guild records say about my progress?",
+      "What should I focus on today?",
+      "What has changed near the Gates?",
+    ],
+    [],
+  );
 
   useEffect(() => {
     if (history) {
@@ -114,6 +136,42 @@ function AldricChatModal({ visible, onClose }: { visible: boolean; onClose: () =
           contentContainerStyle={{ padding: 16, gap: 10 }}
           showsVerticalScrollIndicator={false}
         >
+          {reportMessage && (
+            <View style={s.reportSummary}>
+              <Text style={s.reportSummaryTitle}>Aldric's report</Text>
+              <Text style={s.reportSummaryText}>{reportMessage}</Text>
+              {reportDetails?.tone ? (
+                <Text style={s.reportSummaryMeta}>Tone: {reportDetails.tone}</Text>
+              ) : null}
+              {reportDetails?.practicalRecommendation ? (
+                <Text style={s.reportSummaryMeta}>Order: {reportDetails.practicalRecommendation}</Text>
+              ) : null}
+              {reportDetails?.warning ? (
+                <Text style={[s.reportSummaryMeta, { color: "#d48b73" }]}>{reportDetails.warning}</Text>
+              ) : null}
+              {reportDetails?.nextStep ? (
+                <Text style={s.reportSummaryMeta}>Next: {reportDetails.nextStep}</Text>
+              ) : null}
+            </View>
+          )}
+          <View style={s.audienceInfo}>
+            <Text style={s.audienceInfoKicker}>Private audience</Text>
+            <Text style={s.audienceInfoText}>
+              Aldric can answer direct questions about Aethoria, the Gates, your record, or the next duty. He knows you are summoned, but not who or what called you here.
+            </Text>
+            <View style={s.questionGrid}>
+              {suggestedQuestions.map((question) => (
+                <TouchableOpacity
+                  key={question}
+                  style={s.questionChip}
+                  onPress={() => setInput(question)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={s.questionText}>{question}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
           {localLines.length === 0 && (
             <Text style={[s.chatEmpty, { color: colors.mutedForeground }]}>
               The Grandmaster awaits your report, adventurer.
@@ -229,6 +287,7 @@ export default function HallScreen() {
   const { data: hall, isLoading: hallLoading } = useGetGuildHallToday();
   const { data: dailyQuestData } = useGetDailyQuest();
   const [aldricOpen, setAldricOpen] = useState(false);
+  const [reportResult, setReportResult] = useState<any | null>(null);
   const [reporting, setReporting] = useState(false);
 
   const isLoading = playerLoading || hallLoading;
@@ -247,6 +306,7 @@ export default function HallScreen() {
     setReporting(true);
     try {
       const result = await customFetch<any>("/api/guild-hall/report", { method: "POST" });
+      setReportResult(result);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["/api/guild-hall/today"] }),
         qc.invalidateQueries({ queryKey: ["/api/player"] }),
@@ -524,7 +584,7 @@ export default function HallScreen() {
         )}
       </ScrollView>
 
-      <AldricChatModal visible={aldricOpen} onClose={() => setAldricOpen(false)} />
+      <AldricChatModal visible={aldricOpen} onClose={() => setAldricOpen(false)} initialReport={reportResult} />
     </View>
   );
 }
@@ -632,6 +692,16 @@ const s = StyleSheet.create({
   chatTitle: { fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   chatSub: { fontSize: 11, marginTop: 2 },
   closeBtn: { position: "absolute", right: 20, top: 12 },
+  reportSummary: { borderLeftWidth: 2, borderLeftColor: "#9d3e2a", backgroundColor: "#1b1511", padding: 12, gap: 5 },
+  reportSummaryTitle: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.6 },
+  reportSummaryText: { color: "#d6ccbe", fontSize: 13, lineHeight: 19, fontFamily: "Inter_400Regular" },
+  reportSummaryMeta: { color: "#a99f92", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
+  audienceInfo: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, gap: 8 },
+  audienceInfoKicker: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 2 },
+  audienceInfoText: { color: "#cfc5b8", fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular" },
+  questionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  questionChip: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15130f", paddingHorizontal: 8, paddingVertical: 6 },
+  questionText: { color: "#d9ad63", fontSize: 10, lineHeight: 14, fontFamily: "Inter_700Bold" },
   chatEmpty: { textAlign: "center", fontStyle: "italic", marginTop: 32, fontSize: 13 },
   bubble: { borderWidth: 1, borderRadius: 8, padding: 12, maxWidth: "88%" },
   bubbleSender: { fontSize: 10, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 4, fontFamily: "Inter_700Bold" },
