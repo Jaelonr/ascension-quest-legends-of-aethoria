@@ -65,6 +65,10 @@ function activityLabel(activity?: string | null) {
   return ACTIVITY_LEVELS.find((level) => level.id === activity)?.label ?? "profile";
 }
 
+function cleanFoodName(name?: string | null) {
+  return String(name ?? "Food").split(/\s+(?:-|\u00b7|\u00c2\u00b7)\s+/)[0];
+}
+
 type MacroKey = "calories" | "protein" | "carbs" | "fat";
 const MACRO_META: Array<{ key: MacroKey; label: string; unit: string; color: string }> = [
   { key: "calories", label: "Calories", unit: "kcal", color: "#d9ad63" },
@@ -265,16 +269,17 @@ const cg = StyleSheet.create({
 
 function LogEntryRow({ entry, onDelete }: { entry: any; onDelete: (id: number) => void }) {
   const colors = useColors();
+  const entryName = entry.mealName ?? entry.name ?? "Logged provisions";
   return (
     <View style={[le.row, { borderColor: "#2a2520" }]}>
       <View style={{ flex: 1 }}>
-        <Text style={[le.name, { color: colors.foreground }]} numberOfLines={1}>{entry.name}</Text>
+        <Text style={[le.name, { color: colors.foreground }]} numberOfLines={1}>{entryName}</Text>
         <Text style={[le.meta, { color: colors.mutedForeground }]}>
-          {Math.round(entry.calories)} kcal · {Math.round(entry.protein)}g protein
+          {MEAL_LABELS[entry.mealType] ?? "Meal"} - {Math.round(entry.calories)} kcal - {Math.round(entry.protein)}g protein
         </Text>
       </View>
       <TouchableOpacity onPress={() => onDelete(entry.id)} hitSlop={8}>
-        <Text style={{ color: "#6b5d4f", fontSize: 18 }}>✕</Text>
+        <Text style={{ color: "#8f5a4d", fontSize: 18, fontWeight: "700" }}>X</Text>
       </TouchableOpacity>
     </View>
   );
@@ -331,7 +336,7 @@ function AddFoodModal({ visible, onClose }: { visible: boolean; onClose: () => v
   const applyFoodResult = (item: any) => {
     const grams = parseFloat(portionGrams) || 100;
     const ratio = grams / 100;
-    const displayName = String(item.name ?? "").split(" · ")[0].split(" Â· ")[0].split(" Ã‚Â· ")[0];
+    const displayName = cleanFoodName(item.name);
     setName(displayName);
     setCalories(String(Math.round((item.calories100g ?? 0) * ratio)));
     setProtein(String(Math.round((item.protein100g ?? 0) * ratio * 10) / 10));
@@ -391,9 +396,9 @@ function AddFoodModal({ visible, onClose }: { visible: boolean; onClose: () => v
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={[af.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-          <Text style={[af.title, { color: "#d9ad63" }]}>Add Food</Text>
+          <Text style={[af.title, { color: "#d9ad63" }]}>Record Provisions</Text>
           <TouchableOpacity onPress={onClose} style={af.closeBtn}>
-            <Text style={{ color: colors.mutedForeground, fontSize: 22 }}>✕</Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 22, fontWeight: "700" }}>X</Text>
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
@@ -445,9 +450,9 @@ function AddFoodModal({ visible, onClose }: { visible: boolean; onClose: () => v
                 {foodResults.slice(0, 8).map((item, index) => (
                   <TouchableOpacity key={`${item.name}-${index}`} style={af.resultRow} onPress={() => applyFoodResult(item)} activeOpacity={0.75}>
                     <View style={{ flex: 1 }}>
-                      <Text style={af.resultName} numberOfLines={1}>{String(item.name ?? "Food").split(" · ")[0]}</Text>
+                      <Text style={af.resultName} numberOfLines={1}>{cleanFoodName(item.name)}</Text>
                       <Text style={af.resultMeta}>
-                        {Math.round(item.calories100g ?? 0)} kcal · {Math.round((item.protein100g ?? 0) * 10) / 10}g protein / 100g
+                        {Math.round(item.calories100g ?? 0)} kcal - {Math.round((item.protein100g ?? 0) * 10) / 10}g protein / 100g
                       </Text>
                     </View>
                     <Text style={af.resultSource}>{item.source === "open_food_facts" ? "OFF" : "Guild"}</Text>
@@ -686,27 +691,29 @@ export default function NutritionScreen() {
           <Text style={ns.addFoodText}>+ RECORD PROVISIONS</Text>
         </TouchableOpacity>
 
-        {/* Food log by meal */}
-        {loadingLogs ? (
-          <ActivityIndicator color="#d9ad63" style={{ marginTop: 20 }} />
-        ) : mealSections.length > 0 ? (
-          mealSections.map((meal) => (
-            <View key={meal} style={{ marginTop: 16 }}>
-              <Text style={ns.mealHeader}>{MEAL_LABELS[meal]}</Text>
-              {logsByMeal[meal].map((entry) => (
-                <LogEntryRow key={entry.id} entry={entry} onDelete={handleDelete} />
-              ))}
-            </View>
-          ))
-        ) : (
-          <View style={[ns.empty, { borderColor: "#3b3328" }]}>
-            <Text style={{ fontSize: 24 }}>🍖</Text>
-            <Text style={[ns.emptyTitle, { color: colors.foreground }]}>No food logged yet</Text>
-            <Text style={[ns.emptyDesc, { color: colors.mutedForeground }]}>
-              Track your nutrition to fuel the fight.
-            </Text>
+        <View style={ns.mealsCard}>
+          <View style={ns.mealsHeader}>
+            <Text style={ns.mealsTitle}>Today's Meals</Text>
+            <Text style={ns.mealsCount}>{((logs ?? []) as any[]).length} logged</Text>
           </View>
-        )}
+          {loadingLogs ? (
+            <ActivityIndicator color="#d9ad63" style={{ marginTop: 20 }} />
+          ) : mealSections.length > 0 ? (
+            mealSections.map((meal) => (
+              <View key={meal} style={{ marginTop: 12 }}>
+                <Text style={ns.mealHeader}>{MEAL_LABELS[meal]}</Text>
+                {logsByMeal[meal].map((entry) => (
+                  <LogEntryRow key={entry.id} entry={entry} onDelete={handleDelete} />
+                ))}
+              </View>
+            ))
+          ) : (
+            <View style={ns.empty}>
+              <Text style={[ns.emptyTitle, { color: colors.foreground }]}>No meals logged yet.</Text>
+              <Text style={[ns.emptyDesc, { color: colors.mutedForeground }]}>Consume sustenance to recover HP.</Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       <AddFoodModal visible={addModalOpen} onClose={() => setAddModalOpen(false)} />
@@ -735,7 +742,11 @@ const ns = StyleSheet.create({
   mealHeader: { fontSize: 9, letterSpacing: 2, color: "#9d8f80", textTransform: "uppercase", marginBottom: 6, fontFamily: "Inter_400Regular" },
   addFoodBtn: { backgroundColor: "#d9ad63", padding: 14, alignItems: "center", marginTop: 12 },
   addFoodText: { color: "#000", fontWeight: "700", fontSize: 13, letterSpacing: 2, fontFamily: "Inter_700Bold" },
-  empty: { borderWidth: 1, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 8, marginTop: 16 },
+  mealsCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14, marginTop: 16 },
+  mealsHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  mealsTitle: { color: "#d9ad63", fontSize: 16, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  mealsCount: { marginLeft: "auto", color: "#8f887d", fontSize: 11, fontFamily: "Inter_400Regular" },
+  empty: { paddingVertical: 24, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   emptyDesc: { fontSize: 12, textAlign: "center", lineHeight: 18 },
 });
