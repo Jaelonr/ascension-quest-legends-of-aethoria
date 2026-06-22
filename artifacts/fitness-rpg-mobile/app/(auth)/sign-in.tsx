@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 WebBrowser.maybeCompleteAuthSession();
 
 const OAUTH_REDIRECT_URL = AuthSession.makeRedirectUri({
-  scheme: "fitness-rpg-mobile",
+  scheme: "ascension-quest",
   path: "sso-callback",
 });
 
