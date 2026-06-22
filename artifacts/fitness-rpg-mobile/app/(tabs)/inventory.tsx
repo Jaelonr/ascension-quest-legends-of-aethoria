@@ -42,16 +42,17 @@ type CharSummary = {
   settingsShortcuts?: Array<{ key: string; label: string; href: string }>;
 };
 
-function useCharSummary() {
+function useCharSummary(refreshKey = 0) {
   const [data, setData] = useState<CharSummary | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     customFetch<CharSummary>("/api/character/summary")
       .then((d) => { if (!cancelled) setData(d); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshKey]);
   return { data, loading };
 }
 
@@ -280,8 +281,9 @@ export default function CharacterScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>("gear");
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
+  const [summaryRefresh, setSummaryRefresh] = useState(0);
 
-  const { data: char, loading: charLoading } = useCharSummary();
+  const { data: char, loading: charLoading } = useCharSummary(summaryRefresh);
   const { data: armory, isLoading: armoryLoading } = useGetArmory();
   const { data: inventory, isLoading: inventoryLoading } = useGetInventory();
   const { data: storeSections, isLoading: storeLoading } = useGetStoreSections({
@@ -301,6 +303,7 @@ export default function CharacterScreen() {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: ["/api/armory"] });
           qc.invalidateQueries({ queryKey: ["/api/character/summary"] });
+          setSummaryRefresh((value) => value + 1);
           setSelectedGear(null);
         },
         onError: () => Alert.alert("Error", "Could not equip item."),
@@ -318,11 +321,43 @@ export default function CharacterScreen() {
           qc.invalidateQueries({ queryKey: ["/api/player"] });
           qc.invalidateQueries({ queryKey: ["/api/store/sections"] });
           qc.invalidateQueries({ queryKey: ["/api/character/summary"] });
+          setSummaryRefresh((value) => value + 1);
         },
         onError: (err: any) => {
           Alert.alert("Purchase Failed", err?.message ?? "The Hall will not release that item yet.");
         },
       }
+    );
+  };
+
+  const handleReleaseItem = (item: any) => {
+    Alert.alert(
+      "Release item?",
+      `The Hall can reclaim ${item.displayName ?? item.itemName ?? item.name ?? "this item"} for a portion of its gold. Your Chronicle keeps the discovery record.`,
+      [
+        { text: "Keep", style: "cancel" },
+        {
+          text: "Release",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await customFetch<{ message: string; goldReceived: number }>(`/api/inventory/${item.id}/sell`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ quantity: 1 }),
+              });
+              Alert.alert("Item Released", res?.message ?? "The Hall has reclaimed the item.");
+              qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+              qc.invalidateQueries({ queryKey: ["/api/player"] });
+              qc.invalidateQueries({ queryKey: ["/api/character/summary"] });
+              qc.invalidateQueries({ queryKey: ["/api/chronicle/summary"] });
+              setSummaryRefresh((value) => value + 1);
+            } catch (err: any) {
+              Alert.alert("Could not release item", err?.message ?? "The Hall would not take that item.");
+            }
+          },
+        },
+      ]
     );
   };
 
@@ -518,15 +553,23 @@ export default function CharacterScreen() {
                           </Text>
                         )}
                       </View>
-                      {item.slot && (
+                      <View style={cs.itemActions}>
+                        {item.slot && (
+                          <TouchableOpacity
+                            style={cs.equipBtn}
+                            onPress={() => handleEquip(item.id, item.slot)}
+                            disabled={equipGear.isPending}
+                          >
+                            <Text style={cs.equipBtnText}>Equip</Text>
+                          </TouchableOpacity>
+                        )}
                         <TouchableOpacity
-                          style={cs.equipBtn}
-                          onPress={() => handleEquip(item.id, item.slot)}
-                          disabled={equipGear.isPending}
+                          style={cs.releaseBtn}
+                          onPress={() => handleReleaseItem(item)}
                         >
-                          <Text style={cs.equipBtnText}>Equip</Text>
+                          <Text style={cs.releaseBtnText}>Release</Text>
                         </TouchableOpacity>
-                      )}
+                      </View>
                     </View>
                   );
                 })}
@@ -894,8 +937,11 @@ const cs = StyleSheet.create({
   itemName: { fontSize: 13, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   itemMeta: { fontSize: 10, color: "#6b5d4f", textTransform: "uppercase", marginTop: 2, letterSpacing: 1 },
   itemDesc: { fontSize: 12, marginTop: 4, lineHeight: 17 },
+  itemActions: { alignItems: "flex-end", gap: 8 },
   equipBtn: { borderWidth: 1, borderColor: "#d9ad6360", paddingHorizontal: 10, paddingVertical: 6 },
   equipBtnText: { color: "#d9ad63", fontSize: 11, fontWeight: "700" },
+  releaseBtn: { borderWidth: 1, borderColor: "#7f2d2d80", backgroundColor: "#1b0f0f", paddingHorizontal: 10, paddingVertical: 6 },
+  releaseBtnText: { color: "#f87171", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.8 },
   offeringsCard: { borderWidth: 1, backgroundColor: "#11100e", padding: 12 },
   offeringsIntro: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, flexDirection: "row", gap: 10, alignItems: "flex-start", marginBottom: 12 },
   offeringsIcon: { width: 34, height: 34, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15110d", alignItems: "center", justifyContent: "center" },
