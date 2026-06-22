@@ -68,6 +68,26 @@ const SLOT_EMOJIS: Record<string, string> = {
 
 type TabKey = "gear" | "inventory" | "identity";
 
+const PAPER_DOLL_SLOTS: Array<{ slot: string; label: string; aliases: string[]; side: "left" | "right" | "support"; mark: string }> = [
+  { slot: "head", label: "Head", aliases: ["head", "helmet", "helm", "hood", "circlet"], side: "left", mark: "H" },
+  { slot: "neck", label: "Neck", aliases: ["neck", "necklace", "amulet"], side: "left", mark: "N" },
+  { slot: "shoulders", label: "Shoulders", aliases: ["shoulders", "pauldrons", "mantle"], side: "left", mark: "S" },
+  { slot: "arms", label: "Arms", aliases: ["arms", "bracers", "vambraces"], side: "left", mark: "B" },
+  { slot: "waist", label: "Waist", aliases: ["waist", "belt", "sash"], side: "left", mark: "W" },
+  { slot: "legs", label: "Legs", aliases: ["legs", "pants", "greaves"], side: "left", mark: "L" },
+  { slot: "feet", label: "Feet", aliases: ["feet", "boots"], side: "left", mark: "F" },
+  { slot: "cloak", label: "Cloak", aliases: ["cloak", "cape", "back"], side: "right", mark: "C" },
+  { slot: "chest", label: "Chest", aliases: ["chest", "armor", "robe", "body"], side: "right", mark: "A" },
+  { slot: "hands", label: "Hands", aliases: ["hands", "gloves", "gloves_wraps", "wraps", "gauntlets"], side: "right", mark: "G" },
+  { slot: "ring_left", label: "Ring Left", aliases: ["ring_left", "ring"], side: "right", mark: "R" },
+  { slot: "ring_right", label: "Ring Right", aliases: ["ring_right", "ring"], side: "right", mark: "R" },
+  { slot: "weapon", label: "Weapon", aliases: ["weapon", "main_hand", "mainhand"], side: "right", mark: "W" },
+  { slot: "offhand", label: "Off Hand", aliases: ["offhand", "off_hand", "shield"], side: "support", mark: "O" },
+  { slot: "relic", label: "Relic", aliases: ["relic"], side: "support", mark: "R" },
+  { slot: "title", label: "Title", aliases: ["title", "banner"], side: "support", mark: "T" },
+  { slot: "aura_cosmetic", label: "Aura", aliases: ["aura_cosmetic", "aura", "aura_effect", "cosmetic"], side: "support", mark: "*" },
+];
+
 function AttributeGrid({ stats }: { stats: any }) {
   return (
     <View style={cs.attributeGrid}>
@@ -91,9 +111,13 @@ function AttributeGrid({ stats }: { stats: any }) {
 function PaperDollPanel({
   gearSlots,
   equippedCount,
+  activeSlot,
+  onSelectSlot,
 }: {
   gearSlots: CharSummary["gearSlots"];
   equippedCount: number;
+  activeSlot: string | null;
+  onSelectSlot: (slot: string) => void;
 }) {
   const total = gearSlots.length || 17;
   const affinity =
@@ -101,6 +125,30 @@ function PaperDollPanel({
       const value = slot.item?.elementalAffinity ?? slot.item?.affinity;
       return value && value !== "physical";
     })?.item?.elementalAffinity ?? "physical";
+  const normalizedSlots = PAPER_DOLL_SLOTS.map((paperSlot) => {
+    const source = gearSlots.find((slot) => paperSlot.aliases.includes(slot.slot) || slot.slot === paperSlot.slot);
+    return { ...paperSlot, item: source?.item ?? null };
+  });
+
+  const SlotButton = ({ slot }: { slot: (typeof normalizedSlots)[number] }) => {
+    const rarityColor = slot.item ? (RARITY_COLORS[slot.item.rarity ?? "common"] ?? "#9ca3af") : "#3b3328";
+    const active = activeSlot === slot.slot;
+    return (
+      <TouchableOpacity
+        style={[cs.paperSlotBtn, { borderColor: active ? "#d9ad63" : rarityColor + "70", backgroundColor: active ? "#21170f" : "#0c0b09" }]}
+        onPress={() => onSelectSlot(slot.slot)}
+        activeOpacity={0.78}
+      >
+        <Text style={[cs.paperSlotIcon, { color: slot.item ? rarityColor : "#6f685f" }]}>{slot.mark}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={cs.paperSlotLabel}>{slot.label}</Text>
+          <Text style={[cs.paperSlotItem, { color: slot.item ? "#eee5d7" : "#6f685f" }]} numberOfLines={1}>
+            {slot.item?.displayName ?? slot.item?.name ?? "Empty"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={cs.paperDollPanel}>
@@ -121,9 +169,32 @@ function PaperDollPanel({
           <Text style={cs.affinityValue}>{affinity}</Text>
         </View>
       </View>
-      <Text style={cs.paperDollNote}>A neutral vessel for the adventurer's raiment. The gear tells the story.</Text>
+      <View style={cs.paperSlotGrid}>
+        <View style={cs.paperSlotColumn}>
+          {normalizedSlots.filter((slot) => slot.side === "left").map((slot) => <SlotButton key={slot.slot} slot={slot} />)}
+        </View>
+        <View style={cs.paperSlotColumn}>
+          {normalizedSlots.filter((slot) => slot.side === "right").map((slot) => <SlotButton key={slot.slot} slot={slot} />)}
+        </View>
+      </View>
+      <View style={cs.supportSlotGrid}>
+        {normalizedSlots.filter((slot) => slot.side === "support").map((slot) => <SlotButton key={slot.slot} slot={slot} />)}
+      </View>
+      <Text style={cs.paperDollNote}>Tap a slot to inspect matching gear. The figure stays neutral; the equipment carries the identity.</Text>
     </View>
   );
+}
+
+function slotMatches(itemSlot: string | null | undefined, selectedSlot: string | null) {
+  if (!selectedSlot) return true;
+  const target = PAPER_DOLL_SLOTS.find((slot) => slot.slot === selectedSlot);
+  if (!target || !itemSlot) return false;
+  return target.aliases.includes(itemSlot) || itemSlot === target.slot;
+}
+
+function slotLabel(slot: string | null) {
+  if (!slot) return "All Gear";
+  return PAPER_DOLL_SLOTS.find((paperSlot) => paperSlot.slot === slot)?.label ?? "Selected Slot";
 }
 
 export default function CharacterScreen() {
@@ -132,6 +203,7 @@ export default function CharacterScreen() {
   const qc = useQueryClient();
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>("gear");
+  const [activeSlot, setActiveSlot] = useState<string | null>(null);
 
   const { data: char, loading: charLoading } = useCharSummary();
   const { data: armory, isLoading: armoryLoading } = useGetArmory();
@@ -147,6 +219,7 @@ export default function CharacterScreen() {
       {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: ["/api/armory"] });
+          qc.invalidateQueries({ queryKey: ["/api/character/summary"] });
           setSelectedGear(null);
         },
         onError: () => Alert.alert("Error", "Could not equip item."),
@@ -216,7 +289,15 @@ export default function CharacterScreen() {
           </View>
         )}
 
-        <PaperDollPanel gearSlots={char?.gearSlots ?? []} equippedCount={equippedCount} />
+        <PaperDollPanel
+          gearSlots={char?.gearSlots ?? []}
+          equippedCount={equippedCount}
+          activeSlot={activeSlot}
+          onSelectSlot={(slot) => {
+            setActiveSlot((current) => current === slot ? null : slot);
+            setTab("inventory");
+          }}
+        />
 
         <View style={[cs.card, { backgroundColor: "#171510", borderColor: "#3b3328" }]}>
           <Text style={cs.sectionLabel}>ATTRIBUTES</Text>
@@ -290,7 +371,16 @@ export default function CharacterScreen() {
               </View>
             ) : (
               <View style={{ gap: 8 }}>
-                {(inventory as any[]).map((item: any) => {
+                <View style={cs.filterBar}>
+                  <Text style={cs.filterLabel}>Showing</Text>
+                  <Text style={cs.filterValue}>{slotLabel(activeSlot)}</Text>
+                  {activeSlot && (
+                    <TouchableOpacity onPress={() => setActiveSlot(null)}>
+                      <Text style={cs.clearFilter}>Clear</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {(inventory as any[]).filter((item: any) => slotMatches(item.slot, activeSlot)).map((item: any) => {
                   const rarityColor = RARITY_COLORS[item.rarity ?? "common"] ?? "#9ca3af";
                   return (
                     <View key={item.id} style={[cs.inventoryItem, { backgroundColor: "#171510", borderColor: rarityColor + "40" }]}>
@@ -315,6 +405,14 @@ export default function CharacterScreen() {
                     </View>
                   );
                 })}
+                {(inventory as any[]).filter((item: any) => slotMatches(item.slot, activeSlot)).length === 0 && (
+                  <View style={[cs.empty, { borderColor: "#3b3328" }]}>
+                    <Text style={[cs.emptyTitle, { color: colors.foreground }]}>No matching gear</Text>
+                    <Text style={[cs.emptyDesc, { color: colors.mutedForeground }]}>
+                      The selected slot has no available inventory pieces yet.
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -423,6 +521,13 @@ const cs = StyleSheet.create({
   affinityLabel: { color: "#8f887d", fontSize: 10 },
   affinityValue: { color: "#49a3a0", fontSize: 10, textTransform: "capitalize", fontWeight: "700" },
   paperDollNote: { marginTop: 10, color: "#8f887d", fontSize: 11, lineHeight: 16 },
+  paperSlotGrid: { flexDirection: "row", gap: 8, marginTop: 10 },
+  paperSlotColumn: { flex: 1, gap: 6 },
+  supportSlotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  paperSlotBtn: { flex: 1, minWidth: "47%", borderWidth: 1, padding: 8, flexDirection: "row", alignItems: "center", gap: 8 },
+  paperSlotIcon: { width: 22, height: 22, borderWidth: 1, borderColor: "#3b3328", textAlign: "center", textAlignVertical: "center", fontSize: 10, fontFamily: "Inter_700Bold" },
+  paperSlotLabel: { fontSize: 8, color: "#8f887d", textTransform: "uppercase", letterSpacing: 1 },
+  paperSlotItem: { fontSize: 10, fontFamily: "PlayfairDisplay_700Bold", marginTop: 1 },
   attributeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   attributeBox: { width: "30.5%", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingVertical: 10, alignItems: "center" },
   attributeValue: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
@@ -437,6 +542,10 @@ const cs = StyleSheet.create({
   slotItemName: { fontSize: 13, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   slotRarity: { fontSize: 9, color: "#6b5d4f", textTransform: "uppercase", marginTop: 1 },
   slotEmpty: { fontSize: 12, color: "#3b3328", fontStyle: "italic" },
+  filterBar: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10, flexDirection: "row", alignItems: "center", gap: 8 },
+  filterLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5 },
+  filterValue: { color: "#d9ad63", fontSize: 12, fontFamily: "PlayfairDisplay_700Bold", flex: 1 },
+  clearFilter: { color: "#49a3a0", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   inventoryItem: { borderWidth: 1, padding: 12, flexDirection: "row", alignItems: "center", gap: 10 },
   itemName: { fontSize: 13, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   itemMeta: { fontSize: 10, color: "#6b5d4f", textTransform: "uppercase", marginTop: 2, letterSpacing: 1 },
