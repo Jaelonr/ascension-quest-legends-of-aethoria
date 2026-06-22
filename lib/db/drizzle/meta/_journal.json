@@ -43,6 +43,13 @@
       "when": 1782057600000,
       "tag": "0005_campaign_missions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782144000000,
+      "tag": "0006_adventurer_default_name",
+      "breakpoints": true
     }
   ]
 }

@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
+import { formatGuildGrade } from "@/utils/ranks";
 
 const DIFF_COLORS: Record<string, string> = {
   E: "#22c55e",
@@ -186,7 +187,7 @@ function QuestCard({ quest, colors }: { quest: Quest; colors: ReturnType<typeof 
               </Text>
               <View style={[s.diffBadge, { borderColor: diffColor + "60" }]}>
                 <Text style={[s.diffText, { color: diffColor }]}>
-                  {quest.difficulty ?? "E"}
+                  {formatGuildGrade(quest.difficulty)}
                 </Text>
               </View>
               {isClaimed && (
@@ -345,7 +346,7 @@ function StoryQuestCard({
             <Text style={[s.storyStatus, { color: statusColor }]}>{campaignStatusLabel(quest.status)}</Text>
             {quest.difficulty && (
               <View style={[s.diffBadge, { borderColor: diffColor + "60" }]}>
-                <Text style={[s.diffText, { color: diffColor }]}>{quest.difficulty}</Text>
+                <Text style={[s.diffText, { color: diffColor }]}>{formatGuildGrade(quest.difficulty)}</Text>
               </View>
             )}
             {isMissionActive && <Text style={s.activeMissionPill}>ACTIVE</Text>}
