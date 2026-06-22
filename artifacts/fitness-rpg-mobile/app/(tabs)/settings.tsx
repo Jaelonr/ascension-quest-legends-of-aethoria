@@ -6,6 +6,7 @@ import {
   DEFAULT_MOBILE_SETTINGS,
   loadMobileSettings,
   saveMobileSettings,
+  type AccentColor,
   type MobileSettings,
 } from "@/utils/mobile-settings";
 import { useRouter } from "expo-router";
@@ -44,6 +45,17 @@ const LEGAL_COPY = {
       "Before launch: verify Clerk authentication, Google sign-in redirects, PostgreSQL migrations, OpenAI fallback behavior, mock-mode isolation, legal copy review, app versioning, and export/delete workflows.",
   },
 };
+
+const REMINDER_TIMES = ["06:00", "07:00", "08:00", "09:00", "12:00", "15:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
+
+const ACCENT_COLORS: Array<{ id: AccentColor; label: string; color: string }> = [
+  { id: "gold", label: "Gold", color: "#d9ad63" },
+  { id: "cyan", label: "Cyan", color: "#22d3ee" },
+  { id: "green", label: "Green", color: "#4ade80" },
+  { id: "orange", label: "Orange", color: "#fb923c" },
+  { id: "red", label: "Red", color: "#f87171" },
+  { id: "purple", label: "Purple", color: "#c084fc" },
+];
 
 function Section({
   icon,
@@ -156,6 +168,46 @@ function Choice({
         <Text style={[s.choiceLabel, active && s.choiceLabelActive]}>{label}</Text>
         <Text style={s.choiceDesc}>{description}</Text>
       </View>
+    </TouchableOpacity>
+  );
+}
+
+function Chip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={[s.chip, active && s.chipActive]} onPress={onPress} activeOpacity={0.82}>
+      <Text style={[s.chipText, active && s.chipTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function Swatch({
+  label,
+  color,
+  active,
+  onPress,
+}: {
+  label: string;
+  color: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      accessibilityLabel={`${label} accent color`}
+      style={[s.swatchButton, active && s.swatchButtonActive]}
+      onPress={onPress}
+      activeOpacity={0.82}
+    >
+      <View style={[s.swatch, { backgroundColor: color }]} />
+      <Text style={[s.swatchLabel, active && s.swatchLabelActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -330,6 +382,26 @@ export default function SettingsScreen() {
             value={settings.compactMode}
             onValueChange={(v) => setSetting("compactMode", v)}
           />
+          <View style={s.inlinePanel}>
+            <View style={s.inlineHeading}>
+              <Feather name="sliders" size={14} color="#d9ad63" />
+              <View style={{ flex: 1 }}>
+                <Text style={s.inlineTitle}>Accent Color</Text>
+                <Text style={s.inlineDesc}>Matches the web presentation control. Full theme application is staged for a later visual pass.</Text>
+              </View>
+            </View>
+            <View style={s.swatchGrid}>
+              {ACCENT_COLORS.map((color) => (
+                <Swatch
+                  key={color.id}
+                  label={color.label}
+                  color={color.color}
+                  active={settings.accentColor === color.id}
+                  onPress={() => setSetting("accentColor", color.id)}
+                />
+              ))}
+            </View>
+          </View>
         </Section>
 
         <Section icon="bell" title="Notifications">
@@ -347,6 +419,27 @@ export default function SettingsScreen() {
             value={settings.workoutReminder}
             onValueChange={(v) => setSetting("workoutReminder", v)}
           />
+          {settings.workoutReminder ? (
+            <View style={s.inlinePanel}>
+              <View style={s.inlineHeading}>
+                <Feather name="clock" size={14} color="#d9ad63" />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.inlineTitle}>Reminder Time</Text>
+                  <Text style={s.inlineDesc}>Saved locally until native notification scheduling is wired.</Text>
+                </View>
+              </View>
+              <View style={s.chipGrid}>
+                {REMINDER_TIMES.map((time) => (
+                  <Chip
+                    key={time}
+                    label={time}
+                    active={settings.reminderTime === time}
+                    onPress={() => setSetting("reminderTime", time)}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
           <ToggleRow
             icon="award"
             label="Achievement Alerts"
@@ -458,8 +551,18 @@ export default function SettingsScreen() {
             right={<Text style={environment.devBypass ? s.statusBad : s.statusGood}>{environment.devBypass ? "On" : "Off"}</Text>}
           />
           <Row icon="check-square" label="Launch Checklist" description="Auth, database, OpenAI, mocks, legal, export/delete." onPress={() => showCopy("checklist")} />
-          <Row icon="info" label="App Version" description="Ascension Quest mobile build 1.0.0" />
+          <Row icon="info" label="Ascension Quest: Legends of Aethoria" description="Mobile build 1.0.0" right={<Text style={s.versionBadge}>v1.0.0</Text>} />
+          <Row icon="code" label="Runtime" description="Expo, React Native, Clerk, PostgreSQL API, and Aethoria shared contracts." />
         </Section>
+
+        <TouchableOpacity
+          style={s.saveButton}
+          activeOpacity={0.86}
+          onPress={() => Alert.alert("Settings saved", "Your mobile preferences have been applied.")}
+        >
+          <Feather name="check" size={16} color="#f1dfc6" />
+          <Text style={s.saveButtonText}>Save Settings</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -532,7 +635,25 @@ const s = StyleSheet.create({
   choiceLabel: { color: "#d8c4a5", fontSize: 13, fontFamily: "Inter_700Bold" },
   choiceLabelActive: { color: "#d9ad63" },
   choiceDesc: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 3 },
+  inlinePanel: { padding: 13, borderBottomWidth: 1, borderBottomColor: "#2a2520", backgroundColor: "#0e0d0b" },
+  inlineHeading: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 10 },
+  inlineTitle: { color: "#eee5d7", fontSize: 13, fontFamily: "Inter_700Bold" },
+  inlineDesc: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 3 },
+  chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  chip: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", paddingHorizontal: 10, paddingVertical: 7 },
+  chipActive: { borderColor: "#d9ad63", backgroundColor: "#24190d" },
+  chipText: { color: "#9d8f80", fontSize: 11, fontFamily: "Inter_700Bold" },
+  chipTextActive: { color: "#f1dfc6" },
+  swatchGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  swatchButton: { width: "30%", minWidth: 86, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 8, alignItems: "center", gap: 6 },
+  swatchButtonActive: { borderColor: "#d9ad63", backgroundColor: "#1a140d" },
+  swatch: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: "#f1dfc6" },
+  swatchLabel: { color: "#8f887d", fontSize: 10, fontFamily: "Inter_700Bold" },
+  swatchLabelActive: { color: "#f1dfc6" },
   statusSoon: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   statusGood: { color: "#4ade80", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   statusBad: { color: "#f87171", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  versionBadge: { color: "#9d8f80", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  saveButton: { marginTop: 4, marginBottom: 18, minHeight: 50, backgroundColor: "#74291f", borderWidth: 1, borderColor: "#a34b35", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  saveButtonText: { color: "#f1dfc6", fontSize: 14, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
 });
