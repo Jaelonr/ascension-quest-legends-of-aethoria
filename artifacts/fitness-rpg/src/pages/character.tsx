@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { Link } from "wouter";
 import { customFetch } from "@workspace/api-client-react";
-import { AethoriaHeader, AethoriaPage } from "@/components/shared/aethoria-page";
+import { AethoriaHeader, AethoriaPage, AethoriaPanel, AethoriaSectionTitle } from "@/components/shared/aethoria-page";
 import { GearMannequin } from "@/components/shared/gear-mannequin";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Boxes, Crown, Dumbbell, Eye, Palette, Route, Scale, Settings, Shield, UserRound } from "lucide-react";
+import { Boxes, Crown, Dumbbell, Eye, Palette, Route, Scale, Settings, Shield, Sparkles, UserRound } from "lucide-react";
+import { formatGuildGrade, GRADE_LABELS } from "@/lib/ranks";
 
 type CharacterSummary = {
   player: any;
@@ -37,7 +37,7 @@ function useCharacterSummary() {
 
 function StatBox({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border border-[#3b3328] bg-[#11100e] p-3 text-center">
+    <div className="border border-[#3b3328] bg-[#0c0b09] p-3 text-center">
       <div className="font-serif text-xl font-bold text-[#d9ad63]">{value}</div>
       <div className="text-[9px] uppercase tracking-widest text-[#8f887d]">{label}</div>
     </div>
@@ -46,20 +46,11 @@ function StatBox({ label, value }: { label: string; value: number }) {
 
 function Section({ title, icon: Icon, children }: { title: string; icon: ElementType; children: ReactNode }) {
   return (
-    <Card className="border-[#3b3328] bg-[#11100e]">
-      <CardContent className="p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <Icon className="size-4 text-[#d7a54d]" />
-          <h2 className="font-serif text-sm font-bold text-[#d9ad63]">{title}</h2>
-        </div>
-        {children}
-      </CardContent>
-    </Card>
+    <AethoriaPanel>
+      <AethoriaSectionTitle icon={Icon}>{title}</AethoriaSectionTitle>
+      {children}
+    </AethoriaPanel>
   );
-}
-
-function displayGearName(item: any | null | undefined) {
-  return item?.displayName ?? item?.name ?? "Empty";
 }
 
 function kgToLb(value?: number | null) {
@@ -86,39 +77,69 @@ export default function Character() {
 
   const stats = data.player.stats ?? {};
   const bio = data.biometrics ?? {};
+  const gradeName = GRADE_LABELS[data.player.rank] ?? data.player.rank ?? "Wood";
+  const equippedCount = data.gearSlots.filter((slot) => slot.item).length;
+  const title = data.identity.activeTitle ?? "No title equipped";
+  const className = data.identity.class ?? "Unranked Adventurer";
+  const styleLabel = data.identity.dominantStyle?.label ?? data.identity.dominantStyle?.style ?? "Still forming";
+  const specialization = data.identity.dominantStyle?.hybridArchetype ?? "Earned through behavior";
 
   return (
     <AethoriaPage>
       <AethoriaHeader icon={UserRound} title="Character" subtitle="Who you are in this world, shaped by what you do" />
 
-      <Card className="overflow-hidden border-[#6b4d2f] bg-[#11100e]">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-4">
-            <div className="flex size-16 shrink-0 items-center justify-center border-2 border-[#d7a54d] bg-[#1b1511] font-serif text-2xl font-bold text-[#d7a54d]">
-              {data.player.rank}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-serif text-xl font-bold text-[#f1dfc6]">{data.player.name}</p>
-              <p className="text-xs text-[#8f887d]">Level {data.player.level} - {data.identity.class}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Badge className="bg-[#3b3328] text-[#d8c4a5]">{data.identity.activeTitle ?? "No title equipped"}</Badge>
-                {data.identity.dominantStyle?.hybridArchetype && <Badge variant="outline" className="border-[#6b4d2f] text-[#d9ad63]">{data.identity.dominantStyle.hybridArchetype}</Badge>}
+      <AethoriaPanel accent className="overflow-hidden p-0">
+        <div className="grid md:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="p-4">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-[#8f887d]">Adventurer Record</p>
+            <div className="mt-2 flex items-start gap-4">
+              <div className="flex size-16 shrink-0 flex-col items-center justify-center border-2 border-[#d7a54d] bg-[#1b1511] text-[#d7a54d]">
+                <span className="font-serif text-xl font-bold">{gradeName}</span>
+                <span className="text-[8px] uppercase tracking-widest text-[#9f9586]">Grade</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-serif text-2xl font-bold text-[#f1dfc6]">{data.player.name}</p>
+                <p className="text-xs text-[#8f887d]">Level {data.player.level} · {className}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge className="rounded-none bg-[#3b3328] text-[#d8c4a5]">{title}</Badge>
+                  <Badge variant="outline" className="rounded-none border-[#6b4d2f] text-[#d9ad63]">{specialization}</Badge>
+                </div>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="grid grid-cols-3 border-t border-[#3b3328] md:w-72 md:border-l md:border-t-0">
+            <div className="p-3 text-center">
+              <p className="font-serif text-lg font-bold text-[#d9ad63]">{formatGuildGrade(data.player.rank)}</p>
+              <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Guild Grade</p>
+            </div>
+            <div className="border-x border-[#3b3328] p-3 text-center">
+              <p className="font-serif text-lg font-bold text-[#49a3a0]">{equippedCount}/{data.gearSlots.length}</p>
+              <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Equipped</p>
+            </div>
+            <div className="p-3 text-center">
+              <p className="font-serif text-lg font-bold text-[#d8c4a5]">{styleLabel}</p>
+              <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Style</p>
+            </div>
+          </div>
+        </div>
+      </AethoriaPanel>
 
-      <div className="grid grid-cols-3 gap-2">
-        <StatBox label="STR" value={stats.strength ?? 5} />
-        <StatBox label="AGI" value={stats.agility ?? 5} />
-        <StatBox label="STA" value={stats.stamina ?? 5} />
-        <StatBox label="VIT" value={stats.vitality ?? 5} />
-        <StatBox label="DIS" value={stats.discipline ?? 5} />
-        <StatBox label="SEN" value={stats.sense ?? 5} />
-      </div>
+      <GearMannequin
+        slots={data.gearSlots}
+        className="shadow-[0_0_36px_rgba(217,165,77,0.08)]"
+      />
 
-      <GearMannequin slots={data.gearSlots} />
+      <AethoriaPanel>
+        <AethoriaSectionTitle icon={Sparkles}>Attributes</AethoriaSectionTitle>
+        <div className="grid grid-cols-3 gap-2 md:grid-cols-6">
+          <StatBox label="STR" value={stats.strength ?? 5} />
+          <StatBox label="AGI" value={stats.agility ?? 5} />
+          <StatBox label="STA" value={stats.stamina ?? 5} />
+          <StatBox label="VIT" value={stats.vitality ?? 5} />
+          <StatBox label="DIS" value={stats.discipline ?? 5} />
+          <StatBox label="SEN" value={stats.sense ?? 5} />
+        </div>
+      </AethoriaPanel>
 
       <Section title="Class Path" icon={Route}>
         <div className="grid gap-2 md:grid-cols-3">
@@ -140,18 +161,21 @@ export default function Character() {
         </p>
       </Section>
 
-      <Section title="Gear Slots" icon={Shield}>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-          {data.gearSlots.map((slot) => (
-            <div key={slot.slot} className="border border-[#3b3328] bg-[#0c0b09] p-3">
-              <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">{slot.label}</p>
-              <p className="mt-1 truncate font-serif text-sm font-bold text-[#d8c4a5]">{displayGearName(slot.item)}</p>
-              {(slot.item?.affinity ?? slot.item?.elementalAffinity) && <p className="text-[10px] text-[#49a3a0]">{slot.item.affinity ?? slot.item.elementalAffinity}</p>}
-            </div>
-          ))}
+      <AethoriaPanel accent>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <AethoriaSectionTitle icon={Shield}>Armory Control</AethoriaSectionTitle>
+            <p className="text-sm leading-relaxed text-[#cfc5b8]">
+              Slot artifacts, inspect lore, and equip pieces from the full armory. The paper-doll above reflects the current loadout.
+            </p>
+          </div>
+          <Link href="/inventory?tab=armory">
+            <Button className="w-full rounded-none border border-[#c08c4e] bg-[#74291f] font-serif text-[#f1dfc6] hover:bg-[#8c3527] md:w-auto">
+              Open Armory
+            </Button>
+          </Link>
         </div>
-        <Link href="/inventory?tab=armory"><Button variant="outline" className="mt-3 w-full border-[#6b4d2f] text-[#d9ad63]">Open Armory</Button></Link>
-      </Section>
+      </AethoriaPanel>
 
       <div className="grid gap-3 md:grid-cols-2">
         <Section title="Titles" icon={Crown}>
