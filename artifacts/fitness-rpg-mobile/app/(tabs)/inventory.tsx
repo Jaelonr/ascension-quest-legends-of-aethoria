@@ -351,6 +351,10 @@ export default function CharacterScreen() {
               <Text style={cs.profileBtnTitle}>Open System Record</Text>
               <Text style={cs.profileBtnText}>Edit biometrics, strength marks, equipment access, and notes.</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={cs.profileBtn} onPress={() => router.push("/(tabs)/settings" as any)} activeOpacity={0.8}>
+              <Text style={cs.profileBtnTitle}>Open Guild Settings</Text>
+              <Text style={cs.profileBtnText}>Manage account access, units, privacy, health imports, and production readiness.</Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
