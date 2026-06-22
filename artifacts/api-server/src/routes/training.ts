@@ -346,7 +346,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
           gearDrop: null,
           playerRank: xpResult?.newRank ?? freshPlayer.rank ?? "E",
           baseClass: freshPlayer.baseClass ?? "Warrior",
-          playerName: freshPlayer.name ?? "Hunter",
+          playerName: freshPlayer.name ?? "Adventurer",
           narrativeIntensity,
           elementalAffinity: equippedGear.find((item) => item.elementalAffinity !== "physical")?.elementalAffinity ?? "physical",
           narrativeModifiers: equippedGear.flatMap((item) => item.narrativeModifiers).slice(0, 3),

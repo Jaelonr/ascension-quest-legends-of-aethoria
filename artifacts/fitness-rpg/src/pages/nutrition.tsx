@@ -117,7 +117,7 @@ function CalorieGoalCard({
           if ((data as { autoCalc?: boolean }).autoCalc) {
             toast({ title: "Calorie goal updated!", description: `${(data as { calories: number }).calories} kcal · calculated from your stats.` });
           } else {
-            toast({ title: "Preferences saved", description: "Add height & weight in your Hunter Profile for an exact calculation." });
+            toast({ title: "Preferences saved", description: "Add height & weight in your Adventurer Profile for an exact calculation." });
           }
         },
         onError: () => toast({ title: "Failed to save goal", variant: "destructive" }),
@@ -239,7 +239,7 @@ function CalorieGoalCard({
             <Link className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Calories are calculated using your height & weight from your{" "}
-              <span className="text-foreground font-medium">Hunter Profile</span>. Set those first for an exact result.
+              <span className="text-foreground font-medium">Adventurer Profile</span>. Set those first for an exact result.
             </p>
           </div>
 

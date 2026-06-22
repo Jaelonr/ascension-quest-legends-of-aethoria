@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { GRADE_LABELS } from "@/lib/ranks";
 import { motion } from "framer-motion";
 
 interface RankBadgeProps {
@@ -19,11 +20,11 @@ const rankColors: Record<string, string> = {
 
 export function RankBadge({ rank, className, animate = true }: RankBadgeProps) {
   const colorClass = rankColors[rank] || rankColors["E"];
-  const displayRank = rank === "National-Level" ? "N" : rank;
+  const displayRank = GRADE_LABELS[rank] ?? rank;
 
   const content = (
     <div className={cn(
-      "flex items-center justify-center font-bold font-serif italic border rounded-sm",
+      "flex items-center justify-center font-bold font-serif italic border rounded-sm px-1 text-center leading-none",
       colorClass,
       className
     )}>

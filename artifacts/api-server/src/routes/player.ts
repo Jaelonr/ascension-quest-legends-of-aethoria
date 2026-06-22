@@ -326,7 +326,7 @@ router.post("/player/prestige", async (req, res) => {
   try {
     const { player, stats } = await getOrCreatePlayer(req.userId);
     if (player.level < 100) {
-      return void res.status(400).json({ error: "Must be Level 100 (National-Level) to prestige" });
+      return void res.status(400).json({ error: "Must be Level 100 (Diamond Grade) to prestige" });
     }
 
     // Reset level to 1, keep some earned bonuses, increment prestige
@@ -463,7 +463,7 @@ router.post("/player/reset", async (req, res) => {
 
     // Reset player to default values
     await db.update(playerTable).set({
-      name: "Hunter",
+      name: "Adventurer",
       level: 1,
       xp: 0,
       gold: 500,

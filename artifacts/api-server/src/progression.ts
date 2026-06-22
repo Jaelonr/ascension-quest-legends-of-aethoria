@@ -261,12 +261,12 @@ async function checkAndGrantAchievements(
   }
 
   // Check rank-based title awards
-  if (player.rank === "D") await grantTitleIfExists(playerId, "Rank D Hunter", newTitles);
+  if (player.rank === "D") await grantTitleIfExists(playerId, "Copper Grade Adventurer", newTitles);
   if (player.rank === "C") await grantTitleIfExists(playerId, "Shadow Walker", newTitles);
   if (player.rank === "B") await grantTitleIfExists(playerId, "Iron Gate Breaker", newTitles);
-  if (player.rank === "A") await grantTitleIfExists(playerId, "A-Rank Sovereign", newTitles);
+  if (player.rank === "A") await grantTitleIfExists(playerId, "Silver Grade Sovereign", newTitles);
   if (player.rank === "S") await grantTitleIfExists(playerId, "Iron Sovereign", newTitles);
-  if (player.rank === "National-Level") await grantTitleIfExists(playerId, "National-Level Hunter", newTitles);
+  if (player.rank === "National-Level") await grantTitleIfExists(playerId, "Diamond Grade Adventurer", newTitles);
 
   return { newAchievements, newTitles };
 }
@@ -292,7 +292,7 @@ export async function getOrCreatePlayer(clerkId: string) {
   }
   const [player] = await db.insert(playerTable).values({
     clerkId,
-    name: "Hunter",
+    name: "Adventurer",
     level: 1,
     rank: "E",
     xp: 0,

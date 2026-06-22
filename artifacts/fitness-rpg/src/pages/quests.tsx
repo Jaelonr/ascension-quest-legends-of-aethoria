@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { formatGuildGrade } from "@/lib/ranks";
 
 const DIFF_COLOR: Record<string, string> = {
   E: "text-gray-400 border-gray-600/40",
@@ -79,7 +80,7 @@ function MissionConfirmDialog({
             <p className="font-serif font-bold text-sm">{quest.title}</p>
             {quest.difficulty && (
               <span className={cn("border px-1 text-[10px] font-mono inline-block mt-1", DIFF_COLOR[quest.difficulty])}>
-                {quest.difficulty}-Rank
+                {formatGuildGrade(quest.difficulty)}
               </span>
             )}
             <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{quest.description}</p>

@@ -41,6 +41,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { formatGuildGrade } from "@/lib/ranks";
 
 type ChatLine = { id: string; role: "user" | "assistant"; content: string };
 
@@ -465,7 +466,7 @@ export default function GuildHall() {
         <div className="border-t border-[#6b4d2f] p-4 md:flex md:flex-col md:justify-center md:border-l md:border-t-0 md:p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-serif text-lg font-bold text-[#d9ad63]">Grandmaster Aldric</h2>
-            <span className="border border-[#72552e] px-2 py-0.5 text-[10px] font-bold text-[#d5a557]">S-RANK</span>
+            <span className="border border-[#72552e] px-2 py-0.5 text-[10px] font-bold text-[#d5a557]">MYTHRIL GRADE</span>
           </div>
           <p className="mt-2 font-serif text-[15px] leading-relaxed text-[#ded5c8]">{data.counsel.message}</p>
           {extended.counsel?.trendSummary && (
@@ -493,7 +494,7 @@ export default function GuildHall() {
 
       <section className="mt-4 grid grid-cols-4 border border-[#514332] bg-[#11100e]">
         {[
-          { icon: Crown, label: "Rank", value: `${data.player.rank}-Rank`, color: "text-[#d6a14b]", onClick: undefined },
+          { icon: Crown, label: "Grade", value: formatGuildGrade(data.player.rank), color: "text-[#d6a14b]", onClick: undefined },
           { icon: Sparkles, label: "Level", value: `Lv. ${data.player.level}`, color: "text-[#d8c4a5]", onClick: undefined },
           { icon: Flame, label: "Streak", value: `${data.player.streakDays} days`, color: "text-[#dc7540]", onClick: undefined },
           { icon: BookOpen, label: "Campaign", value: `Ch. ${data.campaign.chapter}`, color: "text-[#55a6a1]", onClick: () => setCampaignOpen(true) },

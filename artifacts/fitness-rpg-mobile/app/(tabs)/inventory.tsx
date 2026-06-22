@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import { formatGuildGrade, gradeColor } from "@/utils/ranks";
 
 type CharSummary = {
   player: any;
@@ -61,10 +62,6 @@ const SLOT_EMOJIS: Record<string, string> = {
   gloves: "🧤", boots: "👢", ring: "💍", necklace: "📿",
 };
 
-const RANK_COLORS: Record<string, string> = {
-  E: "#9ca3af", D: "#22c55e", C: "#a855f7", B: "#f97316", A: "#ef4444", S: "#eab308",
-};
-
 type TabKey = "gear" | "inventory" | "identity";
 
 export default function CharacterScreen() {
@@ -95,7 +92,7 @@ export default function CharacterScreen() {
   };
 
   const player = char?.player;
-  const rankColor = RANK_COLORS[player?.rank ?? "E"] ?? "#9ca3af";
+  const rankColor = gradeColor(player?.rank);
   const xpPct = player ? Math.min(100, Math.round((player.xp / Math.max(1, player.xpToNextLevel)) * 100)) : 0;
 
   const identityTotal = identity
@@ -113,7 +110,7 @@ export default function CharacterScreen() {
       >
         {/* Header */}
         <Text style={cs.headerSub}>CHARACTER</Text>
-        <Text style={cs.headerTitle}>{player?.name ?? "Hunter"}</Text>
+        <Text style={cs.headerTitle}>{player?.name ?? "Adventurer"}</Text>
 
         {/* Player stats */}
         {player && (
@@ -121,7 +118,7 @@ export default function CharacterScreen() {
             <View style={cs.statsRow}>
               <View style={cs.statBlock}>
                 <View style={[cs.rankPill, { borderColor: rankColor + "60" }]}>
-                  <Text style={[cs.rankText, { color: rankColor }]}>{player.rank}-Rank</Text>
+                  <Text style={[cs.rankText, { color: rankColor }]}>{formatGuildGrade(player.rank)}</Text>
                 </View>
                 <Text style={cs.levelText}>Level {player.level}</Text>
               </View>

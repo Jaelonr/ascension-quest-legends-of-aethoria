@@ -25,8 +25,8 @@ export function useBiometric() {
           rp: { name: "Personal Fitness RPG", id: window.location.hostname },
           user: {
             id: userId,
-            name: "hunter",
-            displayName: "Hunter",
+            name: "adventurer",
+            displayName: "Adventurer",
           },
           pubKeyCredParams: [
             { alg: -7, type: "public-key" },

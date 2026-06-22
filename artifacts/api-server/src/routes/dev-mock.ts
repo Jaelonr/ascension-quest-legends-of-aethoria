@@ -517,7 +517,7 @@ router.get("/boss-raids", (_req, res) => {
       id: 1,
       playerId: player.id,
       title: "Trial of the Iron Wraith",
-      description: "A contained gate threat suitable for E-rank hunters.",
+      description: "A contained Gate threat suitable for Wood Grade adventurers.",
       difficulty: "E",
       status: "available",
       xpReward: 500,
@@ -661,7 +661,7 @@ router.get("/guild-master/conversation", (_req, res) => {
       {
         id: 1,
         role: "assistant",
-        content: "Welcome back, hunter. The board is updated, and your next gate is waiting.",
+        content: "Welcome back, adventurer. The board is updated, and your next Gate is waiting.",
         createdAt: nowIso(),
       },
     ],
@@ -672,7 +672,7 @@ router.post("/guild-master/messages", (req, res) => {
   const content = String(req.body?.content ?? "").trim();
   const lower = content.toLowerCase();
   const reply = !content
-    ? "Speak plainly, hunter. The guild rewards action."
+    ? "Speak plainly, adventurer. The Guild rewards action."
     : lower.includes("system") || lower.includes("aethoria") || lower.includes("world") || lower.includes("sovereign") || lower.includes("gate")
       ? "Here is the state of Aethoria as the Guild can honestly name it. You were summoned, and the signs around you are not ordinary magic, but I will not pretend to know who or what called you here. The Sovereign remains the great enemy in our records: not merely a monster, but a force that feeds on stagnation. Your current ledger shows no active catastrophe, which gives us room to speak, plan, and build readiness before the next rupture."
       : `I hear you: "${content}". Good. I can answer plainly about Aethoria, the Gates, your summoning, your record, or the next duty. Then we turn the answer into one completed action before the day ends.`;
@@ -733,7 +733,7 @@ const buildMockGuildHall = () => ({
     defeatedBosses: 0,
     activeThreats: 1,
     failedIncursions: 0,
-    systemNote: "Only the summoned Hunter can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
+    systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
     nextRelief: "Defeating bosses lowers world danger. Failed incursions and active threats raise it.",
   },
   commission: {
@@ -839,12 +839,12 @@ router.get("/chronicle/summary", (_req, res) => {
       defeatedBosses: 0,
       activeThreats: 1,
       failedIncursions: 0,
-      systemNote: "Only the summoned Hunter can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
+      systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
       nextRelief: "Defeating bosses lowers world danger. Failed incursions and active threats raise it.",
     },
     battleReplays: battleLog,
     guildReports: [
-      { id: 1, month: new Date().getMonth() + 1, year: new Date().getFullYear(), reportText: "The Guild records a hunter learning consistency.", generatedAt: nowIso() },
+      { id: 1, month: new Date().getMonth() + 1, year: new Date().getFullYear(), reportText: "The Guild records an adventurer learning consistency.", generatedAt: nowIso() },
     ],
     campaignProgress: [campaignQuest],
     discoveredItems,

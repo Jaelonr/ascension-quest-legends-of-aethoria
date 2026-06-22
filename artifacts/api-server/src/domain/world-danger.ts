@@ -36,7 +36,7 @@ export function buildWorldDanger(raids: BossRaidRecord[]) {
           : state === "guarded"
             ? "Guarded"
             : "Recovering",
-    systemNote: "Only the summoned Hunter can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
+    systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
     nextRelief: "Defeating bosses lowers world danger. Failed incursions and active threats raise it.",
   };
 }

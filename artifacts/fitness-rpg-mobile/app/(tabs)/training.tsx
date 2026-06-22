@@ -230,3 +230,4 @@ const s = StyleSheet.create({
   sessionMeta: { fontSize: 11, marginTop: 2 },
   statusBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
 });
+

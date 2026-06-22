@@ -362,7 +362,7 @@ export default function Planner() {
         >
           <User className="w-5 h-5 text-yellow-400 shrink-0" />
           <div className="flex-1">
-            <div className="text-xs font-bold text-yellow-300">Set up your Hunter Profile</div>
+            <div className="text-xs font-bold text-yellow-300">Set up your Adventurer Profile</div>
             <div className="text-[10px] text-yellow-400/70">Add your strength maxes to get recommended working weights</div>
           </div>
           <span className="text-yellow-400 text-xs">→</span>
@@ -383,7 +383,7 @@ export default function Planner() {
           >
             <User className="w-4 h-4 text-primary shrink-0" />
             <div className="flex-1">
-              <div className="text-xs font-bold text-foreground">Set up Hunter Profile first</div>
+              <div className="text-xs font-bold text-foreground">Set up Adventurer Profile first</div>
               <div className="text-[10px] text-muted-foreground">Add your 1RM maxes for weight recommendations</div>
             </div>
             <span className="text-primary text-xs">→</span>

@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import { formatGuildGrade, gradeColor } from "@/utils/ranks";
 
 type PlayerSummary = { level: number; xp: number; xpToNextLevel: number; gold: number; rank: string; name: string | null };
 
@@ -112,7 +113,7 @@ function AldricChatModal({ visible, onClose }: { visible: boolean; onClose: () =
         >
           {localLines.length === 0 && (
             <Text style={[s.chatEmpty, { color: colors.mutedForeground }]}>
-              The Grandmaster awaits your report, hunter.
+              The Grandmaster awaits your report, adventurer.
             </Text>
           )}
           {localLines.map((line) => (
@@ -161,10 +162,6 @@ function AldricChatModal({ visible, onClose }: { visible: boolean; onClose: () =
   );
 }
 
-const RANK_COLORS: Record<string, string> = {
-  E: "#9ca3af", D: "#22c55e", C: "#a855f7", B: "#f97316", A: "#ef4444", S: "#eab308",
-};
-
 export default function HallScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -178,7 +175,7 @@ export default function HallScreen() {
   const commission = hall?.commission as any;
   const dailyQuest = dailyQuestData as any;
   const xpPct = player ? Math.min(100, Math.round((player.xp / player.xpToNextLevel) * 100)) : 0;
-  const rankColor = RANK_COLORS[player?.rank ?? "E"] ?? "#9ca3af";
+  const rankColor = gradeColor(player?.rank);
 
   return (
     <View style={[s.root, { backgroundColor: "#0a0908" }]}>
@@ -205,9 +202,9 @@ export default function HallScreen() {
             <View style={s.playerRow}>
               <View>
                 <View style={[s.rankBadge, { borderColor: rankColor + "60" }]}>
-                  <Text style={[s.rankText, { color: rankColor }]}>{player.rank}-Rank Hunter</Text>
+                  <Text style={[s.rankText, { color: rankColor }]}>{formatGuildGrade(player.rank)} Adventurer</Text>
                 </View>
-                <Text style={s.playerName}>{player.name ?? "Hunter"}</Text>
+                <Text style={s.playerName}>{player.name ?? "Adventurer"}</Text>
                 <Text style={s.playerLevel}>Level {player.level}</Text>
               </View>
               <View style={s.goldBlock}>
@@ -260,7 +257,7 @@ export default function HallScreen() {
         {/* Daily Quest */}
         {dailyQuest && (
           <View style={[s.card, { backgroundColor: "#171510", borderColor: "#3b3328", marginTop: 12 }]}>
-            <Text style={s.sectionLabel}>DAILY QUEST</Text>
+            <Text style={s.sectionLabel}>GUILD DUTY</Text>
             <Text style={s.commissionTitle}>{dailyQuest.title}</Text>
             <View style={s.rewardRow}>
               <Text style={s.rewardXp}>+{dailyQuest.xpReward} XP</Text>

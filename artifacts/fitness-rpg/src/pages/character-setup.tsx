@@ -80,7 +80,7 @@ const GOALS = [
     color: "text-red-400",
     border: "border-red-800/60",
     bonuses: { ...ZERO_STATS, strength: 3, vitality: 2 },
-    goalStr: "Become the strongest Hunter in all of Aethoria",
+    goalStr: "Become the strongest adventurer in all of Aethoria",
   },
   {
     id: "allround",
@@ -271,7 +271,7 @@ export default function CharacterSetup() {
   const [animating, setAnimating] = useState(false);
 
   // Answers
-  const [hunterName, setHunterName] = useState("");
+  const [adventurerName, setAdventurerName] = useState("");
   const [ageYears, setAgeYears] = useState("");
   const [sex, setSex] = useState<SetupSex>("");
   const [heightCm, setHeightCm] = useState("");
@@ -367,7 +367,7 @@ export default function CharacterSetup() {
 
   const canAdvance = (): boolean => {
     switch (currentStep) {
-      case "name": return hunterName.trim().length >= 2;
+      case "name": return adventurerName.trim().length >= 2;
       case "systemScan": return !!sex && !!activityLevel && Number(ageYears) >= 10 && Number(ageYears) <= 100;
       case "background": return background !== null;
       case "goal": return goal !== null;
@@ -416,7 +416,7 @@ export default function CharacterSetup() {
 
     await setupMutation.mutateAsync({
       data: {
-        name: hunterName.trim() || "Hunter",
+        name: adventurerName.trim() || "Adventurer",
         statBonuses: bonuses,
         equipmentIds: selectedEquipmentIds(),
         baseClass: classId,
@@ -471,7 +471,7 @@ export default function CharacterSetup() {
                 System
               </span>
               <span className="text-[9px] font-mono text-muted-foreground">
-                Hunter Assessment
+                Adventurer Assessment
               </span>
             </div>
             <span className="text-[9px] font-mono text-muted-foreground">
@@ -531,7 +531,7 @@ export default function CharacterSetup() {
                     [ System Notification ]
                   </p>
                   <h1 className="text-2xl font-serif text-white leading-snug mb-2">
-                    A new Hunter has been detected.
+                    A new adventurer has been detected.
                   </h1>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     The System requires identification. What shall Aethoria call you?
@@ -540,27 +540,27 @@ export default function CharacterSetup() {
                 <div className="space-y-2">
                   <input
                     type="text"
-                    value={hunterName}
-                    onChange={e => setHunterName(e.target.value)}
+                    value={adventurerName}
+                    onChange={e => setAdventurerName(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && canAdvance() && advance()}
-                    placeholder="Enter your name, Hunter..."
+                    placeholder="Enter your name, adventurer..."
                     maxLength={24}
                     autoFocus
                     className={cn(
                       "w-full bg-transparent border rounded-lg px-4 py-4 text-lg font-serif text-white placeholder:text-white/20 outline-none transition-colors",
-                      hunterName.trim().length >= 2
+                      adventurerName.trim().length >= 2
                         ? "border-cyan-500/60 focus:border-cyan-400"
                         : "border-white/20 focus:border-white/40"
                     )}
                   />
-                  {hunterName.trim().length > 0 && hunterName.trim().length < 2 && (
+                  {adventurerName.trim().length > 0 && adventurerName.trim().length < 2 && (
                     <p className="text-[10px] text-red-400 font-mono">Minimum 2 characters required.</p>
                   )}
                 </div>
-                {hunterName.trim().length >= 2 && (
+                {adventurerName.trim().length >= 2 && (
                   <div className="rounded-lg border border-cyan-900/40 bg-cyan-950/20 px-4 py-3">
                     <p className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-1">Registered</p>
-                    <p className="text-base font-serif text-white">{hunterName.trim()}</p>
+                    <p className="text-base font-serif text-white">{adventurerName.trim()}</p>
                   </div>
                 )}
               </div>
@@ -896,15 +896,15 @@ export default function CharacterSetup() {
                     [ Assessment Complete ]
                   </p>
                   <h2 className="text-xl font-serif text-white leading-snug mb-1">
-                    Hunter Profile Confirmed
+                    Adventurer Profile Confirmed
                   </h2>
                   <p className="text-xs text-muted-foreground">Review your initial attributes before entering Aethoria.</p>
                 </div>
 
-                {/* Hunter card */}
+                {/* Adventurer card */}
                 <div className={cn("rounded-xl border p-4 space-y-1", assignedClass.border, assignedClass.bg)}>
-                  <p className="text-[9px] font-mono text-cyan-400 uppercase tracking-widest">Hunter Identified</p>
-                  <p className="text-xl font-serif text-white">{hunterName}</p>
+                  <p className="text-[9px] font-mono text-cyan-400 uppercase tracking-widest">Adventurer Identified</p>
+                  <p className="text-xl font-serif text-white">{adventurerName}</p>
                   <p className={cn("text-sm font-serif font-bold", assignedClass.color)}>
                     {assignedEvo.name}
                   </p>

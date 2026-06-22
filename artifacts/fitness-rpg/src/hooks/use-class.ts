@@ -141,7 +141,7 @@ export const BASE_CLASSES: BaseClass[] = [
         abilities: [
           { name: "World-Ender",       desc: "Your lifts defy physics. The System simply records what you accomplish.", type: "passive" },
           { name: "Absolute Authority",desc: "All limits become suggestions. You decide when you are done.", type: "active" },
-          { name: "Legacy",            desc: "Every Hunter you train gains +1 to their starting stat pool.", type: "passive" },
+          { name: "Legacy",            desc: "Every adventurer you train gains +1 to their starting stat pool.", type: "passive" },
         ],
       },
     ],
@@ -249,12 +249,12 @@ export const BASE_CLASSES: BaseClass[] = [
         abilities: [
           { name: "Eagle Eye",      desc: "Your movement quality is exceptional — form breaks under fatigue are rare.", type: "passive" },
           { name: "Swift Strike",   desc: "Speed-focused training (sprints, plyos) grants double the AGI gains.", type: "active" },
-          { name: "Hunter's Read",  desc: "You can sense optimal training pacing instinctively, avoiding overtraining.", type: "passive" },
+          { name: "Adventurer's Read",  desc: "You can sense optimal training pacing instinctively, avoiding overtraining.", type: "passive" },
         ],
       },
       {
         level: 15,
-        name: "Swift Hunter",
+        name: "Swift Adventurer",
         awakening: "First Awakening",
         lore: "Speed becomes your language. You speak it with your body while others are still processing their first word.",
         color: "text-green-400",
@@ -465,7 +465,7 @@ export const BASE_CLASSES: BaseClass[] = [
         abilities: [
           { name: "Never Fall",      desc: "You do not experience sudden drops in performance. Decline is gradual and controlled.", type: "passive" },
           { name: "Second Wind",     desc: "Triggered at 20% remaining capacity. Full recovery of working state.", type: "active" },
-          { name: "Eternal Stance",  desc: "Your resting state is another hunter's peak.", type: "passive" },
+          { name: "Eternal Stance",  desc: "Your resting state is another adventurer's peak.", type: "passive" },
         ],
       },
       {
@@ -511,7 +511,7 @@ export const BASE_CLASSES: BaseClass[] = [
         lore: "Strategy and brawn unite. You are the rare fighter who is also a scholar of combat.",
         color: "text-sky-400",
         abilities: [
-          { name: "Sage's Insight",    desc: "Each month of training reveals a hidden pattern most hunters never see.", type: "passive" },
+          { name: "Sage's Insight",    desc: "Each month of training reveals a hidden pattern most adventurers never see.", type: "passive" },
           { name: "Counter-Strategy",  desc: "When an opponent adapts, you have already adapted to their adaptation.", type: "active" },
           { name: "Knowledge is Power",desc: "Understanding your sport grants equivalent stat gains to physical training.", type: "passive" },
         ],

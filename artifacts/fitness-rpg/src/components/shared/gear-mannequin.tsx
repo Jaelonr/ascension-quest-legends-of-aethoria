@@ -375,7 +375,7 @@ export function GearMannequin({
         <div>
           <h2 className="font-serif text-lg font-bold text-[#d9ad63]">Equipment</h2>
           <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-[#8f887d]">
-            A neutral vessel for the Hunter's raiment. No face, no hairstyle, no costume creator. The gear tells the story.
+            A neutral vessel for the adventurer's raiment. No face, no hairstyle, no costume creator. The gear tells the story.
           </p>
         </div>
         <div className="border border-[#3b3328] bg-[#0c0b09] px-2 py-1 text-right text-[10px]">

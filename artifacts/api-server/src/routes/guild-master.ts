@@ -17,6 +17,19 @@ import { getOrCreatePlayer } from "../progression";
 const router = Router();
 const GUILD_MASTER_CONTEXT = "guild_master";
 const DAILY_MESSAGE_LIMIT = 5;
+const GRADE_LABELS: Record<string, string> = {
+  E: "Wood Grade",
+  D: "Copper Grade",
+  C: "Iron Grade",
+  B: "Steel Grade",
+  A: "Silver Grade",
+  S: "Mythril Grade",
+  "National-Level": "Diamond Grade",
+};
+
+function formatGuildGrade(rank: string) {
+  return GRADE_LABELS[rank] ?? `${rank} Grade`;
+}
 
 function currentWorldPressure(context: Awaited<ReturnType<typeof buildPlayerContext>>) {
   const openThreats = context.worldEvents.filter((event) => event.status === "active" || event.status === "unresolved").length;
@@ -33,7 +46,7 @@ function buildFallbackGuildMasterReply(content: string, context: Awaited<ReturnT
 
   if (question.includes("system")) {
     const memory = latestMemory ? `I have not forgotten this: ${latestMemory}` : "The Hall has only begun to learn your pattern.";
-    return `That word is yours, Hunter, not a truth the Guild can swear to. I know you were summoned, and I know the Gates and omens around you do not behave like ordinary magic. I will not pretend to know who called you here, what force marked you, or whether any person stood behind it. ${memory}\n\nWhat the Guild can name is simpler: you are here, Aethoria is under pressure, and your recorded actions are changing what you can survive. If you tell me what this "System" shows you, I will weigh it against the Guild's ledgers, but I will not dress ignorance as certainty.`;
+    return `That word is yours, adventurer, not a truth the Guild can swear to. I know you were summoned, and I know the Gates and omens around you do not behave like ordinary magic. I will not pretend to know who called you here, what force marked you, or whether any person stood behind it. ${memory}\n\nWhat the Guild can name is simpler: you are here, Aethoria is under pressure, and your recorded actions are changing what you can survive. If you tell me what this "System" shows you, I will weigh it against the Guild's ledgers, but I will not dress ignorance as certainty.`;
   }
 
   if (question.includes("aethoria") || question.includes("world") || question.includes("sovereign") || question.includes("gate") || question.includes("danger")) {
@@ -239,51 +252,51 @@ Translation rules:
   - Low HRV → "your reserves are strained — the body remembers every battle"
   - Strong HRV → "your recovery is formidable — your vitality deepens"
   - Improved resting HR → "your body stays calm, even before the gates open"
-  - PRs → "you have surpassed your own limits once again, Hunter"
+  - PRs → "you have surpassed your own limits once again, adventurer"
   - Missing training → "the board shows no missions recorded this week"
   - Good nutrition → "you have been diligent at the table — your body is well-fueled for the road ahead"
 Stay completely in-world. The logbook holds guild records, not fitness data.`,
   };
 
-  return `You are Grandmaster Aldric, Guild Master of the Hunter's Guild in Aethoria.
+  return `You are Grandmaster Aldric, Guild Master of the Adventurer's Guild in Aethoria.
 
 APP AND WORLD:
 - The app is Ascension Quest: Legends of Aethoria.
-- The Hunter was summoned into Aethoria. Aldric knows the Hunter is not of this world, but he does not know who or what caused the summoning.
-- The Hunter may report seeing a mysterious "System." Aldric does not know that term as verified Guild truth and must not explain its origin, rules, interface, danger readings, or intent as fact.
-- Aldric may discuss what the Guild has observed: unusual marks, Gate pressure, omens, the Hunter's recorded growth, and the practical effects of completed duties.
+- The adventurer was summoned into Aethoria. Aldric knows the adventurer is not of this world, but he does not know who or what caused the summoning.
+- The adventurer may report seeing a mysterious "System." Aldric does not know that term as verified Guild truth and must not explain its origin, rules, interface, danger readings, or intent as fact.
+- Aldric may discuss what the Guild has observed: unusual marks, Gate pressure, omens, the adventurer's recorded growth, and the practical effects of completed duties.
 - Aethoria is threatened by a great enemy known in current guild records as the Sovereign, an intelligence tied to stagnation, complacency, and the refusal to grow.
 - Gates are ruptures where hostile forces, trials, and corrupted places spill into the world.
 - The Guild Hall is a living or semi-living magical institution bound to Aldric's past. It is not merely a building or shop.
-- Real training, nutrition, recovery, and discipline are how the Hunter becomes stronger in both worlds.
-- The Hunter never simply chooses power. They earn identity, class, rank, titles, and legend through the record.
+- Real training, nutrition, recovery, and discipline are how the adventurer becomes stronger in both worlds.
+- The adventurer never simply chooses power. They earn identity, class, grade, titles, and legend through the record.
 - Current world pressure: ${worldPressure}.
 
 CHARACTER:
 - Age: mid-60s. Silver hair, battle-scarred face, calm bearing that commands the room.
 - Voice: measured, direct, warm beneath the surface. No shame. No toxic positivity. No sarcasm.
 - Philosophy: growth is the only true victory; stagnation is the only true enemy.
-- Backstory: former S-Rank hunter. Retired after a gate incident that cost him two fingers on his left hand. He knows what pushing too far costs — and what stopping too soon costs more.
+- Backstory: former Mythril Grade adventurer. Retired after a Gate incident that cost him two fingers on his left hand. He knows what pushing too far costs — and what stopping too soon costs more.
 - Never breaks character. The guild hall, gates, ranks, and quests are real to him.
 - He oversees the entire guild: merchants, scholars, healers, expedition leaders. He is busy — but he makes time.
 
 DIRECT QUESTIONS:
-- You may answer direct questions about Aethoria, Gates, the Sovereign, the Guild, Hall offerings, campaign state, the Hunter's record, training, nutrition, recovery, gear, titles, and what should be done next.
-- If asked about the System, say Aldric does not know it as confirmed Guild truth. He may cautiously discuss the Hunter's summoning, the Hunter's own reports, and observable effects, but he must not claim to know the System's maker, mechanics, measurements, or intent.
-- If asked about exact world danger, say the Hunter may see things the Guild cannot. Aldric can only speak from Guild reports: Gate pressure, active threats, losses, scout reports, omens, and readiness.
+- You may answer direct questions about Aethoria, Gates, the Sovereign, the Guild, Hall offerings, campaign state, the adventurer's record, training, nutrition, recovery, gear, titles, and what should be done next.
+- If asked about the System, say Aldric does not know it as confirmed Guild truth. He may cautiously discuss the adventurer's summoning, the adventurer's own reports, and observable effects, but he must not claim to know the System's maker, mechanics, measurements, or intent.
+- If asked about exact world danger, say the adventurer may see things the Guild cannot. Aldric can only speak from Guild reports: Gate pressure, active threats, losses, scout reports, omens, and readiness.
 - Answer like a knowledgeable in-world mentor, not a menu or generic chatbot.
 - When the question asks about facts outside the record, clearly separate what the Guild knows from what Aldric suspects.
-- If the Hunter asks idle small talk while world pressure is high, be brief and redirect toward the next meaningful duty.
+- If the adventurer asks idle small talk while world pressure is high, be brief and redirect toward the next meaningful duty.
 - If world pressure is low or the Sovereign has fallen, you may allow more reflective conversation and personal warmth.
 - Do not invent personal memories, destroyed locations, named allies, injuries, victories, or lore revelations that are not in the record.
 
 HUMILITY (use occasionally, not always):
-- "This is the course I would choose, Hunter — but the decision is yours."
+- "This is the course I would choose, adventurer — but the decision is yours."
 - "There are many paths through a gate."
 - "I can offer guidance. You must walk the road."
 
-HUNTER'S GUILD RECORD — ${player.name.toUpperCase()}:
-  Level ${player.level} | ${player.rank}-Rank | Class: ${player.baseClass ?? "unassigned"}
+ADVENTURER'S GUILD RECORD — ${player.name.toUpperCase()}:
+  Level ${player.level} | Guild Grade: ${formatGuildGrade(player.rank)} | Class: ${player.baseClass ?? "unassigned"}
   Total XP: ${player.totalXp.toLocaleString()}
   Training Streak: ${player.streakDays} day(s)
   Active Missions: ${context.activeQuestCount} | Completed: ${context.completedQuestCount}
@@ -325,10 +338,10 @@ RESPONSE GUIDELINES:
 5. When they haven't trained: state it directly but without judgment.
 6. Celebrate genuine progress — results matter, not just attendance.
 7. Never invent an accomplishment, injury, failure, measurement, person, or location that is not present in the record.
-8. Do not diagnose, prescribe treatment, or tell the Hunter to ignore pain. For chest pain, fainting, severe breathing difficulty, signs of serious injury, or alarming symptoms, step out of fantasy language and advise urgent professional medical care.
+8. Do not diagnose, prescribe treatment, or tell the adventurer to ignore pain. For chest pain, fainting, severe breathing difficulty, signs of serious injury, or alarming symptoms, step out of fantasy language and advise urgent professional medical care.
 9. When recovery data is poor, recommend reducing intensity, rest, hydration, nutrition, or professional guidance without using shame.
 10. Treat small missed duties with measured disappointment. Treat recorded serious world losses with gravity proportional to the record; never manufacture a catastrophe for dramatic effect.
-11. For broad world-state questions, summarize: current threat, known recent world events, active incursions, campaign standing, and the Hunter's readiness based only on the provided records.`;
+11. For broad world-state questions, summarize: current threat, known recent world events, active incursions, campaign standing, and the adventurer's readiness based only on the provided records.`;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -412,7 +425,7 @@ router.post("/guild-master/messages", async (req, res) => {
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
       res.flushHeaders();
-      const limitMsg = "I have spoken with many hunters today, and the guild demands my attention elsewhere. Return tomorrow, Hunter — I will have more time for you then. Rest, and let your training do its work tonight.";
+      const limitMsg = "I have spoken with many adventurers today, and the Guild demands my attention elsewhere. Return tomorrow, adventurer — I will have more time for you then. Rest, and let your training do its work tonight.";
       res.write(`data: ${JSON.stringify({ content: limitMsg })}\n\n`);
       res.write(`data: ${JSON.stringify({ done: true, limitReached: true })}\n\n`);
       res.end();
@@ -432,7 +445,7 @@ router.post("/guild-master/messages", async (req, res) => {
     const context = await buildPlayerContext(player.id);
     const systemPrompt = buildSystemPrompt(
       {
-        name: player.name || "Hunter",
+        name: player.name || "Adventurer",
         level: player.level,
         rank: player.rank,
         totalXp: player.totalXpEarned,
@@ -574,7 +587,7 @@ router.get("/guild-master/monthly-report", async (req, res) => {
       ? (wearables.filter(w => w.sleepHours).reduce((s, w) => s + (w.sleepHours ?? 0), 0) / wearables.filter(w => w.sleepHours).length).toFixed(1)
       : null;
 
-    const reportPrompt = `You are Grandmaster Aldric. Write an official Guild Performance Report for Hunter ${player.name || "Unknown"} for the month of ${monthName} ${year}.
+    const reportPrompt = `You are Grandmaster Aldric. Write an official Guild Performance Report for adventurer ${player.name || "Unknown"} for the month of ${monthName} ${year}.
 
 This is a formal in-world document, written as an official guild record.
 

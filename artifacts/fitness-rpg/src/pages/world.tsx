@@ -28,6 +28,7 @@ import {
   type BaseClassId,
 } from "@/hooks/use-class";
 import { cn } from "@/lib/utils";
+import { formatGuildGrade } from "@/lib/ranks";
 import {
   Skull,
   Shield,
@@ -70,22 +71,22 @@ const STYLE_META: Record<string, { label: string; color: string; border: string;
 };
 
 const STYLE_NARRATIVE: Record<string, string> = {
-  strength:     "The dungeon network has registered your output. Gate commanders file unusual reports — a Hunter whose raw force exceeds standard containment projections. You do not fight clever. You fight until nothing is left standing.",
-  striking:     "Strike-pattern analysts have flagged your Hunter file. Your combination efficiency and tempo control have become topics in underground circles. Enemies adapt their guard stances when your name is mentioned.",
+  strength:     "The dungeon network has registered your output. Gate commanders file unusual reports — an adventurer whose raw force exceeds standard containment projections. You do not fight clever. You fight until nothing is left standing.",
+  striking:     "Strike-pattern analysts have flagged your adventurer file. Your combination efficiency and tempo control have become topics in underground circles. Enemies adapt their guard stances when your name is mentioned.",
   conditioning: "Stamina reports from cleared Gates are consistent: the enemy runs out before you do. Long-duration encounters are your natural environment. The System logs your conditioning output as a strategic anomaly.",
-  grappling:    "Control-based engagement reports are piling up. Multiple A-Rank threats neutralized through positional dominance alone, zero critical strikes registered. The Association is watching you carefully.",
-  recovery:     "Strategic longevity metrics place you in the top percentile. Sustained readiness across consecutive days suggests a disciplined maintenance protocol unlike standard Hunters. The System marks you as a long-term force.",
-  discipline:   "Your nutritional consistency has been flagged as a contributing factor to aura stability. Discipline scores are an outlier — most Hunters burn bright then fade. You maintain a controlled flame the darkness cannot extinguish.",
+  grappling:    "Control-based engagement reports are piling up. Multiple Silver Grade threats neutralized through positional dominance alone, zero critical strikes registered. The Guild is watching you carefully.",
+  recovery:     "Strategic longevity metrics place you in the top percentile. Sustained readiness across consecutive days suggests a disciplined maintenance protocol unlike standard adventurers. The System marks you as a long-term force.",
+  discipline:   "Your nutritional consistency has been flagged as a contributing factor to aura stability. Discipline scores are an outlier — most adventurers burn bright then fade. You maintain a controlled flame the darkness cannot extinguish.",
 };
 
 const HYBRID_NARRATIVE: Record<string, string> = {
   "Warbreaker":       "Two power streams collide inside you — the force of raw strength and the precision of a striking artist. Reports from cleared Gates describe an enemy that could not decide whether to armor against blunt force or striking speed. It tried both. It survived neither.",
-  "Vanguard":         "Heavy output meets relentless conditioning. Gate commanders cannot plan for a Hunter who generates peak force at minute forty. The System's tactical engine has flagged your profile: a frontline force that hits hard and outlasts attrition.",
+  "Vanguard":         "Heavy output meets relentless conditioning. Gate commanders cannot plan for an adventurer who generates peak force at minute forty. The System's tactical engine has flagged your profile: a frontline force that hits hard and outlasts attrition.",
   "Duelist":          "Striking precision fused with conditioning endurance. Enemies fall not from single decisive blows but from the accumulated weight of your relentless tempo. Technical execution that doesn't degrade — a rare and dangerous combination.",
-  "Titan Controller": "Grappling dominance reinforced by raw strength. Your ability to close distance and impose physical control has nullified threats that defeated entire Hunter teams. The floor is your domain. The System notes: no recorded escapes from your control.",
-  "Iron Monk":        "Discipline and recovery fused into one principle: the prepared mind cannot be broken. You are the Hunter who never enters a Gate unprepared — and the darkness knows it. Your aura is clean, your resolve is absolute.",
-  "Wind Guardian":    "Endurance extended by recovery mastery. A Hunter who outlasts sieges, replenishes, and returns. An enemy who defeats you has only created a problem for itself tomorrow. The System logs you as a persistent, escalating threat.",
-  "Adventurer":       "No single path has claimed you. The System logs your pattern as ADVENTURER — a Hunter who does not specialize but explores. The world of Aethoria has seen Warriors and Strikers, but balanced Hunters are rarer, and harder to predict.",
+  "Titan Controller": "Grappling dominance reinforced by raw strength. Your ability to close distance and impose physical control has nullified threats that defeated entire adventurer teams. The floor is your domain. The System notes: no recorded escapes from your control.",
+  "Iron Monk":        "Discipline and recovery fused into one principle: the prepared mind cannot be broken. You are the adventurer who never enters a Gate unprepared — and the darkness knows it. Your aura is clean, your resolve is absolute.",
+  "Wind Guardian":    "Endurance extended by recovery mastery. An adventurer who outlasts sieges, replenishes, and returns. An enemy who defeats you has only created a problem for itself tomorrow. The System logs you as a persistent, escalating threat.",
+  "Adventurer":       "No single path has claimed you. The System logs your pattern as ADVENTURER — a summoned fighter who does not specialize but explores. The world of Aethoria has seen Warriors and Strikers, but balanced adventurers are rarer, and harder to predict.",
 };
 
 export default function World() {
@@ -218,7 +219,7 @@ export default function World() {
         </CardContent>
       </Card>
 
-      {/* Hunter's Mark — Narrative Consequence */}
+      {/* Adventurer's Mark — Narrative Consequence */}
       {identity && (identity.totalSessions ?? 0) > 0 && (() => {
         const dom = identity.dominantStyle as string | null | undefined;
         const hybrid = identity.hybridArchetype as string | null | undefined;
@@ -234,7 +235,7 @@ export default function World() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground mb-1">
-                    Hunter's Mark · {identity.totalSessions} Sessions
+                    Adventurer's Mark · {identity.totalSessions} Sessions
                   </div>
                   <div className={cn("text-lg font-black font-serif tracking-wide", m.color)}>
                     {m.label} Fighter
@@ -297,7 +298,7 @@ export default function World() {
               <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed max-w-xs">{currentArc.lore}</p>
             </div>
             <div className="shrink-0 ml-3 text-right">
-              <div className="text-[10px] text-muted-foreground uppercase">Hunter Level</div>
+              <div className="text-[10px] text-muted-foreground uppercase">Adventurer Level</div>
               <div className="text-3xl font-mono font-bold text-primary">{level}</div>
             </div>
           </div>
@@ -324,7 +325,7 @@ export default function World() {
                 <div className="flex items-center gap-2 mb-0.5">
                   <h3 className="font-serif font-bold text-base text-foreground">{nextBoss.name}</h3>
                   <span className={cn("text-[9px] font-mono border px-1.5 py-0.5 rounded-sm uppercase", RANK_COLORS[nextBoss.rank])}>
-                    {nextBoss.rank}-Rank
+                    {formatGuildGrade(nextBoss.rank)}
                   </span>
                 </div>
                 <p className="text-[10px] text-muted-foreground italic mb-2">{nextBoss.title}</p>
@@ -439,7 +440,7 @@ export default function World() {
                                     : RANK_COLORS[boss.rank]
                                 )}
                               >
-                                {isDefeated && "✓ "}{boss.name} ({boss.rank})
+                                {isDefeated && "✓ "}{boss.name} ({formatGuildGrade(boss.rank)})
                               </span>
                             );
                           })}
@@ -453,7 +454,7 @@ export default function World() {
                     <div className="mx-2 mb-2 px-4 py-3 rounded-xl bg-primary/5 border border-primary/15 animate-in fade-in slide-in-from-top-2 duration-300">
                       <p className="text-[10px] font-mono uppercase tracking-wider text-primary mb-2">Arc I — The Crossroads</p>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        You arrived at the Crossroads with nothing but potential. The System marked you as a Hunter — one of the few chosen 
+                        You arrived at the Crossroads with nothing but potential. The System marked you as an adventurer — one of the few chosen 
                         to fight back against the creeping darkness threatening Aethoria. Here, at the junction of all paths, you made your 
                         first choice: your class. Every rep, every set, every bead of sweat since that moment has carved your name into the 
                         world's story. The Crossroads remembers who you were. The journey ahead will define who you become.
@@ -470,12 +471,12 @@ export default function World() {
         </CardContent>
       </Card>
 
-      {/* Hunter Advancement */}
+      {/* Adventurer Advancement */}
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-4">
             <Swords className="w-4 h-4 text-primary" />
-            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Hunter Advancement</span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Adventurer Advancement</span>
           </div>
 
           {/* Current class info */}

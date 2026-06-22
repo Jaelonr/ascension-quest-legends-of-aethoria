@@ -41,7 +41,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   },
   {
     title: "The Archive's High Shelves",
-    description: "The guild archivist needs books retrieved from shelves only a mobile hunter can safely reach.",
+    description: "The guild archivist needs books retrieved from shelves only a mobile adventurer can safely reach.",
     lore: "'I pulled something last time I tried,' mutters the archivist. 'I need someone who can actually move properly.'",
     category: "mobility",
     fitnessMapping: "Mobility work",
@@ -66,7 +66,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   {
     title: "Escort the Merchant Caravan",
     description: "A trading caravan needs escort through the valley roads. Long hours of walking patrol.",
-    lore: "The merchant has valuable cargo and is nervous. He needs a hunter to walk with him — not fight, just walk and be visible.",
+    lore: "The merchant has valuable cargo and is nervous. He needs an adventurer to walk with him — not fight, just walk and be visible.",
     category: "cardio",
     fitnessMapping: "Walking or light cardio",
     difficulty: "E",
@@ -87,7 +87,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   },
   {
     title: "The Messenger's Path",
-    description: "Urgent messages must reach three villages by nightfall. You are the fastest hunter available.",
+    description: "Urgent messages must reach three villages by nightfall. You are the fastest adventurer available.",
     lore: "The messages are sealed. You don't know what they say. You know only that lives may depend on their delivery.",
     category: "cardio",
     fitnessMapping: "Running or sustained cardio",
@@ -170,7 +170,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   {
     title: "The Training Ground Test",
     description: "New recruits need to see what strong looks like. Demonstrate proper technique and effort.",
-    lore: "The young hunters watch you with wide eyes. You remember watching older hunters the same way. Now you are the example.",
+    lore: "The young adventurers watch you with wide eyes. You remember watching older adventurers the same way. Now you are the example.",
     category: "strength",
     fitnessMapping: "Strength training with focus on form",
     difficulty: "D",
@@ -228,7 +228,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   // ─── RECOVERY ──────────────────────────────────────────────────────────
   {
     title: "The Healer's Apprentice",
-    description: "Assist the guild healer in tending to injured hunters. A good reminder of the value of proper recovery.",
+    description: "Assist the guild healer in tending to injured adventurers. A good reminder of the value of proper recovery.",
     lore: "You spend the day watching the healer work. You count how many injuries were preventable with proper rest. The number is sobering.",
     category: "recovery",
     fitnessMapping: "Active recovery or rest day",
@@ -250,7 +250,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   },
   {
     title: "Tend the Memorial Garden",
-    description: "The guild's memorial garden honors fallen hunters. It deserves care and quiet attention.",
+    description: "The guild's memorial garden honors fallen adventurers. It deserves care and quiet attention.",
     lore: "Working slowly, deliberately, you read the names on the stones. You think about how they trained. What they might have done differently. What you will do the same.",
     category: "recovery",
     fitnessMapping: "Gentle movement or meditation",
@@ -260,8 +260,8 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
     tasks: [{ description: "Complete a light recovery session or gentle movement practice", targetValue: 1, unit: "session", order: 1 }],
   },
   {
-    title: "Escort the Injured Hunter",
-    description: "A wounded hunter needs help returning to the guild. Walk with them. Take it slow.",
+    title: "Escort the Injured Adventurer",
+    description: "A wounded adventurer needs help returning to the guild. Walk with them. Take it slow.",
     lore: "They lost their partner in the last gate. They don't talk much on the walk back. You don't push them to.",
     category: "recovery",
     fitnessMapping: "Light walking and active recovery",
@@ -274,7 +274,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   // ─── NUTRITION ─────────────────────────────────────────────────────────
   {
     title: "Prepare the Feast",
-    description: "The guild holds a quarterly gathering. The kitchen needs help preparing the meal for thirty hunters.",
+    description: "The guild holds a quarterly gathering. The kitchen needs help preparing the meal for thirty adventurers.",
     lore: "The cook points at the provisions and gives you a meaningful look. You learn more about nutrition in four hours of kitchen work than in a week of reading.",
     category: "nutrition",
     fitnessMapping: "Log all meals for the day",
@@ -308,7 +308,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   {
     title: "The Hydration Mission",
     description: "Dehydration is a silent enemy. Collect water from the spring and learn why hydration changes everything.",
-    lore: "A hunter collapsed last week — not from injury, just dehydration. The guild takes this seriously now.",
+    lore: "An adventurer collapsed last week — not from injury, just dehydration. The guild takes this seriously now.",
     category: "nutrition",
     fitnessMapping: "Track water intake and hit hydration target",
     difficulty: "E",
@@ -319,7 +319,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   {
     title: "The Cook's Challenge",
     description: "The guild cook challenges you to build a proper high-protein meal plan for the week.",
-    lore: "'Any hunter can fight. A great hunter fuels their body like it matters.' The cook crosses their arms and waits.",
+    lore: "'Any adventurer can fight. A great adventurer fuels their body like it matters.' The cook crosses their arms and waits.",
     category: "nutrition",
     fitnessMapping: "5 days of consistent nutrition logging",
     difficulty: "D",
@@ -343,7 +343,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   {
     title: "Assist the Sparring Circle",
     description: "The sparring circle needs an experienced partner. Show up and put in the work.",
-    lore: "Sparring is the closest thing to real combat most hunters will face. You take it seriously.",
+    lore: "Sparring is the closest thing to real combat most adventurers will face. You take it seriously.",
     category: "skill",
     fitnessMapping: "Skill or technique practice session",
     difficulty: "D",
@@ -354,7 +354,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   {
     title: "The Archery Range",
     description: "The guild's archery range needs maintenance and regular use to justify its upkeep.",
-    lore: "Precision under exhaustion. The best hunters are accurate when they're tired. Practice this.",
+    lore: "Precision under exhaustion. The best adventurers are accurate when they're tired. Practice this.",
     category: "skill",
     fitnessMapping: "Fine motor or precision training session",
     difficulty: "E",
@@ -367,7 +367,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   {
     title: "Map the New Territory",
     description: "A region west of the guild has never been fully mapped. Explore it thoroughly.",
-    lore: "Maps save lives. The hunter who made this map will never be known — but the hunters who use it might be.",
+    lore: "Maps save lives. The adventurer who made this map will never be known — but the adventurers who use it might be.",
     category: "exploration",
     fitnessMapping: "Long walk or outdoor training",
     difficulty: "D",
@@ -377,8 +377,8 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   },
   {
     title: "Recover the Lost Relic",
-    description: "A relic from an ancient gate expedition was lost when a hunter was forced to retreat. Find it.",
-    lore: "The relic has no practical value. But it belonged to a fallen hunter, and the guild preserves memory.",
+    description: "A relic from an ancient gate expedition was lost when an adventurer was forced to retreat. Find it.",
+    lore: "The relic has no practical value. But it belonged to a fallen adventurer, and the guild preserves memory.",
     category: "exploration",
     fitnessMapping: "Mixed cardio and strength session",
     difficulty: "C",
@@ -436,7 +436,7 @@ export const SIDE_QUEST_POOL: SideQuestTemplate[] = [
   {
     title: "The Road Repair",
     description: "A key road connecting two guild outposts has deteriorated. Physical labor needed.",
-    lore: "The guild's road crew is shorthanded. Two hunters declined. You did not.",
+    lore: "The guild's road crew is shorthanded. Two adventurers declined. You did not.",
     category: "conditioning",
     fitnessMapping: "High-volume training session",
     difficulty: "D",

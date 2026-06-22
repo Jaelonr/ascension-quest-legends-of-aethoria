@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useColors } from "@/hooks/useColors";
+import { formatGuildGrade, requirementLabel } from "@/utils/ranks";
 
 // ── Palettes ────────────────────────────────────────────────────────────────
 
@@ -81,8 +82,8 @@ function ClaimModal({
         <View style={s.modalBox}>
           <Text style={s.modalTitle}>
             {result.rankedUp
-              ? `⚔️ RANK UP — ${result.newRank ?? ""}`
-              : "⚔️ Raid Conquered!"}
+              ? `Guild Grade Raised — ${formatGuildGrade(result.newRank)}`
+              : "Raid Conquered!"}
           </Text>
           <Text style={s.modalSubtitle}>{raidTitle}</Text>
 
@@ -287,7 +288,7 @@ function ActiveRaidCard({
             <View style={s.badgeRow}>
               <View style={[s.diffBadge, { borderColor: diffColor + "60" }]}>
                 <Text style={[s.diffText, { color: diffColor }]}>
-                  {raid.difficulty}-Rank
+                  {formatGuildGrade(raid.difficulty)}
                 </Text>
               </View>
               {(isFailed || isExpired) && (
@@ -580,11 +581,8 @@ function formatTriggerCondition(cond: string | undefined): string | null {
   if (!cond) return null;
   if (cond === "streak_7") return "7-day streak required";
   if (cond === "streak_30") return "30-day streak required";
-  if (cond === "rank_D") return "Requires D-Rank+";
-  if (cond === "rank_C") return "Requires C-Rank+";
-  if (cond === "rank_B") return "Requires B-Rank+";
-  if (cond === "rank_S") return "Requires S-Rank+";
-  return "Requires D-Rank+";
+  if (cond?.startsWith("rank_")) return requirementLabel(cond);
+  return "Requires Copper Grade+";
 }
 
 // ── Available Raid Card ──────────────────────────────────────────────────────
@@ -630,7 +628,7 @@ function AvailableRaidCard({
             <View style={s.badgeRow}>
               <View style={[s.diffBadge, { borderColor: diffColor + "60" }]}>
                 <Text style={[s.diffText, { color: diffColor }]}>
-                  {template.difficulty}-Rank
+                  {formatGuildGrade(template.difficulty)}
                 </Text>
               </View>
               <Text style={[s.timerText, { color: colors.mutedForeground }]}>
@@ -787,7 +785,7 @@ export default function RaidsScreen() {
           setStartingTitle(null);
           Alert.alert(
             "Cannot Start Raid",
-            "You may not meet the requirements yet. Build your streak and rank up."
+            "You may not meet the requirements yet. Build your streak and raise your Guild Grade."
           );
         },
       }
@@ -837,7 +835,7 @@ export default function RaidsScreen() {
               No raids available yet
             </Text>
             <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>
-              Build streaks and rank up to unlock raids.
+              Build streaks and raise your Guild Grade to unlock raids.
             </Text>
           </View>
         );

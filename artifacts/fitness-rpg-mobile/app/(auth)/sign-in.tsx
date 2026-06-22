@@ -24,15 +24,15 @@ const OAUTH_REDIRECT_URL = AuthSession.makeRedirectUri({
 });
 
 const COLORS = {
-  background: "#0c0d13",
-  card: "#111520",
-  border: "#1c2033",
-  primary: "#0dcef5",
+  background: "#0c0b09",
+  card: "#11100e",
+  border: "#3b3328",
+  primary: "#d9ad63",
   accent: "#ffbf00",
-  foreground: "#e8eaf6",
-  muted: "#6b7280",
+  foreground: "#eee5d7",
+  muted: "#8f887d",
   danger: "#ef4444",
-  secondaryBg: "#161b2e",
+  secondaryBg: "#171510",
 };
 
 function getAuthErrorMessage(error: unknown) {
@@ -307,7 +307,7 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={styles.rank}>?</Text>
+            <Text style={styles.rank}>SYSTEM</Text>
             <Text style={styles.title}>
               {signIn.status === "needs_new_password" ? "Set New Password" : "Check Your Email"}
             </Text>
@@ -335,6 +335,8 @@ export default function SignInScreen() {
                   placeholderTextColor={COLORS.muted}
                   onChangeText={setNewPassword}
                   secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
                   autoComplete="new-password"
                   textContentType="newPassword"
                 />
@@ -416,10 +418,10 @@ export default function SignInScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.rank}>⚔</Text>
-          <Text style={styles.title}>Welcome Back, Hunter</Text>
+          <Text style={styles.rank}>SYSTEM</Text>
+          <Text style={styles.title}>Welcome Back, Adventurer</Text>
           <Text style={styles.subtitle}>
-            Your journey continues. Sign in to access your power.
+            Return to Aethoria and continue the record of your ascent.
           </Text>
         </View>
 
@@ -428,7 +430,7 @@ export default function SignInScreen() {
           <TextInput
             style={styles.input}
             value={email}
-            placeholder="hunter@realm.gg"
+            placeholder="adventurer@example.com"
             placeholderTextColor={COLORS.muted}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -448,6 +450,8 @@ export default function SignInScreen() {
             placeholderTextColor={COLORS.muted}
             onChangeText={setPassword}
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             autoComplete="password"
             textContentType="password"
           />
@@ -551,7 +555,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rank: {
-    fontSize: 40,
+    fontSize: 11,
+    letterSpacing: 4,
+    color: COLORS.accent,
+    fontFamily: "Inter_700Bold",
     marginBottom: 4,
   },
   title: {
@@ -578,7 +585,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 20,
@@ -596,7 +603,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondaryBg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontSize: 15,
@@ -619,7 +626,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: COLORS.primary,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
@@ -659,7 +666,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondaryBg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingVertical: 13,
     minHeight: 50,
   },

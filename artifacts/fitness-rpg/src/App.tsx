@@ -253,14 +253,14 @@ function ClerkProviderWithRoutes() {
       localization={{
         signIn: {
           start: {
-            title: "Welcome back, Hunter",
+            title: "Welcome back, Adventurer",
             subtitle: "Sign in to continue your journey",
           },
         },
         signUp: {
           start: {
             title: "Awaken Your Power",
-            subtitle: "Create your hunter account to begin",
+            subtitle: "Create your adventurer account to begin",
           },
         },
       }}

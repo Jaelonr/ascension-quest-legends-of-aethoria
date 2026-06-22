@@ -24,15 +24,15 @@ const OAUTH_REDIRECT_URL = AuthSession.makeRedirectUri({
 });
 
 const COLORS = {
-  background: "#0c0d13",
-  card: "#111520",
-  border: "#1c2033",
-  primary: "#0dcef5",
+  background: "#0c0b09",
+  card: "#11100e",
+  border: "#3b3328",
+  primary: "#d9ad63",
   accent: "#ffbf00",
-  foreground: "#e8eaf6",
-  muted: "#6b7280",
+  foreground: "#eee5d7",
+  muted: "#8f887d",
   danger: "#ef4444",
-  secondaryBg: "#161b2e",
+  secondaryBg: "#171510",
   success: "#22c55e",
 };
 
@@ -199,7 +199,7 @@ export default function SignUpScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={styles.rank}>✉</Text>
+            <Text style={styles.rank}>SYSTEM</Text>
             <Text style={styles.title}>Verify Your Email</Text>
             <Text style={styles.subtitle}>
               A code was sent to {email}. Enter it below to activate your account.
@@ -283,10 +283,10 @@ export default function SignUpScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.rank}>🌟</Text>
+          <Text style={styles.rank}>SYSTEM</Text>
           <Text style={styles.title}>Begin Your Journey</Text>
           <Text style={styles.subtitle}>
-            Create your hunter account and enter the realm.
+            Create your adventurer account and answer Aethoria's call.
           </Text>
         </View>
 
@@ -295,7 +295,7 @@ export default function SignUpScreen() {
           <TextInput
             style={styles.input}
             value={email}
-            placeholder="hunter@realm.gg"
+            placeholder="adventurer@example.com"
             placeholderTextColor={COLORS.muted}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -315,6 +315,8 @@ export default function SignUpScreen() {
             placeholderTextColor={COLORS.muted}
             onChangeText={setPassword}
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             autoComplete="new-password"
             textContentType="newPassword"
           />
@@ -384,7 +386,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rank: {
-    fontSize: 40,
+    fontSize: 11,
+    letterSpacing: 4,
+    color: COLORS.accent,
+    fontFamily: "Inter_700Bold",
     marginBottom: 4,
   },
   title: {
@@ -411,7 +416,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 20,
@@ -429,7 +434,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondaryBg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontSize: 15,
@@ -452,7 +457,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: COLORS.primary,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
@@ -492,7 +497,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondaryBg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
+    borderRadius: 0,
     paddingVertical: 13,
     minHeight: 50,
   },

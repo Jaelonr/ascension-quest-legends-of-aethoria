@@ -311,9 +311,9 @@ const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = 
       "Proactive recovery is how champions sustain — today you invested in tomorrow's victories.",
     ],
     immersive: [
-      "Like a fortress preparing for siege, you reinforced every joint and restored every muscle. The next Gate will face a fully recharged Hunter.",
+      "Like a fortress preparing for siege, you reinforced every joint and restored every muscle. The next Gate will face a fully recharged adventurer.",
       "Your guard regenerated. Fatigue cleansed. The Shadow within you receded — replaced by pristine combat readiness.",
-      "Smart hunters know: a weapon that is never maintained becomes dull. Today you sharpened the blade.",
+      "Smart adventurers know: a weapon that is never maintained becomes dull. Today you sharpened the blade.",
     ],
   },
   discipline: {
@@ -329,7 +329,7 @@ const STYLE_EVENTS: Record<CombatStyle, Record<NarrativeIntensity, string[]>> = 
     immersive: [
       "While others crumbled under hunger and poor fueling, your calculated nutrition kept your aura burning at full intensity.",
       "The Corruption could not take hold. Your mental discipline held the line — every macro accounted for, every temptation resisted.",
-      "Your nutritional precision was a secret weapon. The enemy never expected a Hunter this prepared.",
+      "Your nutritional precision was a secret weapon. The enemy never expected an adventurer this prepared.",
     ],
   },
 };
@@ -354,7 +354,7 @@ function generateNarrativeConsequence(input: CombatInput, verdict: string): stri
 
   if (verdict === "Victory" && prCount > 0) {
     parts.push(intensity === "immersive"
-      ? "A threshold broken cannot be unbroken. The next Gate opens to a Hunter of greater power. Your name has been noted in the dungeon's ledger."
+      ? "A threshold broken cannot be unbroken. The next Gate opens to an adventurer of greater power. Your name has been noted in the dungeon's ledger."
       : "You broke a record today. Carry that proof into the next session — you are stronger than you were.");
   } else if (verdict === "Victory") {
     parts.push(intensity === "immersive"
@@ -362,7 +362,7 @@ function generateNarrativeConsequence(input: CombatInput, verdict: string): stri
       : "Victory secured. Arrive at the next session with momentum on your side.");
   } else if (verdict === "Narrow Victory") {
     parts.push(intensity === "immersive"
-      ? "A close fight leaves marks on both sides. Rest well. The next Gate will not expect a Hunter who recovers this fast."
+      ? "A close fight leaves marks on both sides. Rest well. The next Gate will not expect an adventurer who recovers this fast."
       : "Hard-fought win. Take what you need to recover and come back sharper.");
   } else if (verdict === "Strategic Retreat") {
     parts.push(intensity === "immersive"
@@ -371,7 +371,7 @@ function generateNarrativeConsequence(input: CombatInput, verdict: string): stri
   } else {
     if (nutritionMet) {
       parts.push(intensity === "immersive"
-        ? "No drama, no theater — just the work and the fuel to sustain it. Consistency is how Hunters outlast every obstacle."
+        ? "No drama, no theater — just the work and the fuel to sustain it. Consistency is how adventurers outlast every obstacle."
         : "Steady session, nutrition on point. That is how streaks are built.");
     } else {
       parts.push(intensity === "immersive"
@@ -436,7 +436,7 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
       const durationEvents: Record<NarrativeIntensity, string> = {
         technical: `${input.durationMinutes} minutes of continuous effort.`,
         balanced: `A full ${input.durationMinutes}-minute session — your endurance reserves proved deeper than the enemy anticipated.`,
-        immersive: `${input.durationMinutes} minutes of unbroken combat. Most Hunters would have retreated. You pushed forward into the dungeon's depths.`,
+        immersive: `${input.durationMinutes} minutes of unbroken combat. Most adventurers would have retreated. You pushed forward into the dungeon's depths.`,
       };
       events.push({ type: "stat", text: durationEvents[intensity] });
     }
@@ -472,7 +472,7 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
     const raidEvents: Record<NarrativeIntensity, string> = {
       technical: `Raid progress: "${raidName}" updated.`,
       balanced: `Your effort dealt damage to the ${raidName} raid. The boss is weakening.`,
-      immersive: `Your ${dominant} output cracked the ${raidName}'s outer defense. The boss could feel the shift — your Hunter's aura growing stronger with each session.`,
+      immersive: `Your ${dominant} output cracked the ${raidName}'s outer defense. The boss could feel the shift — your adventurer's aura growing stronger with each session.`,
     };
     raidImpact = raidEvents[intensity];
     events.push({ type: "raid", text: raidImpact });

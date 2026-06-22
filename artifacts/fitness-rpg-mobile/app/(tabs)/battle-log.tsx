@@ -355,3 +355,4 @@ const ch = StyleSheet.create({
   emptyTitle: { fontSize: 15, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   emptyDesc: { fontSize: 12, textAlign: "center", lineHeight: 18 },
 });
+

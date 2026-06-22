@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { formatGuildGrade } from "@/lib/ranks";
 import { Users, Shield, Swords, Plus, LogIn, LogOut, Copy, Crown, Activity, ChevronRight } from "lucide-react";
 
 const ACTIVITY_ICONS: Record<string, string> = {
@@ -44,7 +45,7 @@ function MemberRow({ m }: { m: GuildMemberType }) {
             <Icon className="w-2.5 h-2.5 inline mr-0.5" />{r.label}
           </span>
         </div>
-        <p className="text-[10px] text-muted-foreground font-mono">Lv.{m.level} · {m.rank}-Rank</p>
+        <p className="text-[10px] text-muted-foreground font-mono">Lv.{m.level} · {formatGuildGrade(m.rank)}</p>
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ import { Shield, Swords, Clock, Gift, ChevronDown, ChevronUp, CheckCircle, XCirc
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { formatGuildGrade } from "@/lib/ranks";
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   E: "text-gray-400 border-gray-400/30 bg-gray-400/10",
@@ -73,7 +74,7 @@ function ActiveRaidCard({ raid }: { raid: BossRaid }) {
             ? ` · Loot: ${(data as any).gearDrop.name}`
             : "";
           toast({
-            title: data.rankedUp ? `⚔️ RANK UP! Now ${data.newRank}-Rank!` : "Raid Conquered!",
+            title: data.rankedUp ? `Guild Grade Raised! Now ${formatGuildGrade(data.newRank)}!` : "Raid Conquered!",
             description: `+${data.xpEarned} XP, +${data.goldEarned} Gold${data.titleGranted ? `, Title: ${(data.titleGranted as any).name}` : ""}${gearLine}`,
           });
           queryClient.invalidateQueries({ queryKey: ["/api/boss-raids"] });
@@ -107,7 +108,7 @@ function ActiveRaidCard({ raid }: { raid: BossRaid }) {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className={cn("text-[10px] font-mono uppercase border px-1.5 py-0.5 rounded-sm font-bold", DIFFICULTY_COLORS[raid.difficulty])}>
-                {raid.difficulty}-Rank
+                {formatGuildGrade(raid.difficulty)}
               </span>
               {isFailed && (
                 <span className="text-[10px] font-mono uppercase border px-1.5 py-0.5 rounded-sm text-red-400 border-red-400/30 bg-red-400/10">
@@ -249,7 +250,7 @@ function AvailableRaidCard({ template, onStart }: { template: RaidTemplate; onSt
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className={cn("text-[10px] font-mono uppercase border px-1.5 py-0.5 rounded-sm font-bold", DIFFICULTY_COLORS[template.difficulty])}>
-                {template.difficulty}-Rank
+                {formatGuildGrade(template.difficulty)}
               </span>
               <span className="text-[10px] text-muted-foreground">
                 <Clock className="w-3 h-3 inline mr-0.5" />{template.timeLimitHours}h limit
@@ -359,7 +360,7 @@ export default function Raids() {
             <div className="text-center py-12 border border-dashed border-border/30 rounded-xl">
               <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-20" />
               <p className="text-muted-foreground text-sm">No raids available yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">Build streaks and rank up to unlock raids.</p>
+              <p className="text-xs text-muted-foreground mt-1">Build streaks and raise your Guild Grade to unlock raids.</p>
             </div>
           ) : (
             available.map((template, i) => (

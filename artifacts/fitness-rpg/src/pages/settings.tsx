@@ -159,7 +159,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (settings.notifications.enabled && settings.notifications.workoutReminder && permission === "granted") {
-      scheduleReminder(settings.notifications.reminderTime, "Time to train, Hunter. Your stats await.");
+      scheduleReminder(settings.notifications.reminderTime, "Time to train, adventurer. Your stats await.");
     } else {
       cancelReminders();
     }
@@ -519,7 +519,7 @@ export default function Settings() {
               </div>
               <div>
                 <div className="text-sm font-medium">Accent Color</div>
-                <div className="text-[11px] text-muted-foreground">Customize your hunter's theme</div>
+                <div className="text-[11px] text-muted-foreground">Customize your adventurer's theme</div>
               </div>
             </div>
             <div className="flex gap-2 ml-11 flex-wrap">

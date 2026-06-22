@@ -93,7 +93,7 @@ export default function Landing() {
           </Link>
 
           <p className="text-[11px] text-muted-foreground/50 text-center">
-            New hunter?{" "}
+            New adventurer?{" "}
             <Link href="/sign-up">
               <span className="text-primary underline cursor-pointer">Create an account</span>
             </Link>
