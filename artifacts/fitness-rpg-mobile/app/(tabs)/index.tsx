@@ -313,6 +313,8 @@ function CommissionDetailModal({
   const quest = commission?.quest;
   const location = commission?.location;
   const travel = commission?.travel;
+  const flavor = expedition?.narrativeFlavor;
+  const majorQuest = expedition?.majorQuest;
   const paths = expedition ? [expedition.recommendedPath, ...(expedition.alternativePaths ?? [])].filter(Boolean) : [];
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
@@ -339,10 +341,36 @@ function CommissionDetailModal({
             </View>
           </View>
 
+          {flavor ? (
+            <View style={s.tidingPanel}>
+              <Text style={s.detailLabel}>{flavor.kind === "main_quest" ? "Major Quest Tiding" : "Guild Tiding"}</Text>
+              <Text style={s.detailRegionSmall}>{flavor.title}</Text>
+              <Text style={s.detailMeta}>Posted by {flavor.patron}</Text>
+              <Text style={s.detailBody}>{flavor.hook}</Text>
+              <View style={s.tidingInset}>
+                <Text style={s.tidingLabel}>Objective</Text>
+                <Text style={s.tidingText}>{flavor.objective}</Text>
+                <Text style={s.tidingLabel}>Stakes</Text>
+                <Text style={s.tidingText}>{flavor.stakes}</Text>
+                <Text style={s.tidingLabel}>Rumor</Text>
+                <Text style={s.tidingText}>{flavor.rumor}</Text>
+              </View>
+            </View>
+          ) : null}
+
           <View style={s.detailPanel}>
             <Text style={s.detailLabel}>Threat / Task</Text>
             <Text style={s.detailBody}>{expedition?.threat ?? "Complete the Guild duty and return with proof."}</Text>
           </View>
+
+          {majorQuest ? (
+            <View style={[s.detailPanel, majorQuest.available && s.majorQuestReady]}>
+              <Text style={s.detailLabel}>Main Quest Pressure</Text>
+              <Text style={s.detailRegionSmall}>{majorQuest.title}</Text>
+              <Text style={s.detailBody}>{majorQuest.description}</Text>
+              <Text style={s.pathButtonMeta}>{majorQuest.available ? majorQuest.routeLabel : `${majorQuest.completedTowardUnlock}/${majorQuest.threshold} commissions toward next major threat`}</Text>
+            </View>
+          ) : null}
 
           <View style={s.detailPanel}>
             <Text style={s.detailLabel}>Travel</Text>
@@ -847,6 +875,11 @@ const s = StyleSheet.create({
   detailTaskText: { flex: 1, color: "#d8c4a5", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
   detailTaskCount: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold" },
   detailSectionTitle: { color: "#d9ad63", fontSize: 16, fontFamily: "PlayfairDisplay_700Bold" },
+  tidingPanel: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15100c", padding: 18, gap: 8 },
+  tidingInset: { borderLeftWidth: 2, borderLeftColor: "#d9ad63", paddingLeft: 12, marginTop: 4, gap: 4 },
+  tidingLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Inter_700Bold" },
+  tidingText: { color: "#d8c4a5", fontSize: 12, lineHeight: 17, fontFamily: "Inter_400Regular" },
+  majorQuestReady: { borderColor: "#9d3e2a", backgroundColor: "#1b1010" },
   pathButton: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, marginTop: 8 },
   pathButtonRecommended: { borderColor: "#49a3a0" },
   pathButtonTitle: { color: "#eee5d7", fontSize: 13, lineHeight: 18, fontFamily: "Inter_700Bold" },

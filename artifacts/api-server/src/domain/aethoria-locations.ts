@@ -30,9 +30,30 @@ export type CommissionCompletionPath = {
   recommended?: boolean;
 };
 
+export type CommissionNarrativeFlavor = {
+  kind: "bounty" | "hunt" | "errand" | "relief" | "escort" | "main_quest";
+  title: string;
+  patron: string;
+  hook: string;
+  objective: string;
+  stakes: string;
+  rumor: string;
+};
+
+export type CommissionMajorQuestSignal = {
+  available: boolean;
+  threshold: number;
+  completedTowardUnlock: number;
+  title: string;
+  description: string;
+  routeLabel: string;
+};
+
 export type CommissionExpeditionDetail = {
   commissionTitle: string;
   region: RegionTrainingIdentity;
+  narrativeFlavor: CommissionNarrativeFlavor;
+  majorQuest: CommissionMajorQuestSignal;
   narrativeBriefing: string;
   threat: string;
   recommendedPath: CommissionCompletionPath;
@@ -400,15 +421,105 @@ function choiceLimitFor(category: string, context: { injuryNotesPresent?: boolea
   return 3;
 }
 
+function flavorFor(category: string, location: AethoriaLocation, context: { activeRaidTitle?: string | null }): CommissionNarrativeFlavor {
+  if (category === "story_linked" || context.activeRaidTitle) {
+    return {
+      kind: "main_quest",
+      title: context.activeRaidTitle ? `Main Quest Pressure: ${context.activeRaidTitle}` : `Gate Omen at ${location.name}`,
+      patron: "Guild war table",
+      hook: "A Gate report has been marked in red wax. Aldric has not called it a raid yet, but the Hall has gone quiet around the notice.",
+      objective: `Prepare for the threat gathering near ${location.name}.`,
+      stakes: "If the pressure worsens, this becomes more than a commission.",
+      rumor: "The scouts disagree on what they saw. The Hall's stones do not.",
+    };
+  }
+
+  if (category === "penalty_restoration") {
+    return {
+      kind: "errand",
+      title: "The Widow's Ledger",
+      patron: "Three village elders and one very stern quartermaster",
+      hook: "A missed duty left supplies sitting in the wrong hands. Aldric has chosen honest work over shame.",
+      objective: `Restore the supply route through ${location.name} and return with a clean ledger.`,
+      stakes: "Small debts become dangerous when the roads are already thin.",
+      rumor: "One elder claims the Hall's candles burned blue when your name was written beside the task.",
+    };
+  }
+
+  if (category === "grappling" || location.region === "The Wild Frontier") {
+    return {
+      kind: "hunt",
+      title: `Hunt Notice: The Bramblehorn Near ${location.name}`,
+      patron: location.primaryFaction,
+      hook: "A dangerous animal has been driven mad by Gate residue. The Guild prefers it taken alive if control is possible.",
+      objective: "Track, contain, and end the threat without turning the trail into a slaughter ground.",
+      stakes: "A frightened beast can ruin a village faster than a cruel one.",
+      rumor: "Frontier children say the creature still wears an old bell around its neck.",
+    };
+  }
+
+  if (category === "conditioning" || location.region === "Frostveil Peaks" || location.region === "Frostvale") {
+    return {
+      kind: "escort",
+      title: `Escort Writ: The Last Mile to ${location.name}`,
+      patron: location.primaryFaction,
+      hook: "The caravan can take the long road, but the final leg needs someone who can move when the air turns hostile.",
+      objective: "Verify the route, mark the hazards, and keep the support line from walking blind.",
+      stakes: "If the path is wrong, slow wagons become stranded wagons.",
+      rumor: "A frozen marker stone appeared farther down the pass than it stood yesterday.",
+    };
+  }
+
+  if (category === "recovery" || location.region === "Verdant Basin" || location.region === "The Sunken Kingdom") {
+    return {
+      kind: "relief",
+      title: `Relief Request: Hearthwork at ${location.name}`,
+      patron: location.region === "Verdant Basin" ? "The old women of the village commons" : location.primaryFaction,
+      hook: "No bard will sing of this work, which is how Aldric knows it is probably necessary.",
+      objective: "Carry medicine, restore supplies, and leave the people steadier than you found them.",
+      stakes: "The world is not saved only at sword point.",
+      rumor: "Someone has been leaving fresh bread at the Guild stone before dawn.",
+    };
+  }
+
+  if (category === "skill_practice" || location.region === "Silver Coast") {
+    return {
+      kind: "bounty",
+      title: `Quiet Bounty: Dockside Knives at ${location.name}`,
+      patron: "A merchant factor who signed only with a silver coin",
+      hook: "A gang of port-cutters has been testing Guild routes without quite starting a war.",
+      objective: "Move through the road, keep your timing clean, and make trouble think twice.",
+      stakes: "On the Silver Coast, one messy fight can become three diplomatic incidents.",
+      rumor: "The bounty notice smells faintly of expensive ink and sea salt.",
+    };
+  }
+
+  return {
+    kind: "bounty",
+    title: `Bounty Notice: Roadbreakers at ${location.name}`,
+    patron: location.primaryFaction,
+    hook: "A rough-handed problem has settled on a road the Guild intends to keep open.",
+    objective: "Apply practical strength, clear the obstruction, and bring proof back to the Hall.",
+    stakes: "Trade roads die slowly, then all at once.",
+    rumor: "The barricade includes stonework too old for common bandits.",
+  };
+}
+
 export function buildCommissionExpeditionDetail(category: string, location: AethoriaLocation, travel: CommissionTravelPlan, context: {
   dominantStyle?: string | null;
   neglectedStyle?: string | null;
   readiness?: string;
   injuryNotesPresent?: boolean;
+  activeRaidTitle?: string | null;
+  completedCommissions?: number;
 } = {}): CommissionExpeditionDetail {
   const region = REGION_TRAINING_IDENTITIES[location.region] ?? REGION_TRAINING_IDENTITIES.Valecrest;
   const paths = pathsFor(category, region).slice(0, choiceLimitFor(category, context));
   const recommendedPath = paths.find((path) => path.recommended) ?? paths[0];
+  const completedCommissions = Math.max(0, context.completedCommissions ?? 0);
+  const raidThreshold = 5;
+  const completedTowardUnlock = completedCommissions % raidThreshold;
+  const majorQuestAvailable = completedCommissions > 0 && completedTowardUnlock === 0;
   const threatByCategory: Record<string, string> = {
     conditioning: location.region === "Frostveil Peaks" || location.region === "Frostvale"
       ? "Mountain pass pressure, thin air, and a scouting route that must be verified before the caravan commits."
@@ -447,6 +558,19 @@ export function buildCommissionExpeditionDetail(category: string, location: Aeth
   return {
     commissionTitle: `${location.name} Commission`,
     region,
+    narrativeFlavor: flavorFor(category, location, context),
+    majorQuest: {
+      available: majorQuestAvailable || !!context.activeRaidTitle,
+      threshold: raidThreshold,
+      completedTowardUnlock: majorQuestAvailable ? raidThreshold : completedTowardUnlock,
+      title: context.activeRaidTitle ?? "Gate Pressure: Main Quest Opportunity",
+      description: context.activeRaidTitle
+        ? `The active raid, ${context.activeRaidTitle}, remains on the board. Daily work prepares the body before the Guild allows a harder push.`
+        : majorQuestAvailable
+          ? "The Guild ledger shows enough completed commissions to justify a larger strike. A boss or raid opportunity may be ready from the raid board."
+          : `Complete ${raidThreshold - completedTowardUnlock} more Guild commission${raidThreshold - completedTowardUnlock === 1 ? "" : "s"} to draw the next major threat into reach.`,
+      routeLabel: "Check Boss Raids",
+    },
     narrativeBriefing: region.briefingTone,
     threat: threatByCategory[category] ?? threatByCategory.training,
     recommendedPath,

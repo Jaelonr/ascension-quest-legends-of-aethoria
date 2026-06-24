@@ -187,6 +187,8 @@ function CommissionDetailDialog({
   const quest = commission?.quest;
   const location = commission?.location;
   const travel = commission?.travel;
+  const flavor = expedition?.narrativeFlavor;
+  const majorQuest = expedition?.majorQuest;
   const paths = expedition ? [expedition.recommendedPath, ...(expedition.alternativePaths ?? [])].filter(Boolean) : [];
   if (!commission) return null;
   return (
@@ -216,11 +218,33 @@ function CommissionDetailDialog({
               </div>
             </div>
 
+            {flavor && (
+              <div className="border border-[#6b4d2f] bg-[#15100c] p-4">
+                <p className="text-[10px] uppercase tracking-widest text-[#8f887d]">{flavor.kind === "main_quest" ? "Major Quest Tiding" : "Guild Tiding"}</p>
+                <p className="mt-2 font-serif text-lg font-bold text-[#d9ad63]">{flavor.title}</p>
+                <p className="mt-1 text-[10px] uppercase tracking-wide text-[#8f887d]">Posted by {flavor.patron}</p>
+                <p className="mt-3 text-sm leading-relaxed text-[#d6ccbe]">{flavor.hook}</p>
+                <div className="mt-3 border-l-2 border-[#d9ad63] pl-3 text-xs leading-5 text-[#d8c4a5]">
+                  <p><span className="uppercase tracking-widest text-[#8f887d]">Objective</span> {flavor.objective}</p>
+                  <p className="mt-2"><span className="uppercase tracking-widest text-[#8f887d]">Stakes</span> {flavor.stakes}</p>
+                  <p className="mt-2"><span className="uppercase tracking-widest text-[#8f887d]">Rumor</span> {flavor.rumor}</p>
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-3 md:grid-cols-2">
               <div className="border border-[#3b3328] bg-[#0c0b09] p-4">
                 <p className="text-[10px] uppercase tracking-widest text-[#8f887d]">Threat / Task</p>
                 <p className="mt-2 text-sm leading-relaxed text-[#cfc5b8]">{expedition?.threat ?? "Complete the Guild duty and return with proof."}</p>
               </div>
+              {majorQuest && (
+                <div className={cn("border bg-[#0c0b09] p-4", majorQuest.available ? "border-[#9d3e2a]" : "border-[#3b3328]")}>
+                  <p className="text-[10px] uppercase tracking-widest text-[#8f887d]">Main Quest Pressure</p>
+                  <p className="mt-2 font-serif text-sm font-bold text-[#d9ad63]">{majorQuest.title}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-[#b7ab9c]">{majorQuest.description}</p>
+                  <p className="mt-2 text-[10px] uppercase tracking-wide text-[#49a3a0]">{majorQuest.available ? majorQuest.routeLabel : `${majorQuest.completedTowardUnlock}/${majorQuest.threshold} commissions toward next major threat`}</p>
+                </div>
+              )}
               <div className="border border-[#3b3328] bg-[#0c0b09] p-4">
                 <p className="text-[10px] uppercase tracking-widest text-[#8f887d]">Travel</p>
                 <p className="mt-2 font-serif text-sm font-bold text-[#d9ad63]">{expedition?.travelMethod ?? travel?.travelMethod ?? "Guild route"}</p>

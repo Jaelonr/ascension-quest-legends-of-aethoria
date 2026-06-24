@@ -54,6 +54,7 @@ interface GuildPlayerContext {
   dominantStyle: StyleKey | null;
   neglectedStyle: StyleKey | null;
   activeRaidTitle: string | null;
+  completedCommissions: number;
   lastRecommendation: string | null;
 }
 
@@ -74,6 +75,8 @@ function attachCommissionLocation(plan: CommissionPlan, seed: number, playerCont
     neglectedStyle: playerContext?.neglectedStyle,
     readiness: plan.readiness,
     injuryNotesPresent: !!playerContext?.injuryNotes,
+    activeRaidTitle: playerContext?.activeRaidTitle,
+    completedCommissions: playerContext?.completedCommissions,
   });
   return {
     ...plan,
@@ -366,7 +369,7 @@ async function recordRegionVisit(playerId: number, context: any, intendedStyle: 
 
 async function getGuildPlayerContext(playerId: number): Promise<GuildPlayerContext> {
   const today = getTodayStr();
-  const [biometrics, wearable, nutrition, targets, recentWorkouts, prs, identityRows, misses, raids, memories, equipmentRows] = await Promise.all([
+  const [biometrics, wearable, nutrition, targets, recentWorkouts, prs, identityRows, misses, raids, memories, equipmentRows, playerRows] = await Promise.all([
     db.select().from(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, playerId)).limit(1),
     db.select().from(wearableEntriesTable).where(and(eq(wearableEntriesTable.playerId, playerId), eq(wearableEntriesTable.date, today))).limit(1),
     db.select().from(nutritionLogsTable).where(and(eq(nutritionLogsTable.playerId, playerId), eq(nutritionLogsTable.date, today))),
@@ -390,6 +393,7 @@ async function getGuildPlayerContext(playerId: number): Promise<GuildPlayerConte
     db.select().from(guildMasterMemoriesTable).where(eq(guildMasterMemoriesTable.playerId, playerId))
       .orderBy(desc(guildMasterMemoriesTable.occurredAt)).limit(1),
     db.select().from(equipmentTable).where(and(eq(equipmentTable.owned, true), eq(equipmentTable.available, true))),
+    db.select({ totalQuests: playerTable.totalQuests }).from(playerTable).where(eq(playerTable.id, playerId)).limit(1),
   ]);
   const proteinToday = nutrition.reduce((total, entry) => total + entry.protein, 0);
   const ranked = rankStyle(identityRows[0]);
@@ -410,6 +414,7 @@ async function getGuildPlayerContext(playerId: number): Promise<GuildPlayerConte
     dominantStyle: ranked.dominant,
     neglectedStyle: ranked.neglected,
     activeRaidTitle: raids[0]?.title ?? null,
+    completedCommissions: playerRows[0]?.totalQuests ?? 0,
     lastRecommendation: memories[0]?.summary ?? null,
   };
 }
@@ -653,6 +658,8 @@ async function getGuildHallSnapshot(userId: string) {
     !(commission.context as any)?.travel ||
     !(commission.context as any)?.expedition ||
     !(commission.context as any)?.expedition?.recommendedPath ||
+    !(commission.context as any)?.expedition?.narrativeFlavor ||
+    !(commission.context as any)?.expedition?.majorQuest ||
     (commission.context as any)?.travel?.continentSquareMiles !== 2_000_000
   ) {
     const existingTravel = (commission.context as any)?.travel;
