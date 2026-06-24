@@ -71,9 +71,12 @@ function PlayerSetupGuard({ enabled }: { enabled: boolean }) {
     const topSegment = segments[0] as string | undefined;
     const inAuthGroup = topSegment === "(auth)";
     const inOnboarding = topSegment === "onboarding";
-    const inProfile = topSegment === "profile";
-    if (!player.setupCompleted && !inAuthGroup && !inOnboarding && !inProfile) {
-      router.replace("/profile" as never);
+    const inSetup = topSegment === "setup";
+    if (!player.setupCompleted && !inAuthGroup && !inOnboarding && !inSetup) {
+      router.replace("/setup" as never);
+    }
+    if (player.setupCompleted && inSetup) {
+      router.replace("/(tabs)" as never);
     }
   }, [enabled, isLoading, player, router, segments]);
 
@@ -136,6 +139,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="setup" options={{ headerShown: false }} />
         <Stack.Screen name="session" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen name="training" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />

@@ -93,6 +93,25 @@ export const aethoriaLocationsTable = pgTable("aethoria_locations", {
   uniqueIndex("aethoria_locations_key_idx").on(table.key),
 ]);
 
+export const regionProgressTable = pgTable("region_progress", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => playerTable.id),
+  regionId: text("region_id").notNull(),
+  regionName: text("region_name").notNull(),
+  known: boolean("known").notNull().default(false),
+  discovered: boolean("discovered").notNull().default(false),
+  visited: boolean("visited").notNull().default(false),
+  commissionsCompleted: integer("commissions_completed").notNull().default(0),
+  bossesDefeated: integer("bosses_defeated").notNull().default(0),
+  explorationPercent: integer("exploration_percent").notNull().default(0),
+  dominantStyleUsed: text("dominant_style_used"),
+  lastVisitedAt: timestamp("last_visited_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("region_progress_player_region_idx").on(table.playerId, table.regionId),
+]);
+
 export const itemDiscoveriesTable = pgTable("item_discoveries", {
   id: serial("id").primaryKey(),
   playerId: integer("player_id").notNull().references(() => playerTable.id),
@@ -116,4 +135,5 @@ export type WorldEvent = typeof worldEventsTable.$inferSelect;
 export type StoryConsequence = typeof storyConsequencesTable.$inferSelect;
 export type HealthImport = typeof healthImportsTable.$inferSelect;
 export type AethoriaLocation = typeof aethoriaLocationsTable.$inferSelect;
+export type RegionProgress = typeof regionProgressTable.$inferSelect;
 export type ItemDiscovery = typeof itemDiscoveriesTable.$inferSelect;

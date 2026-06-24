@@ -59,7 +59,6 @@ function ClassicTabLayout() {
             : <Feather name={tab.feather} size={21} color={color} />,
         }} />
       ))}
-      <Tabs.Screen name="guild-hall" options={{ href: null }} />
       <Tabs.Screen name="skills" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="quests" options={{ href: null }} />

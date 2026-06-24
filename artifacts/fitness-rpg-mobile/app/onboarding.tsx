@@ -89,12 +89,12 @@ export default function OnboardingScreen() {
 
   const finish = async () => {
     await markMobileOnboardingComplete();
-    router.replace("/profile" as any);
+    router.replace("/setup" as any);
   };
 
   const skip = async () => {
     await markMobileOnboardingComplete();
-    router.replace("/profile" as any);
+    router.replace("/setup" as any);
   };
 
   return (

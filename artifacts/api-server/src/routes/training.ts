@@ -17,6 +17,22 @@ import {
 } from "../combat-engine";
 
 const router = Router();
+const COMMISSION_NOTE_PREFIX = "[commission-context]";
+
+function parseCommissionContext(notes: string | null | undefined): any | null {
+  if (!notes?.includes(COMMISSION_NOTE_PREFIX)) return null;
+  const raw = notes
+    .split("\n")
+    .find((line) => line.trim().startsWith(COMMISSION_NOTE_PREFIX))
+    ?.replace(COMMISSION_NOTE_PREFIX, "")
+    .trim();
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 function getTodayStr() {
   return new Date().toISOString().split("T")[0];
@@ -294,7 +310,13 @@ router.patch("/training/sessions/:id", async (req, res) => {
 
         updates.xpEarned = totalXp;
         updates.goldEarned = goldEarned;
-        updates.notes = volumeBonusBreakdown || updates.notes;
+        const priorNotes = session.notes ?? "";
+        const preservedCommissionLine = priorNotes
+          .split("\n")
+          .find((line) => line.trim().startsWith(COMMISSION_NOTE_PREFIX));
+        updates.notes = [preservedCommissionLine, volumeBonusBreakdown || updates.notes]
+          .filter(Boolean)
+          .join("\n");
 
         const today = getTodayStr();
 
@@ -326,6 +348,8 @@ router.patch("/training/sessions/:id", async (req, res) => {
           }
         }
 
+        const commissionContext = parseCommissionContext(session.notes);
+
         // Get active raids for combat context
         const activeRaids = await db.select({ title: bossRaidsTable.title })
           .from(bossRaidsTable)
@@ -335,14 +359,19 @@ router.patch("/training/sessions/:id", async (req, res) => {
 
         // Generate Combat Replay
         const combatInput: CombatInput = {
-          sessionName: session.name,
+          sessionName: commissionContext?.intendedStyle
+            ? `${session.name} - ${commissionContext.regionName ?? "Aethoria"} ${commissionContext.intendedStyle}`
+            : session.name,
           durationMinutes,
           sets: workoutSetData,
           prCount,
           xpEarned: totalXp,
           goldEarned,
           nutritionMet,
-          activeRaidTitles: activeRaids.map(r => r.title),
+          activeRaidTitles: [
+            ...activeRaids.map(r => r.title),
+            commissionContext?.narrativeThreat ? `${commissionContext.regionName ?? "Aethoria"} Commission: ${commissionContext.narrativeThreat}` : null,
+          ].filter(Boolean) as string[],
           gearDrop: null,
           playerRank: xpResult?.newRank ?? freshPlayer.rank ?? "E",
           baseClass: freshPlayer.baseClass ?? "Warrior",

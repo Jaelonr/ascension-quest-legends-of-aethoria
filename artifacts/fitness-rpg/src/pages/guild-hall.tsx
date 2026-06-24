@@ -6,6 +6,7 @@ import {
   useGetGuildHallToday,
   useGetGuildMasterConversation,
   useGetCampaignStory,
+  useCreateWorkoutSession,
   useReportToGuildMaster,
   type CampaignStoryChapter,
   type CampaignStoryQuest,
@@ -42,6 +43,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatGuildGrade } from "@/lib/ranks";
+import { useLocation } from "wouter";
 
 type ChatLine = { id: string; role: "user" | "assistant"; content: string };
 
@@ -151,6 +153,130 @@ function CommissionLocationPanel({ commission }: { commission: any }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function buildCommissionNote(commission: any, path: any) {
+  return `[commission-context] ${JSON.stringify({
+    commissionId: commission?.id,
+    regionId: commission?.expedition?.region?.regionId,
+    regionName: commission?.expedition?.region?.regionName ?? commission?.location?.region,
+    locationId: commission?.location?.key,
+    locationName: commission?.location?.name,
+    completionPath: path?.completionPath,
+    intendedStyle: path?.intendedStyle,
+    narrativeThreat: commission?.expedition?.threat,
+    travelMethod: commission?.expedition?.travelMethod ?? commission?.travel?.travelMethod,
+  })}`;
+}
+
+function CommissionDetailDialog({
+  open,
+  onOpenChange,
+  commission,
+  onStartPath,
+  isStarting,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  commission: any;
+  onStartPath: (path: any) => void;
+  isStarting: boolean;
+}) {
+  const expedition = commission?.expedition;
+  const quest = commission?.quest;
+  const location = commission?.location;
+  const travel = commission?.travel;
+  const paths = expedition ? [expedition.recommendedPath, ...(expedition.alternativePaths ?? [])].filter(Boolean) : [];
+  if (!commission) return null;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl border-[#6e4d2d] bg-[#11100e] text-[#eee5d7]">
+        <DialogHeader>
+          <DialogTitle className="font-serif text-[#d9ad63]">{expedition?.commissionTitle ?? "Commission Briefing"}</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[72vh] pr-3">
+          <div className="space-y-4">
+            <div className="border border-[#3b3328] bg-[#0c0b09] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-[#8f887d]">Region</p>
+                  <h3 className="mt-1 font-serif text-xl font-bold text-[#d9ad63]">{expedition?.region?.regionName ?? location?.region ?? "Aethoria"}</h3>
+                  <p className="mt-1 text-xs text-[#9f9586]">{location?.name ?? "Guild territory"}{location?.distanceFromGuildHallMiles ? ` - ${location.distanceFromGuildHallMiles} mi from the Hall` : ""}</p>
+                </div>
+                <div className="border border-[#6b4d2f] px-3 py-2 text-right text-[10px] uppercase tracking-widest text-[#d9ad63]">
+                  {commission.category ?? "training"}
+                </div>
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-[#d8c4a5]">{expedition?.narrativeBriefing ?? commission.rationale}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(expedition?.region?.trainingStyles ?? []).slice(0, 6).map((style: string) => (
+                  <span key={style} className="border border-[#3b3328] bg-[#15130f] px-2 py-1 text-[10px] uppercase tracking-wide text-[#49a3a0]">{style.replace(/_/g, " ")}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="border border-[#3b3328] bg-[#0c0b09] p-4">
+                <p className="text-[10px] uppercase tracking-widest text-[#8f887d]">Threat / Task</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#cfc5b8]">{expedition?.threat ?? "Complete the Guild duty and return with proof."}</p>
+              </div>
+              <div className="border border-[#3b3328] bg-[#0c0b09] p-4">
+                <p className="text-[10px] uppercase tracking-widest text-[#8f887d]">Travel</p>
+                <p className="mt-2 font-serif text-sm font-bold text-[#d9ad63]">{expedition?.travelMethod ?? travel?.travelMethod ?? "Guild route"}</p>
+                <p className="mt-2 text-xs leading-relaxed text-[#b7ab9c]">{travel?.routeNote}</p>
+                <p className="mt-2 text-xs leading-relaxed text-[#c4b5fd]">{expedition?.returnStoneNote}</p>
+              </div>
+            </div>
+
+            <div className="border-l-2 border-[#9d3e2a] bg-[#1b1511] px-4 py-3">
+              <p className="text-[10px] uppercase tracking-widest text-[#9d8f80]">Aldric's Reason</p>
+              <p className="mt-1 text-sm leading-relaxed text-[#d6ccbe]">{expedition?.aldricReason ?? commission.rationale}</p>
+            </div>
+
+            <div className="border border-[#3b3328] bg-[#0c0b09] p-4">
+              <p className="text-[10px] uppercase tracking-widest text-[#8f887d]">Real-world completion</p>
+              <p className="mt-2 text-sm leading-relaxed text-[#cfc5b8]">{expedition?.realWorldAction ?? "Complete a valid training, nutrition, recovery, or walking action."}</p>
+              <div className="mt-3 space-y-2">
+                {(quest?.tasks ?? []).map((task: any) => (
+                  <div key={task.id ?? task.description} className="flex justify-between gap-3 border border-[#2a2520] bg-[#11100e] px-3 py-2 text-xs">
+                    <span className="text-[#d8c4a5]">{task.description}</span>
+                    <span className={task.completed ? "text-[#7cc79b]" : "text-[#d9ad63]"}>{task.currentValue ?? 0}/{task.targetValue ?? 1} {task.unit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border border-[#6b4d2f] bg-[#11100e] p-4">
+              <p className="font-serif text-base font-bold text-[#d9ad63]">Choose a completion path</p>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {paths.map((path: any) => (
+                  <button
+                    key={path.id}
+                    type="button"
+                    onClick={() => onStartPath(path)}
+                    disabled={isStarting}
+                    className="border border-[#3b3328] bg-[#0c0b09] p-3 text-left transition-colors hover:border-[#c08c4e] disabled:opacity-50"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="font-serif text-sm font-bold text-[#eee5d7]">{path.label}</span>
+                      {path.recommended && <span className="border border-[#49a3a0] px-1.5 py-0.5 text-[9px] uppercase text-[#49a3a0]">Recommended</span>}
+                    </div>
+                    <p className="mt-1 text-[10px] uppercase tracking-wide text-[#8f887d]">{path.kind.replace(/_/g, " ")} - {path.intendedStyle}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-8 border border-[#3b3328] bg-[#0c0b09] py-4 text-center">
+              <div><p className="text-[10px] uppercase text-[#8f887d]">Reward</p><p className="font-serif text-base text-[#49a3a0]">+{quest?.xpReward ?? 0} XP</p></div>
+              <div className="h-8 w-px bg-[#3b3328]" />
+              <div><p className="text-[10px] uppercase text-[#8f887d]">Gold</p><p className="font-serif text-base text-[#d7a54d]">+{quest?.goldReward ?? 0}</p></div>
+            </div>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -406,8 +532,11 @@ export default function GuildHall() {
   const { data, isLoading, isError, refetch } = useGetGuildHallToday();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const createSession = useCreateWorkoutSession();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
+  const [commissionOpen, setCommissionOpen] = useState(false);
   const [reportResult, setReportResult] = useState<GuildHallReportResult | null>(null);
   const report = useReportToGuildMaster({
     mutation: {
@@ -443,6 +572,30 @@ export default function GuildHall() {
   const quest = data.commission.quest;
   const completed = quest.tasks.filter((task) => task.completed).length;
   const allDone = completed === quest.tasks.length;
+  const startCommissionPath = (path: any) => {
+    const target = path?.kind === "program"
+      ? "/training/program"
+      : path?.kind === "workout_builder"
+        ? "/training/planner"
+        : null;
+    if (target) {
+      navigate(target);
+      return;
+    }
+    createSession.mutate(
+      {
+        data: {
+          name: `${path?.label ?? "Commission Session"} - ${extended.commission.location?.name ?? "Aethoria"}`,
+          templateId: undefined as any,
+          notes: buildCommissionNote(extended.commission, path),
+        },
+      },
+      {
+        onSuccess: (session: { id: number }) => navigate(`/training/session/${session.id}`),
+        onError: () => toast({ title: "Could not start commission session", variant: "destructive" }),
+      },
+    );
+  };
 
   return (
     <div
@@ -516,13 +669,24 @@ export default function GuildHall() {
       </section>
 
       <section className="mt-4 border border-[#514332] bg-[#11100e] px-4 md:px-6">
-        <div className="flex items-center justify-between border-b border-[#3b3328] py-3">
+        <button
+          type="button"
+          onClick={() => setCommissionOpen(true)}
+          className="flex w-full items-center justify-between border-b border-[#3b3328] py-3 text-left transition-colors hover:bg-[#171510]"
+        >
           <div>
             <p className="font-serif text-lg font-bold text-[#d9ad63]">Today's Commission</p>
-            <p className="text-[11px] text-[#8f887d]">{completed} of {quest.tasks.length} duties complete - {extended.commission?.category ?? "training"}</p>
+            <p className="text-[11px] text-[#8f887d]">
+              {completed} of {quest.tasks.length} duties complete - {extended.commission?.category ?? "training"} - Open Commission
+            </p>
           </div>
-          <div className="flex items-center gap-1 text-[10px] uppercase text-[#8f887d]"><Clock3 className="size-3" /> Resets at midnight</div>
-        </div>
+          <div className="flex items-center gap-2 text-[10px] uppercase text-[#8f887d]">
+            {extended.commission?.expedition?.region?.regionName && (
+              <span className="border border-[#6b4d2f] px-2 py-1 text-[#d9ad63]">{extended.commission.expedition.region.regionName}</span>
+            )}
+            <Clock3 className="size-3" /> Resets at midnight
+          </div>
+        </button>
         {extended.commission?.rationale && (
           <div className="border-b border-[#3b3328] py-3 text-xs leading-relaxed text-[#b7ab9c]">
             {extended.commission.rationale}
@@ -576,6 +740,13 @@ export default function GuildHall() {
 
       <GuildMasterDialog open={dialogOpen} onOpenChange={setDialogOpen} initialReport={reportResult} />
       <CampaignStoryDialog open={campaignOpen} onOpenChange={setCampaignOpen} />
+      <CommissionDetailDialog
+        open={commissionOpen}
+        onOpenChange={setCommissionOpen}
+        commission={extended.commission}
+        onStartPath={startCommissionPath}
+        isStarting={createSession.isPending}
+      />
       <p className={cn("mt-4 text-center text-[11px]", allDone ? "text-[#69a97b]" : "text-[#7e776d]")}>{allDone ? "The Guild is ready to receive your report." : "Consistency is the weapon. The next action is enough."}</p>
     </div>
   );

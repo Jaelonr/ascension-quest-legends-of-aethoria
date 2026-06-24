@@ -1,8 +1,11 @@
 import { useGetBiometrics, useGetPlayer, useSetupPlayer, useUpdateBiometrics } from "@workspace/api-client-react";
 import { loadMobileSettings, type Units, type WeightUnit } from "@/utils/mobile-settings";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
+import { Audio } from "expo-av";
+import * as Haptics from "expo-haptics";
+import { usePathname, useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Animated, Easing, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const EQUIPMENT_TYPES = [
@@ -132,6 +135,13 @@ const INSTINCT_OPTIONS = [
   { id: "speed", label: "Blinding Speed", desc: "Fast, unpredictable, and hard to pin down.", tag: "AGI +2 / SEN +1", bonuses: { strength: 0, agility: 2, stamina: 0, vitality: 0, discipline: 0, sense: 1 } },
 ] as const;
 
+const RITE_SOUNDS = {
+  select: require("../assets/sounds/system-select.wav"),
+  advance: require("../assets/sounds/system-select.wav"),
+  warning: require("../assets/sounds/system-warning.wav"),
+  complete: require("../assets/sounds/system-complete.wav"),
+} as const;
+
 const CLASS_PATHS = [
   {
     id: "warrior",
@@ -216,6 +226,8 @@ function toForm(data: any, units: Units, weightUnit: WeightUnit): FormState {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
   const { data: player, isLoading: playerLoading } = useGetPlayer();
   const { data, isLoading } = useGetBiometrics();
   const update = useUpdateBiometrics();
@@ -224,6 +236,10 @@ export default function ProfileScreen() {
   const [dirty, setDirty] = useState(false);
   const [unitSystem, setUnitSystem] = useState<Units>("imperial");
   const [weightUnitSetting, setWeightUnitSetting] = useState<WeightUnit>("lbs");
+  const [scanStep, setScanStep] = useState(0);
+  const [sonicRiteEnabled, setSonicRiteEnabled] = useState(true);
+  const scanPulse = useRef(new Animated.Value(0)).current;
+  const scanReveal = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let mounted = true;
@@ -238,6 +254,76 @@ export default function ProfileScreen() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: false,
+      shouldDuckAndroid: true,
+      staysActiveInBackground: false,
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (player?.setupCompleted && pathname === "/setup") {
+      router.replace("/(tabs)" as any);
+    }
+  }, [pathname, player?.setupCompleted, router]);
+
+  useEffect(() => {
+    scanPulse.setValue(0);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanPulse, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scanPulse, {
+          toValue: 0,
+          duration: 1800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [scanPulse]);
+
+  useEffect(() => {
+    scanReveal.setValue(0);
+    Animated.timing(scanReveal, {
+      toValue: 1,
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [scanReveal, scanStep]);
+
+  const signalRite = (type: "advance" | "select" | "warning" | "complete" = "select") => {
+    if (!sonicRiteEnabled) return;
+    Audio.Sound.createAsync(RITE_SOUNDS[type], { shouldPlay: true, volume: type === "complete" ? 0.42 : 0.28 })
+      .then(({ sound }) => {
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            sound.unloadAsync().catch(() => undefined);
+          }
+        });
+      })
+      .catch(() => undefined);
+    if (type === "complete") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Vibration.vibrate([0, 45, 80, 70]);
+      return;
+    }
+    if (type === "warning") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Vibration.vibrate([0, 30, 50, 30]);
+      return;
+    }
+    Haptics.impactAsync(type === "advance" ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
+  };
 
   useEffect(() => {
     if (data) {
@@ -361,6 +447,7 @@ export default function ProfileScreen() {
 
   const completeInitialScan = () => {
     if (!scanReady || !chosenGoal) {
+      signalRite("warning");
       Alert.alert("Scan incomplete", "Enter name, age, sex, activity, first path, origin, training history, and combat instinct before completing the scan.");
       return;
     }
@@ -393,7 +480,14 @@ export default function ProfileScreen() {
       },
       {
         onSuccess: () => {
+          signalRite("complete");
           setDirty(false);
+          queryClient.setQueryData(["/api/player"], (existing: any) =>
+            existing
+              ? { ...existing, name: form.name.trim(), baseClass: chosenGoal.baseClass, setupCompleted: true }
+              : existing
+          );
+          queryClient.invalidateQueries({ queryKey: ["/api/player"] }).catch(() => undefined);
           Alert.alert("System Scan complete", "Aethoria has accepted your first record.", [
             { text: "Enter the Hall", onPress: () => router.replace("/(tabs)" as any) },
           ]);
@@ -414,6 +508,291 @@ export default function ProfileScreen() {
     { field: "ohp1rm", label: "Overhead Press", placeholder: "155" },
     { field: "row1rm", label: "Barbell Row", placeholder: "245" },
   ];
+  const scanSteps = [
+    { id: "threshold", label: "Threshold", title: "The Gate Has Not Closed", complete: true },
+    { id: "identity", label: "Identity", title: "Name The Summoned", complete: form.name.trim().length > 1 && Number(form.ageYears) >= 10 && Number(form.ageYears) <= 100 && !!form.sex },
+    { id: "vessel", label: "Vessel", title: "Measure The Vessel", complete: !!form.activityLevel },
+    { id: "path", label: "Path", title: "Declare The First Pull", complete: !!form.goalFocus && !!form.originFocus },
+    { id: "instinct", label: "Instinct", title: "Reveal The Pattern", complete: !!form.trainingFrequency && !!form.combatInstinct },
+    { id: "arsenal", label: "Arsenal", title: "Mark What Crossed With You", complete: true },
+    { id: "forecast", label: "Forecast", title: "The System Converges", complete: scanReady },
+  ] as const;
+  const currentScan = scanSteps[scanStep] ?? scanSteps[0];
+  const canAdvanceScan = currentScan.complete;
+  const advanceScan = () => {
+    if (!canAdvanceScan) {
+      signalRite("warning");
+      Alert.alert("Signal incomplete", "The System waits for this answer before the rite can continue.");
+      return;
+    }
+    signalRite("advance");
+    setScanStep((prev) => Math.min(prev + 1, scanSteps.length - 1));
+  };
+  const retreatScan = () => {
+    signalRite("select");
+    setScanStep((prev) => Math.max(prev - 1, 0));
+  };
+  const scanOpacity = scanReveal.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const scanTranslate = scanReveal.interpolate({ inputRange: [0, 1], outputRange: [18, 0] });
+  const pulseScale = scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.05] });
+  const pulseOpacity = scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.72] });
+
+  const renderInterrogationStep = () => {
+    if (currentScan.id === "threshold") {
+      return (
+        <View style={s.riteCard}>
+          <Text style={s.riteWhisper}>OTHERWORLD TRANSFER CONFIRMED</Text>
+          <Text style={s.riteTitle}>You stand between two laws of reality.</Text>
+          <Text style={s.riteBody}>
+            Aethoria has received you. The Guild will see a summoned adventurer. Only you see the hidden mechanism writing over the dark.
+          </Text>
+          <View style={s.systemWarning}>
+            <Text style={s.systemWarningText}>WORLD DANGER: CRITICAL</Text>
+            <Text style={s.systemWarningSub}>The first record must be made before the Hall can assign your duty.</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (currentScan.id === "identity") {
+      return (
+        <View style={s.riteCard}>
+          <Text style={s.riteWhisper}>IDENTITY THREAD REQUIRED</Text>
+          <Text style={s.riteTitle}>Name the one who crossed.</Text>
+          <Field label="Adventurer Name" value={form.name} onChangeText={(v) => setField("name", v)} placeholder="Jaelon" suffix="" keyboardType="default" />
+          <Field label="Age" value={form.ageYears} onChangeText={(v) => setField("ageYears", v)} placeholder="30" suffix="years" />
+          <Text style={s.groupLabel}>Sex</Text>
+          <View style={s.optionRow}>
+            {SEX_OPTIONS.map((option) => {
+              const selected = form.sex === option.id;
+              return (
+                <TouchableOpacity key={option.id} style={[s.optionChip, selected && s.optionChipActive]} onPress={() => { signalRite("select"); setField("sex", option.id); }}>
+                  <Text style={[s.optionText, selected && s.optionTextActive]}>{option.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      );
+    }
+
+    if (currentScan.id === "vessel") {
+      return (
+        <View style={s.riteCard}>
+          <Text style={s.riteWhisper}>VESSEL READINGS</Text>
+          <Text style={s.riteTitle}>The System measures what survived the crossing.</Text>
+          <View style={s.fieldRow}>
+            <Field label={`Height ${heightHint ? `(${heightHint})` : ""}`} value={form.height} onChangeText={(v) => setField("height", v)} placeholder={unitSystem === "metric" ? "178" : "70"} suffix={heightUnit} />
+            <Field label="Weight" value={form.weight} onChangeText={(v) => setField("weight", v)} placeholder={displayWeightUnit === "kg" ? "86" : "190"} suffix={displayWeightUnit} />
+          </View>
+          <Field label="Body Fat" value={form.bodyFatPct} onChangeText={(v) => setField("bodyFatPct", v)} placeholder="18" suffix="%" />
+          <Text style={s.groupLabel}>Current Activity Signal</Text>
+          <View style={s.stack}>
+            {ACTIVITY_OPTIONS.map((option) => {
+              const selected = form.activityLevel === option.id;
+              return (
+                <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => { signalRite("select"); setField("activityLevel", option.id); }}>
+                  <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                  <Text style={s.choiceDesc}>{option.desc}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      );
+    }
+
+    if (currentScan.id === "path") {
+      return (
+        <View style={s.riteCard}>
+          <Text style={s.riteWhisper}>FIRST PATH FORECAST</Text>
+          <Text style={s.riteTitle}>A class is not chosen. It is revealed by pressure.</Text>
+          <View style={s.stack}>
+            {GOAL_OPTIONS.map((option) => {
+              const selected = form.goalFocus === option.id;
+              return (
+                <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => { signalRite("select"); chooseGoal(option.id); }}>
+                  <View style={s.choiceTop}>
+                    <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                    <Text style={s.classTag}>{option.baseClass}</Text>
+                  </View>
+                  <Text style={s.choiceDesc}>{option.desc}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={s.groupLabel}>Origin Signal</Text>
+          <View style={s.stack}>
+            {ORIGIN_OPTIONS.map((option) => {
+              const selected = form.originFocus === option.id;
+              return (
+                <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => { signalRite("select"); setField("originFocus", option.id); }}>
+                  <View style={s.choiceTop}>
+                    <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                    <Text style={s.classTag}>{option.tag}</Text>
+                  </View>
+                  <Text style={s.choiceDesc}>{option.desc}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      );
+    }
+
+    if (currentScan.id === "instinct") {
+      return (
+        <View style={s.riteCard}>
+          <Text style={s.riteWhisper}>PATTERN RECOGNITION</Text>
+          <Text style={s.riteTitle}>The System watches how you endured before arrival.</Text>
+          <Text style={s.groupLabel}>Training History</Text>
+          <View style={s.stack}>
+            {FREQUENCY_OPTIONS.map((option) => {
+              const selected = form.trainingFrequency === option.id;
+              return (
+                <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => { signalRite("select"); setField("trainingFrequency", option.id); }}>
+                  <View style={s.choiceTop}>
+                    <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                    <Text style={s.classTag}>{option.tag}</Text>
+                  </View>
+                  <Text style={s.choiceDesc}>{option.desc}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={s.groupLabel}>Combat Instinct</Text>
+          <View style={s.stack}>
+            {INSTINCT_OPTIONS.map((option) => {
+              const selected = form.combatInstinct === option.id;
+              return (
+                <TouchableOpacity key={option.id} style={[s.choiceCard, selected && s.choiceCardActive]} onPress={() => { signalRite("select"); setField("combatInstinct", option.id); }}>
+                  <View style={s.choiceTop}>
+                    <Text style={[s.choiceTitle, selected && s.choiceTitleActive]}>{option.label}</Text>
+                    <Text style={s.classTag}>{option.tag}</Text>
+                  </View>
+                  <Text style={s.choiceDesc}>{option.desc}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      );
+    }
+
+    if (currentScan.id === "arsenal") {
+      return (
+        <View style={s.riteCard}>
+          <Text style={s.riteWhisper}>ARSENAL TRANSLATION</Text>
+          <Text style={s.riteTitle}>Mark the tools your first commissions may safely invoke.</Text>
+          <Text style={s.riteBody}>The System will not demand a barbell from an empty room. Leave unknown lifts blank; equipment can be changed later.</Text>
+          <View style={s.equipmentGrid}>
+            {EQUIPMENT_TYPES.map((item) => {
+              const selected = form.equipmentTypes.includes(item.id);
+              return (
+                <TouchableOpacity key={item.id} style={[s.equipmentChip, selected && s.equipmentChipActive]} onPress={() => { signalRite("select"); toggleEquipment(item.id); }}>
+                  <Text style={[s.equipmentText, selected && s.equipmentTextActive]}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={s.riteCard}>
+        <Text style={s.riteWhisper}>FORECAST CONVERGENCE</Text>
+        <Text style={s.riteTitle}>{primaryPath?.name ?? "Adventurer"} Path Detected</Text>
+        <View style={s.forecastBox}>
+          <Text style={s.forecastTitle}>Starting Attribute Forecast</Text>
+          <View style={s.forecastGrid}>
+            {Object.entries(startingStats).map(([key, value]) => (
+              <View key={key} style={s.forecastStat}>
+                <Text style={s.forecastValue}>{value}</Text>
+                <Text style={s.forecastLabel}>{key.slice(0, 3).toUpperCase()}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+        <View style={s.pathBox}>
+          <View style={s.pathHeader}>
+            <View>
+              <Text style={s.pathKicker}>System Forecast</Text>
+              <Text style={s.pathTitle}>{primaryPath?.name ?? "Adventurer"} Path</Text>
+            </View>
+            <Text style={s.pathBadge}>{primaryPath?.specialty ?? "Pathfinder"}</Text>
+          </View>
+          <Text style={s.pathDesc}>This is a projection, not a sentence. Your real training will decide what you become.</Text>
+          <View style={s.pathRows}>
+            {classForecast.map((path, index) => (
+              <View key={path.id} style={s.pathRow}>
+                <Text style={s.pathRank}>#{index + 1}</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={s.pathNameRow}>
+                    <Text style={s.pathName}>{path.name}</Text>
+                    <Text style={s.pathScore}>{Math.round(path.score)} affinity</Text>
+                  </View>
+                  <View style={s.pathTrack}>
+                    <View style={[s.pathFill, { width: `${Math.max(8, Math.min(100, (path.score / maxForecastScore) * 100))}%` }]} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  if (player?.setupCompleted && pathname === "/setup") {
+    return null;
+  }
+
+  if (!player?.setupCompleted && !isLoading && !playerLoading) {
+    return (
+      <ScrollView style={s.interrogationRoot} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 28, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
+        <View style={s.riteHeader}>
+          <TouchableOpacity onPress={() => router.back()}><Text style={s.back}>Back</Text></TouchableOpacity>
+          <TouchableOpacity style={s.soundToggle} onPress={() => { setSonicRiteEnabled((value) => !value); signalRite("select"); }}>
+            <Text style={s.soundToggleText}>{sonicRiteEnabled ? "Rite Sound: On" : "Rite Sound: Muted"}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={s.summoningStage}>
+          <Animated.View style={[s.outerRing, { opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]} />
+          <Animated.View style={[s.innerRing, { opacity: pulseOpacity }]} />
+          <Text style={s.systemSigil}>SYSTEM</Text>
+          <Text style={s.systemLine}>INITIAL SCAN / SUMMONED VESSEL</Text>
+        </View>
+        <View style={s.scanTrack}>
+          {scanSteps.map((step, i) => (
+            <TouchableOpacity key={step.id} style={[s.scanStep, i === scanStep && s.scanStepActive, step.complete && s.scanStepDone]} onPress={() => { signalRite("select"); setScanStep(i); }}>
+              <Text style={[s.scanStepText, i === scanStep && s.scanStepTextActive]}>{step.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Animated.View style={{ opacity: scanOpacity, transform: [{ translateY: scanTranslate }] }}>
+          <Text style={s.kicker}>AWE RITE IN PROGRESS</Text>
+          <Text style={s.title}>{currentScan.title}</Text>
+          <Text style={s.subtitle}>Answer carefully. The System records facts; Aethoria will answer with consequences.</Text>
+          {renderInterrogationStep()}
+        </Animated.View>
+        <View style={s.riteNav}>
+          <TouchableOpacity style={[s.riteNavBtn, scanStep === 0 && s.riteNavDisabled]} onPress={retreatScan} disabled={scanStep === 0}>
+            <Text style={s.riteNavText}>Previous Signal</Text>
+          </TouchableOpacity>
+          {scanStep === scanSteps.length - 1 ? (
+            <TouchableOpacity style={[s.scanBtn, (!scanReady || setupPlayer.isPending) && { opacity: 0.55 }]} onPress={completeInitialScan} disabled={!scanReady || setupPlayer.isPending}>
+              {setupPlayer.isPending ? <ActivityIndicator color="#0a0908" /> : <Text style={s.scanText}>Seal The First Record</Text>}
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={[s.riteNavPrimary, !canAdvanceScan && s.riteNavDisabled]} onPress={advanceScan}>
+              <Text style={s.riteNavPrimaryText}>Continue The Rite</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView style={s.root} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32, paddingHorizontal: 16 }}>
@@ -693,6 +1072,34 @@ function Field({ label, value, onChangeText, placeholder, suffix, keyboardType =
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#0a0908" },
+  interrogationRoot: { flex: 1, backgroundColor: "#020403" },
+  riteHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  soundToggle: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#061111", paddingHorizontal: 10, paddingVertical: 7 },
+  soundToggleText: { color: "#7ddce4", fontSize: 9, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  summoningStage: { height: 210, alignItems: "center", justifyContent: "center", marginBottom: 14, overflow: "hidden" },
+  outerRing: { position: "absolute", width: 184, height: 184, borderRadius: 92, borderWidth: 1, borderColor: "#7ddce4", backgroundColor: "#092323" },
+  innerRing: { position: "absolute", width: 104, height: 104, borderRadius: 52, borderWidth: 1, borderColor: "#d9ad63" },
+  systemSigil: { color: "#7ddce4", fontSize: 30, letterSpacing: 6, fontFamily: "Inter_700Bold" },
+  systemLine: { color: "#9d8f80", fontSize: 9, letterSpacing: 2.2, textTransform: "uppercase", marginTop: 10, fontFamily: "Inter_700Bold" },
+  scanTrack: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 18 },
+  scanStep: { borderWidth: 1, borderColor: "#26322f", backgroundColor: "#080a09", paddingHorizontal: 8, paddingVertical: 7 },
+  scanStepActive: { borderColor: "#7ddce4", backgroundColor: "#071615" },
+  scanStepDone: { borderColor: "#6b4d2f" },
+  scanStepText: { color: "#6f6559", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  scanStepTextActive: { color: "#7ddce4" },
+  riteCard: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071110", padding: 14, marginTop: 12, marginBottom: 14 },
+  riteWhisper: { color: "#7ddce4", fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", fontFamily: "Inter_700Bold", marginBottom: 8 },
+  riteTitle: { color: "#eee5d7", fontSize: 21, lineHeight: 28, fontFamily: "PlayfairDisplay_700Bold", marginBottom: 10 },
+  riteBody: { color: "#b6aa9c", fontSize: 13, lineHeight: 20, fontFamily: "Inter_400Regular" },
+  systemWarning: { borderWidth: 1, borderColor: "#6b2f28", backgroundColor: "#1a0b08", padding: 12, marginTop: 14 },
+  systemWarningText: { color: "#f09983", fontSize: 11, letterSpacing: 1.6, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  systemWarningSub: { color: "#c8afa8", fontSize: 12, lineHeight: 18, marginTop: 5, fontFamily: "Inter_400Regular" },
+  riteNav: { gap: 10, marginTop: 2 },
+  riteNavBtn: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingVertical: 13, alignItems: "center" },
+  riteNavPrimary: { borderWidth: 1, borderColor: "#8be2df", backgroundColor: "#49a3a0", paddingVertical: 14, alignItems: "center" },
+  riteNavDisabled: { opacity: 0.45 },
+  riteNavText: { color: "#d8c4a5", fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  riteNavPrimaryText: { color: "#061010", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   back: { color: "#d9ad63", fontSize: 12, fontFamily: "Inter_700Bold", marginBottom: 18 },
   kicker: { color: "#9d8f80", fontSize: 9, letterSpacing: 3, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   title: { color: "#eee5d7", fontSize: 26, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },

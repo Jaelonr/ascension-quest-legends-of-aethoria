@@ -28,6 +28,10 @@ export function LegalInfoScreen({ type }: { type: LegalCopyKey }) {
   );
 }
 
+export default function LegalInfoScreenRoute() {
+  return <LegalInfoScreen type="terms" />;
+}
+
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#0a0908" },
   kicker: { color: "#9d8f80", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", fontFamily: "Inter_700Bold" },

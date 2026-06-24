@@ -1,5 +1,6 @@
 import {
   customFetch,
+  useCreateWorkoutSession,
   useGetGuildHallToday,
   useGetGuildMasterConversation,
   useGetDailyQuest,
@@ -26,7 +27,7 @@ import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { formatGuildGrade, gradeColor } from "@/utils/ranks";
 
-const ALDRIC_IMAGE = require("../../assets/images/grandmaster-aldric.png");
+const ALDRIC_IMAGE = require("../../assets/images/grandmaster-aldric.jpg");
 
 type PlayerSummary = { level: number; xp: number; xpToNextLevel: number; gold: number; rank: string; name: string | null };
 
@@ -47,6 +48,9 @@ function usePlayer() {
             name: p.name ?? null,
           });
         }
+      })
+      .catch(() => {
+        if (!cancelled) setData(null);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -277,11 +281,130 @@ function WorldDangerPanel({ danger }: { danger: any }) {
   );
 }
 
+function buildCommissionNote(commission: any, path: any) {
+  return `[commission-context] ${JSON.stringify({
+    commissionId: commission?.id,
+    regionId: commission?.expedition?.region?.regionId,
+    regionName: commission?.expedition?.region?.regionName ?? commission?.location?.region,
+    locationId: commission?.location?.key,
+    locationName: commission?.location?.name,
+    completionPath: path?.completionPath,
+    intendedStyle: path?.intendedStyle,
+    narrativeThreat: commission?.expedition?.threat,
+    travelMethod: commission?.expedition?.travelMethod ?? commission?.travel?.travelMethod,
+  })}`;
+}
+
+function CommissionDetailModal({
+  visible,
+  onClose,
+  commission,
+  onStartPath,
+  isStarting,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  commission: any;
+  onStartPath: (path: any) => void;
+  isStarting: boolean;
+}) {
+  const insets = useSafeAreaInsets();
+  const expedition = commission?.expedition;
+  const quest = commission?.quest;
+  const location = commission?.location;
+  const travel = commission?.travel;
+  const paths = expedition ? [expedition.recommendedPath, ...(expedition.alternativePaths ?? [])].filter(Boolean) : [];
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+      <View style={[s.detailRoot, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}>
+        <View style={s.detailHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.detailKicker}>COMMISSION BRIEFING</Text>
+            <Text style={s.detailTitle}>{expedition?.commissionTitle ?? "Today's Commission"}</Text>
+          </View>
+          <TouchableOpacity style={s.detailClose} onPress={onClose}>
+            <Text style={s.detailCloseText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView contentContainerStyle={s.detailContent} showsVerticalScrollIndicator={false}>
+          <View style={s.detailPanel}>
+            <Text style={s.detailLabel}>Region</Text>
+            <Text style={s.detailRegion}>{expedition?.region?.regionName ?? location?.region ?? "Aethoria"}</Text>
+            <Text style={s.detailMeta}>{location?.name ?? "Guild territory"}{location?.distanceFromGuildHallMiles ? ` - ${location.distanceFromGuildHallMiles} mi from the Hall` : ""}</Text>
+            <Text style={s.detailBody}>{expedition?.narrativeBriefing ?? commission?.rationale}</Text>
+            <View style={s.badgeWrap}>
+              {(expedition?.region?.trainingStyles ?? []).slice(0, 6).map((style: string) => (
+                <Text key={style} style={s.trainingBadge}>{style.replace(/_/g, " ")}</Text>
+              ))}
+            </View>
+          </View>
+
+          <View style={s.detailPanel}>
+            <Text style={s.detailLabel}>Threat / Task</Text>
+            <Text style={s.detailBody}>{expedition?.threat ?? "Complete the Guild duty and return with proof."}</Text>
+          </View>
+
+          <View style={s.detailPanel}>
+            <Text style={s.detailLabel}>Travel</Text>
+            <Text style={s.detailRegionSmall}>{expedition?.travelMethod ?? travel?.travelMethod ?? "Guild route"}</Text>
+            <Text style={s.detailBody}>{travel?.routeNote}</Text>
+            <Text style={s.returnStone}>{expedition?.returnStoneNote}</Text>
+          </View>
+
+          <View style={s.aldricReasonPanel}>
+            <Text style={s.detailLabel}>Aldric's Reason</Text>
+            <Text style={s.detailBody}>{expedition?.aldricReason ?? commission?.rationale}</Text>
+          </View>
+
+          <View style={s.detailPanel}>
+            <Text style={s.detailLabel}>Real-world completion</Text>
+            <Text style={s.detailBody}>{expedition?.realWorldAction ?? "Complete a valid training, recovery, nutrition, or walking action."}</Text>
+            {(quest?.tasks ?? []).map((task: any) => (
+              <View key={task.id ?? task.description} style={s.detailTask}>
+                <Text style={s.detailTaskText}>{task.description}</Text>
+                <Text style={[s.detailTaskCount, task.completed && { color: "#7cc79b" }]}>{task.currentValue ?? 0}/{task.targetValue ?? 1} {task.unit}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={s.detailPanel}>
+            <Text style={s.detailSectionTitle}>Choose a completion path</Text>
+            {paths.map((path: any) => (
+              <TouchableOpacity key={path.id} style={[s.pathButton, path.recommended && s.pathButtonRecommended]} onPress={() => onStartPath(path)} disabled={isStarting} activeOpacity={0.82}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.pathButtonTitle}>{path.label}</Text>
+                  <Text style={s.pathButtonMeta}>{path.kind.replace(/_/g, " ")} - {path.intendedStyle}</Text>
+                </View>
+                {path.recommended ? <Text style={s.pathRecommended}>Best</Text> : null}
+              </TouchableOpacity>
+            ))}
+            {isStarting ? <ActivityIndicator color="#d9ad63" style={{ marginTop: 10 }} /> : null}
+          </View>
+
+          <View style={s.detailReward}>
+            <View>
+              <Text style={s.rewardLabel}>Reward</Text>
+              <Text style={s.rewardXp}>+{quest?.xpReward ?? 0} XP</Text>
+            </View>
+            <View style={s.rewardDivider} />
+            <View>
+              <Text style={s.rewardLabel}>Gold</Text>
+              <Text style={s.rewardGold}>+{quest?.goldReward ?? 0}</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
 function AldricPanel({ hall, onOpen }: { hall: any; onOpen: () => void }) {
   const trend = hall?.counsel?.trendSummary;
   return (
     <View style={s.aldricPanel}>
-      <Image source={ALDRIC_IMAGE} style={s.aldricImage} resizeMode="cover" />
+      <View style={s.aldricImageFrame}>
+        <Image source={ALDRIC_IMAGE} style={s.aldricImage} resizeMode="cover" />
+      </View>
       <View style={s.aldricContent}>
         <View style={s.aldricTitleRow}>
           <Text style={s.aldricTitle}>Grandmaster Aldric</Text>
@@ -313,8 +436,10 @@ export default function HallScreen() {
   const { data: hall, isLoading: hallLoading } = useGetGuildHallToday();
   const { data: dailyQuestData } = useGetDailyQuest();
   const [aldricOpen, setAldricOpen] = useState(false);
+  const [commissionOpen, setCommissionOpen] = useState(false);
   const [reportResult, setReportResult] = useState<any | null>(null);
   const [reporting, setReporting] = useState(false);
+  const createSession = useCreateWorkoutSession();
 
   const isLoading = playerLoading || hallLoading;
   const hallAny = hall as any;
@@ -348,6 +473,35 @@ export default function HallScreen() {
     } finally {
       setReporting(false);
     }
+  };
+
+  const startCommissionPath = (path: any) => {
+    if (path?.kind === "program") {
+      setCommissionOpen(false);
+      router.push("/training/program" as any);
+      return;
+    }
+    if (path?.kind === "workout_builder") {
+      setCommissionOpen(false);
+      router.push("/training/planner" as any);
+      return;
+    }
+    createSession.mutate(
+      {
+        data: {
+          name: `${path?.label ?? "Commission Session"} - ${commission?.location?.name ?? "Aethoria"}`,
+          templateId: undefined as any,
+          notes: buildCommissionNote(commission, path),
+        },
+      },
+      {
+        onSuccess: (session: any) => {
+          setCommissionOpen(false);
+          router.push(`/training/session/${session.id}` as any);
+        },
+        onError: () => Alert.alert("Session failed", "Could not start this commission path."),
+      },
+    );
   };
 
   return (
@@ -414,15 +568,18 @@ export default function HallScreen() {
             )}
 
             {commission && quest && (
-              <View style={[s.card, { backgroundColor: "#11100e", borderColor: "#514332", marginTop: 14, padding: 0 }]}>
+              <TouchableOpacity style={[s.card, { backgroundColor: "#11100e", borderColor: "#514332", marginTop: 14, padding: 0 }]} onPress={() => setCommissionOpen(true)} activeOpacity={0.88}>
                 <View style={s.commissionHeader}>
                   <View>
                     <Text style={s.commissionHeading}>Today's Commission</Text>
                     <Text style={s.commissionMeta}>
-                      {completedTasks} of {questTasks.length} duties complete - {commission.category ?? "training"}
+                      {completedTasks} of {questTasks.length} duties complete - {commission.category ?? "training"} - Open Commission
                     </Text>
                   </View>
-                  <Text style={s.resetLabel}>Resets at midnight</Text>
+                  <View style={{ alignItems: "flex-end", gap: 4 }}>
+                    {commission.expedition?.region?.regionName ? <Text style={s.regionPill}>{commission.expedition.region.regionName}</Text> : null}
+                    <Text style={s.resetLabel}>Resets at midnight</Text>
+                  </View>
                 </View>
 
                 {commission.rationale && <Text style={s.rationale}>{commission.rationale}</Text>}
@@ -475,7 +632,7 @@ export default function HallScreen() {
                     <Text style={s.rewardGold}>+{quest.goldReward ?? commission.rewards?.gold ?? 0}</Text>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             )}
 
             {hallAny?.hallOfferings && (
@@ -526,6 +683,13 @@ export default function HallScreen() {
       </ScrollView>
 
       <AldricChatModal visible={aldricOpen} onClose={() => setAldricOpen(false)} initialReport={reportResult} />
+      <CommissionDetailModal
+        visible={commissionOpen}
+        onClose={() => setCommissionOpen(false)}
+        commission={commission}
+        onStartPath={startCommissionPath}
+        isStarting={createSession.isPending}
+      />
     </View>
   );
 }
@@ -554,7 +718,8 @@ const s = StyleSheet.create({
   dangerStatLabel: { color: "#80796f", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   dangerStatValue: { color: "#d8c4a5", fontSize: 11, fontFamily: "Inter_700Bold", marginTop: 2 },
   aldricPanel: { overflow: "hidden", borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", marginBottom: 14 },
-  aldricImage: { width: "100%", aspectRatio: 4 / 3, backgroundColor: "#0c0b09" },
+  aldricImageFrame: { width: "100%", aspectRatio: 16 / 9, maxHeight: 218, overflow: "hidden", backgroundColor: "#0c0b09" },
+  aldricImage: { position: "absolute", left: 0, right: 0, top: "-7%", width: "100%", height: "124%" },
   aldricContent: { borderTopWidth: 1, borderTopColor: "#6b4d2f", padding: 14 },
   aldricTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   aldricTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
@@ -576,6 +741,7 @@ const s = StyleSheet.create({
   commissionHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#3b3328", padding: 14, gap: 10 },
   commissionHeading: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   commissionMeta: { color: "#8f887d", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  regionPill: { borderWidth: 1, borderColor: "#6b4d2f", color: "#d9ad63", paddingHorizontal: 7, paddingVertical: 3, fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", textAlign: "right" },
   resetLabel: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", textAlign: "right" },
   rationale: { color: "#b7ab9c", fontSize: 12, lineHeight: 19, fontFamily: "Inter_400Regular", padding: 14, borderBottomWidth: 1, borderBottomColor: "#3b3328" },
   locationGrid: { gap: 8, padding: 14, borderBottomWidth: 1, borderBottomColor: "#3b3328" },
@@ -656,4 +822,31 @@ const s = StyleSheet.create({
   chatInputRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: 16, paddingTop: 10, borderTopWidth: 1 },
   chatInput: { flex: 1, borderWidth: 1, borderRadius: 8, padding: 10, fontSize: 14, maxHeight: 90 },
   sendBtn: { width: 40, height: 40, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  detailRoot: { flex: 1, backgroundColor: "#080706", paddingHorizontal: 16 },
+  detailHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, borderBottomWidth: 1, borderBottomColor: "#6b4d2f", paddingBottom: 12 },
+  detailKicker: { color: "#9d8f80", fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  detailTitle: { color: "#eee5d7", fontSize: 22, lineHeight: 28, fontFamily: "PlayfairDisplay_700Bold", marginTop: 3 },
+  detailClose: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", paddingHorizontal: 12, paddingVertical: 8 },
+  detailCloseText: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  detailContent: { paddingTop: 14, paddingBottom: 28, gap: 12 },
+  detailPanel: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14 },
+  aldricReasonPanel: { borderLeftWidth: 2, borderLeftColor: "#9d3e2a", backgroundColor: "#1b1511", padding: 14 },
+  detailLabel: { color: "#8f887d", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  detailRegion: { color: "#d9ad63", fontSize: 21, fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
+  detailRegionSmall: { color: "#d9ad63", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
+  detailMeta: { color: "#9f9586", fontSize: 11, lineHeight: 16, marginTop: 2, fontFamily: "Inter_400Regular" },
+  detailBody: { color: "#cfc5b8", fontSize: 12, lineHeight: 19, marginTop: 8, fontFamily: "Inter_400Regular" },
+  badgeWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  trainingBadge: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#15130f", color: "#49a3a0", paddingHorizontal: 7, paddingVertical: 4, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  returnStone: { color: "#c4b5fd", fontSize: 11, lineHeight: 17, marginTop: 8, fontFamily: "Inter_400Regular" },
+  detailTask: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", padding: 10, marginTop: 8 },
+  detailTaskText: { flex: 1, color: "#d8c4a5", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
+  detailTaskCount: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold" },
+  detailSectionTitle: { color: "#d9ad63", fontSize: 16, fontFamily: "PlayfairDisplay_700Bold" },
+  pathButton: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, marginTop: 8 },
+  pathButtonRecommended: { borderColor: "#49a3a0" },
+  pathButtonTitle: { color: "#eee5d7", fontSize: 13, lineHeight: 18, fontFamily: "Inter_700Bold" },
+  pathButtonMeta: { color: "#8f887d", fontSize: 10, textTransform: "uppercase", marginTop: 3, fontFamily: "Inter_400Regular" },
+  pathRecommended: { borderWidth: 1, borderColor: "#49a3a0", color: "#49a3a0", paddingHorizontal: 7, paddingVertical: 3, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  detailReward: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 14 },
 });

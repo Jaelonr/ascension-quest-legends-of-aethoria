@@ -14,6 +14,7 @@ import {
   playerStyleIdentityTable,
   questTasksTable,
   questsTable,
+  regionProgressTable,
   rpgGearTable,
   storeItemsTable,
   storyConsequencesTable,
@@ -25,7 +26,12 @@ import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { applyXpEvent, getOrCreatePlayer } from "../progression";
 import { buildQuestResponse, ensureDailyQuest, getTodayStr } from "./quests";
 import { buildWorldDanger } from "../domain/world-danger";
-import { buildCommissionTravelPlan, chooseCommissionLocation, type AethoriaLocation } from "../domain/aethoria-locations";
+import {
+  buildCommissionExpeditionDetail,
+  buildCommissionTravelPlan,
+  chooseCommissionLocation,
+  type AethoriaLocation,
+} from "../domain/aethoria-locations";
 
 const router = Router();
 const RANK_ORDER = ["E", "D", "C", "B", "A", "S", "National-Level"];
@@ -60,9 +66,15 @@ interface CommissionPlan {
   context: Record<string, unknown>;
 }
 
-function attachCommissionLocation(plan: CommissionPlan, seed: number, locations: Parameters<typeof chooseCommissionLocation>[2] = []): CommissionPlan {
+function attachCommissionLocation(plan: CommissionPlan, seed: number, playerContext?: GuildPlayerContext, locations: Parameters<typeof chooseCommissionLocation>[2] = []): CommissionPlan {
   const location = chooseCommissionLocation(plan.category, seed, locations);
   const travel = buildCommissionTravelPlan(plan.category, location);
+  const expedition = buildCommissionExpeditionDetail(plan.category, location, travel, {
+    dominantStyle: playerContext?.dominantStyle,
+    neglectedStyle: playerContext?.neglectedStyle,
+    readiness: plan.readiness,
+    injuryNotesPresent: !!playerContext?.injuryNotes,
+  });
   return {
     ...plan,
     rationale: `${plan.rationale} Location: ${location.name}, ${location.region}.`,
@@ -70,6 +82,19 @@ function attachCommissionLocation(plan: CommissionPlan, seed: number, locations:
       ...plan.context,
       location,
       travel,
+      expedition,
+      regionProgress: {
+        regionId: expedition.region.regionId,
+        regionName: expedition.region.regionName,
+        known: expedition.region.knownAtStart || location.knownAtStart,
+        discovered: location.knownAtStart,
+        visited: false,
+        commissionsCompleted: 0,
+        bossesDefeated: 0,
+        explorationPercent: location.knownAtStart ? 5 : 0,
+        dominantStyleUsed: null,
+        lastVisitedAt: null,
+      },
     },
   };
 }
@@ -237,6 +262,106 @@ async function getAethoriaLocations() {
   } catch {
     return [];
   }
+}
+
+type RegionProgressRow = typeof regionProgressTable.$inferSelect;
+
+function serializeRegionProgress(row?: RegionProgressRow | null) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    regionId: row.regionId,
+    regionName: row.regionName,
+    known: row.known,
+    discovered: row.discovered,
+    visited: row.visited,
+    commissionsCompleted: row.commissionsCompleted,
+    bossesDefeated: row.bossesDefeated,
+    explorationPercent: row.explorationPercent,
+    dominantStyleUsed: row.dominantStyleUsed,
+    lastVisitedAt: row.lastVisitedAt?.toISOString() ?? null,
+    updatedAt: row.updatedAt?.toISOString() ?? null,
+  };
+}
+
+function getRegionSeed(context: any) {
+  const progress = context?.regionProgress ?? {};
+  const expeditionRegion = context?.expedition?.region ?? {};
+  const location = context?.location ?? {};
+  const rawName = expeditionRegion.regionName ?? progress.regionName ?? location.region;
+  const regionName = typeof rawName === "string" && rawName.trim() ? rawName.trim() : null;
+  const regionIdSource = expeditionRegion.regionId ?? progress.regionId ?? regionName;
+  const regionId = typeof regionIdSource === "string" && regionIdSource.trim()
+    ? regionIdSource.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
+    : null;
+  if (!regionId || !regionName) return null;
+  const known = Boolean(progress.known ?? expeditionRegion.knownAtStart ?? location.knownAtStart);
+  const discovered = Boolean(progress.discovered ?? location.knownAtStart);
+  const explorationPercent = Math.max(0, Math.min(100, Number(progress.explorationPercent ?? (known ? 5 : 0)) || 0));
+  return { regionId, regionName, known, discovered, explorationPercent };
+}
+
+async function ensureRegionProgress(playerId: number, context: any) {
+  const seed = getRegionSeed(context);
+  if (!seed) return null;
+  const [existing] = await db.select().from(regionProgressTable).where(and(
+    eq(regionProgressTable.playerId, playerId),
+    eq(regionProgressTable.regionId, seed.regionId),
+  )).limit(1);
+
+  if (existing) {
+    const nextKnown = existing.known || seed.known;
+    const nextDiscovered = existing.discovered || seed.discovered;
+    const nextExploration = Math.max(existing.explorationPercent, seed.explorationPercent);
+    if (
+      existing.regionName !== seed.regionName ||
+      existing.known !== nextKnown ||
+      existing.discovered !== nextDiscovered ||
+      existing.explorationPercent !== nextExploration
+    ) {
+      const [updated] = await db.update(regionProgressTable).set({
+        regionName: seed.regionName,
+        known: nextKnown,
+        discovered: nextDiscovered,
+        explorationPercent: nextExploration,
+        updatedAt: new Date(),
+      }).where(eq(regionProgressTable.id, existing.id)).returning();
+      return updated ?? existing;
+    }
+    return existing;
+  }
+
+  const [inserted] = await db.insert(regionProgressTable).values({
+    playerId,
+    regionId: seed.regionId,
+    regionName: seed.regionName,
+    known: seed.known,
+    discovered: seed.discovered,
+    visited: false,
+    commissionsCompleted: 0,
+    bossesDefeated: 0,
+    explorationPercent: seed.explorationPercent,
+  }).onConflictDoNothing().returning();
+  return inserted ?? (await db.select().from(regionProgressTable).where(and(
+    eq(regionProgressTable.playerId, playerId),
+    eq(regionProgressTable.regionId, seed.regionId),
+  )).limit(1))[0] ?? null;
+}
+
+async function recordRegionVisit(playerId: number, context: any, intendedStyle: string | null) {
+  const current = await ensureRegionProgress(playerId, context);
+  if (!current) return null;
+  const [updated] = await db.update(regionProgressTable).set({
+    known: true,
+    discovered: true,
+    visited: true,
+    commissionsCompleted: current.commissionsCompleted + 1,
+    explorationPercent: Math.min(100, Math.max(current.explorationPercent, 5) + 8),
+    dominantStyleUsed: intendedStyle,
+    lastVisitedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(eq(regionProgressTable.id, current.id)).returning();
+  return updated ?? current;
 }
 
 async function getGuildPlayerContext(playerId: number): Promise<GuildPlayerContext> {
@@ -507,7 +632,7 @@ async function getGuildHallSnapshot(userId: string) {
     getAethoriaLocations(),
   ]);
 
-  const plan = attachCommissionLocation(buildDailyCommissionPlan(playerContext), player.id + today.length + playerContext.recentWorkoutCount, locations);
+  const plan = attachCommissionLocation(buildDailyCommissionPlan(playerContext), player.id + today.length + playerContext.recentWorkoutCount, playerContext, locations);
   let commission = existingCommission[0];
   if (!commission) {
     await applyCommissionPlan(quest.id, plan);
@@ -526,6 +651,7 @@ async function getGuildHallSnapshot(userId: string) {
     !commission.rationale ||
     !(commission.context as any)?.location ||
     !(commission.context as any)?.travel ||
+    !(commission.context as any)?.expedition ||
     (commission.context as any)?.travel?.continentSquareMiles !== 2_000_000
   ) {
     const existingTravel = (commission.context as any)?.travel;
@@ -533,6 +659,8 @@ async function getGuildHallSnapshot(userId: string) {
       ...(commission.context ?? {}),
       location: existingTravel?.continentSquareMiles === 2_000_000 ? (commission.context as any)?.location : (plan.context as any).location,
       travel: existingTravel?.continentSquareMiles === 2_000_000 ? existingTravel : (plan.context as any).travel,
+      expedition: (commission.context as any)?.expedition ?? (plan.context as any).expedition,
+      regionProgress: (commission.context as any)?.regionProgress ?? (plan.context as any).regionProgress,
     };
     [commission] = await db.update(dailyCommissionsTable).set({
       category: commission.category || plan.category,
@@ -562,6 +690,8 @@ async function getGuildHallSnapshot(userId: string) {
   }
 
   const [freshQuest] = await db.select().from(questsTable).where(eq(questsTable.id, quest.id)).limit(1);
+  const commissionContext = (commission?.context ?? plan.context) as any;
+  const regionProgress = await ensureRegionProgress(player.id, commissionContext);
   return {
     date: today,
     player: { ...player, stats },
@@ -572,8 +702,10 @@ async function getGuildHallSnapshot(userId: string) {
       rationale: commission?.rationale ?? plan.rationale,
       readiness: commission?.readiness ?? "ready",
       reportedAt: commission?.reportedAt?.toISOString() ?? null,
-      location: ((commission?.context ?? plan.context) as any).location ?? null,
-      travel: ((commission?.context ?? plan.context) as any).travel ?? null,
+      location: commissionContext.location ?? null,
+      travel: commissionContext.travel ?? null,
+      expedition: commissionContext.expedition ?? null,
+      regionProgress: serializeRegionProgress(regionProgress) ?? commissionContext.regionProgress ?? null,
       quest: await buildQuestResponse(freshQuest),
     },
     counsel: {
@@ -689,6 +821,25 @@ router.post("/guild-hall/report", async (req, res) => {
       await applyXpEvent(player.id, quest.xpReward, "Guild Commission Report", "quest", getTodayStr());
       await db.update(dailyCommissionsTable).set({ reportedAt: new Date() })
         .where(eq(dailyCommissionsTable.id, snapshot.commission.id));
+      const regionContext = {
+        location: snapshot.commission.location,
+        travel: snapshot.commission.travel,
+        expedition: (snapshot.commission as any).expedition,
+        regionProgress: (snapshot.commission as any).regionProgress,
+      };
+      const updatedRegionProgress = await recordRegionVisit(
+        player.id,
+        regionContext,
+        (snapshot.commission as any).expedition?.recommendedPath?.intendedStyle ?? snapshot.commission.category ?? null,
+      );
+      if (updatedRegionProgress) {
+        await db.update(dailyCommissionsTable).set({
+          context: {
+            ...regionContext,
+            regionProgress: serializeRegionProgress(updatedRegionProgress),
+          },
+        }).where(eq(dailyCommissionsTable.id, snapshot.commission.id));
+      }
       await db.insert(guildMasterMemoriesTable).values({
         playerId: player.id,
         kind: "accomplishment",
