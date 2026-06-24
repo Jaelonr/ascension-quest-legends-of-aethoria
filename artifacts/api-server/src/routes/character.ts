@@ -16,21 +16,37 @@ import { buildPlayerResponse, getOrCreatePlayer } from "../progression";
 const router = Router();
 
 const LAUNCH_SLOTS = [
-  "weapon",
-  "armor",
-  "gloves_wraps",
-  "boots",
-  "ring",
-  "relic",
+  "head",
+  "neck",
+  "shoulders",
+  "arms",
+  "waist",
+  "legs",
+  "feet",
   "cloak",
+  "chest",
+  "hands",
+  "ring_left",
+  "ring_right",
+  "weapon",
+  "offhand",
+  "relic",
   "title",
   "aura_cosmetic",
 ] as const;
 
 function displaySlot(slot: string) {
-  if (slot === "chest") return "armor";
-  if (slot === "necklace" || slot === "offhand") return "relic";
-  if (slot === "gloves") return "gloves_wraps";
+  if (slot === "armor") return "chest";
+  if (slot === "helmet") return "head";
+  if (slot === "necklace") return "neck";
+  if (slot === "back") return "cloak";
+  if (slot === "gloves" || slot === "wraps") return "hands";
+  if (slot === "boots") return "feet";
+  if (slot === "ring") return "ring_left";
+  if (slot === "main_hand") return "weapon";
+  if (slot === "off_hand") return "offhand";
+  if (slot === "aura_effect") return "aura_cosmetic";
+  if (slot === "banner") return "title";
   return slot;
 }
 

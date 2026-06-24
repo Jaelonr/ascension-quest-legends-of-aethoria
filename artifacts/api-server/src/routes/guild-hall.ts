@@ -33,6 +33,7 @@ import {
   type AethoriaLocation,
 } from "../domain/aethoria-locations";
 import { getTrainingIntelligence } from "../training-intelligence";
+import { ensureHallOfferingCatalog } from "./inventory";
 
 const router = Router();
 const RANK_ORDER = ["E", "D", "C", "B", "A", "S", "National-Level"];
@@ -699,6 +700,7 @@ async function settleExpiredDuties(playerId: number) {
 
 async function getGuildHallSnapshot(userId: string) {
   const { player, stats } = await getOrCreatePlayer(userId);
+  await ensureHallOfferingCatalog();
   await settleExpiredDuties(player.id);
   const quest = await ensureDailyQuest(player.id);
   const today = getTodayStr();

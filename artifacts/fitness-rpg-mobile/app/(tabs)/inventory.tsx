@@ -136,6 +136,27 @@ const OFFERING_SECTION_META = [
   { key: "raid", label: "Raid", note: "Items unlocked by dangerous campaign work.", icon: "shield" },
 ] as const satisfies Array<{ key: string; label: string; note: string; icon: keyof typeof Feather.glyphMap }>;
 
+function titleCase(value: string) {
+  return value
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatItemCategory(item: any) {
+  const category = String(item?.category ?? item?.itemType ?? "utility");
+  if (category.startsWith("gear:")) {
+    const [, slot, material] = category.split(":");
+    const slotLabel = slot ? titleCase(slot) : "Gear";
+    const materialLabel = material ? titleCase(material) : "Armory";
+    return `${slotLabel} ${materialLabel}`;
+  }
+  if (category.startsWith("consumable:")) {
+    const [, kind] = category.split(":");
+    return `${titleCase(kind ?? "consumable")} Consumable`;
+  }
+  return titleCase(category);
+}
+
 function xpNeededForLevel(level: number) {
   if (level < 10) return level * 100;
   if (level < 20) return 1000 + (level - 9) * 200;
@@ -382,6 +403,7 @@ export default function CharacterScreen() {
         onSuccess: (res: any) => {
           Alert.alert("Item Acquired", res?.message ?? "The Hall has released the item to your inventory.");
           qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+          qc.invalidateQueries({ queryKey: ["/api/armory"] });
           qc.invalidateQueries({ queryKey: ["/api/player"] });
           qc.invalidateQueries({ queryKey: ["/api/store/sections"] });
           qc.invalidateQueries({ queryKey: ["/api/character/summary"] });
@@ -405,13 +427,15 @@ export default function CharacterScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const res = await customFetch<{ message: string; goldReceived: number }>(`/api/inventory/${item.id}/sell`, {
+              const path = item.isGear ? `/api/armory/${item.id}/release` : `/api/inventory/${item.id}/sell`;
+              const res = await customFetch<{ message: string; goldReceived: number }>(path, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ quantity: 1 }),
               });
               Alert.alert("Item Released", res?.message ?? "The Hall has reclaimed the item.");
               qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+              qc.invalidateQueries({ queryKey: ["/api/armory"] });
               qc.invalidateQueries({ queryKey: ["/api/player"] });
               qc.invalidateQueries({ queryKey: ["/api/character/summary"] });
               qc.invalidateQueries({ queryKey: ["/api/chronicle/summary"] });
@@ -610,7 +634,7 @@ export default function CharacterScreen() {
                     <View key={item.id} style={[cs.inventoryItem, { backgroundColor: "#171510", borderColor: rarityColor + "40" }]}>
                       <View style={{ flex: 1 }}>
                         <Text style={[cs.itemName, { color: rarityColor }]}>{item.displayName ?? item.name}</Text>
-                        <Text style={cs.itemMeta}>{item.category} - {item.rarity}</Text>
+                        <Text style={cs.itemMeta}>{formatItemCategory(item)} - {item.rarity}</Text>
                         {item.description && (
                           <Text style={[cs.itemDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
                             {item.description}
@@ -713,7 +737,7 @@ export default function CharacterScreen() {
                 {activeOfferings.map((item: any) => {
                   const rarityColor = RARITY_COLORS[item.rarity ?? "common"] ?? "#9ca3af";
                   const locked = item.meetsRequirements === false || item.locked === true;
-                  const category = item.category ?? item.itemType ?? "utility";
+                  const category = formatItemCategory(item);
                   const cost = item.priceGold ?? item.costGold ?? item.goldCost ?? item.price ?? 0;
                   return (
                     <View key={`${offeringSection}-${item.id}`} style={[cs.offerItem, { borderColor: rarityColor + "45" }]}>
