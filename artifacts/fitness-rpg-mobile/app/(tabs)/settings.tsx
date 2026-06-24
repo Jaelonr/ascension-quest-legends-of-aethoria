@@ -239,6 +239,11 @@ export default function SettingsScreen() {
           queryClient.invalidateQueries({ queryKey: ["/api/player"] }),
           queryClient.invalidateQueries({ queryKey: ["/api/guild-hall/today"] }),
           queryClient.invalidateQueries({ queryKey: ["/api/character/summary"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/chronicle/summary"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/daily-quest"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/workouts/sessions"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/training/intelligence"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/nutrition/today"] }),
         ]);
         router.replace("/onboarding" as any);
       },

@@ -1,5 +1,6 @@
 import {
   customFetch,
+  useCreateWorkoutSession,
   useGenerateWorkoutPlan,
   useSavePlanAsTemplate,
   useGetEquipment,
@@ -9,18 +10,19 @@ import {
   type ExerciseSearchResultExercisesItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type Goal = "strength" | "hypertrophy" | "conditioning" | "striking" | "recovery" | "back_friendly_lower";
+type Goal = "strength" | "hypertrophy" | "conditioning" | "striking" | "grappling" | "recovery" | "back_friendly_lower";
 
 const GOALS: Array<{ value: Goal; label: string; description: string; color: string }> = [
   { value: "strength", label: "Strength", description: "Heavy compounds, 3-5 reps", color: "#ef4444" },
   { value: "hypertrophy", label: "Hypertrophy", description: "Mass building, 8-12 reps", color: "#f97316" },
   { value: "conditioning", label: "Conditioning", description: "Endurance and cardio", color: "#0dcef5" },
   { value: "striking", label: "Striking", description: "Bag work and combat", color: "#a855f7" },
+  { value: "grappling", label: "Grappling", description: "Control, carries, and mat work", color: "#c084fc" },
   { value: "recovery", label: "Recovery", description: "Low intensity, sub-maximal", color: "#22c55e" },
   { value: "back_friendly_lower", label: "Back-Safe", description: "No spinal loading", color: "#eab308" },
 ];
@@ -65,6 +67,18 @@ type TrainingIntelligence = {
     safetyNote?: string | null;
   }>;
 };
+
+function normalizeGoal(value?: string | string[]): Goal {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const key = String(raw ?? "").toLowerCase();
+  if (key.includes("grappl") || key.includes("control") || key.includes("subdue")) return "grappling";
+  if (key.includes("recover") || key.includes("mobility") || key.includes("nutrition") || key.includes("discipline")) return "recovery";
+  if (key.includes("condition") || key.includes("cardio") || key.includes("walk") || key.includes("endurance")) return "conditioning";
+  if (key.includes("strik") || key.includes("skill")) return "striking";
+  if (key.includes("hypertrophy")) return "hypertrophy";
+  if (key.includes("back")) return "back_friendly_lower";
+  return "strength";
+}
 
 function ExerciseCard({ exercise, recommendation }: { exercise: PlanExercise; recommendation?: TrainingIntelligence["recommendations"][number] }) {
   const phaseColor = PHASE_COLORS[exercise.phase] ?? "#d9ad63";
@@ -194,15 +208,19 @@ function ExerciseLookupPanel() {
 export default function TrainingPlannerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{ goal?: string; commissionNote?: string; commissionTitle?: string }>();
   const queryClient = useQueryClient();
-  const [selectedGoal, setSelectedGoal] = useState<Goal>("strength");
+  const [selectedGoal, setSelectedGoal] = useState<Goal>(() => normalizeGoal(params.goal));
   const [rpeLimit, setRpeLimit] = useState<number | null>(null);
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
   const [intelligence, setIntelligence] = useState<TrainingIntelligence | null>(null);
   const [intelligenceLoading, setIntelligenceLoading] = useState(true);
   const generatePlan = useGenerateWorkoutPlan();
   const savePlan = useSavePlanAsTemplate();
+  const createSession = useCreateWorkoutSession();
   const { data: equipment } = useGetEquipment();
+  const commissionNote = typeof params.commissionNote === "string" ? params.commissionNote : null;
+  const commissionTitle = typeof params.commissionTitle === "string" ? params.commissionTitle : null;
   const groupedExercises = PHASE_GROUPS.map((phase) => ({
     ...phase,
     exercises: plan?.exercises.filter((exercise) => exercise.phase === phase.key) ?? [],
@@ -257,6 +275,26 @@ export default function TrainingPlannerScreen() {
     );
   };
 
+  const startGeneratedSession = () => {
+    if (!plan) return;
+    createSession.mutate(
+      {
+        data: {
+          name: commissionTitle ? `${commissionTitle} - ${plan.planName}` : plan.planName,
+          templateId: undefined as any,
+          notes: [commissionNote, `Generated plan: ${plan.planName}. Focus: ${plan.goal}.`].filter(Boolean).join("\n"),
+        },
+      },
+      {
+        onSuccess: (session: any) => {
+          queryClient.invalidateQueries({ queryKey: ["/api/workouts/sessions"] });
+          router.push(`/training/session/${session.id}` as any);
+        },
+        onError: () => Alert.alert("Session failed", "Could not start this generated commission session."),
+      },
+    );
+  };
+
   const equipmentCount = Array.isArray(equipment) ? equipment.length : Object.values(equipment ?? {}).filter(Boolean).length;
 
   return (
@@ -264,7 +302,7 @@ export default function TrainingPlannerScreen() {
       <TouchableOpacity onPress={() => router.back()}><Text style={s.back}>Back to Training Yard</Text></TouchableOpacity>
       <Text style={s.kicker}>GUILD DRILL PLANNER</Text>
       <Text style={s.title}>Workout Planner</Text>
-      <Text style={s.subtitle}>Equipment-aware plan generation.</Text>
+      <Text style={s.subtitle}>{commissionTitle ? `Commission route: ${commissionTitle}` : "Equipment-aware plan generation."}</Text>
 
       <View style={s.intelligenceCard}>
         <Text style={s.intelligenceKicker}>SYSTEM OBSERVATION</Text>
@@ -339,6 +377,9 @@ export default function TrainingPlannerScreen() {
               <TouchableOpacity style={s.secondaryBtn} onPress={generate}><Text style={s.secondaryText}>Regenerate</Text></TouchableOpacity>
               <TouchableOpacity style={[s.secondaryBtn, savePlan.isPending && { opacity: 0.65 }]} onPress={save} disabled={savePlan.isPending}>
                 <Text style={s.secondaryText}>{savePlan.isPending ? "Saving..." : "Save Template"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.primaryPlanBtn, createSession.isPending && { opacity: 0.65 }]} onPress={startGeneratedSession} disabled={createSession.isPending}>
+                {createSession.isPending ? <ActivityIndicator color="#0a0908" size="small" /> : <Text style={s.primaryPlanText}>{commissionNote ? "Start Commission Session" : "Start Session"}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -420,9 +461,11 @@ const s = StyleSheet.create({
   planStatValue: { color: "#eee5d7", fontSize: 15, fontFamily: "Inter_700Bold" },
   planStatLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", marginTop: 2 },
   injury: { color: "#eab308", fontSize: 11, lineHeight: 16, borderWidth: 1, borderColor: "#eab30855", backgroundColor: "#eab30812", padding: 8, marginTop: 10 },
-  planActions: { flexDirection: "row", gap: 8, marginTop: 12 },
+  planActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   secondaryBtn: { flex: 1, borderWidth: 1, borderColor: "#6b4d2f", padding: 10, alignItems: "center" },
   secondaryText: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  primaryPlanBtn: { width: "100%", borderWidth: 1, borderColor: "#8be2df", backgroundColor: "#49a3a0", padding: 12, alignItems: "center" },
+  primaryPlanText: { color: "#061010", fontSize: 12, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.8 },
   guide: { color: "#9f9586", fontSize: 11, lineHeight: 16, borderLeftWidth: 2, borderLeftColor: "#6b4d2f", paddingLeft: 10 },
   phaseSection: { gap: 8 },
   phaseHeader: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 2 },

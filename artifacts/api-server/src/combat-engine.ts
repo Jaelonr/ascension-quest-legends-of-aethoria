@@ -183,15 +183,18 @@ export function getHybridArchetype(scores: StyleScores): string | null {
     discipline: scores.discipline / total,
   };
 
+  if (pcts.strength > 0.35 && pcts.striking > 0.2 && pcts.discipline > 0.15) return "Runeblade Champion";
+  if (pcts.strength > 0.35 && pcts.grappling > 0.2 && pcts.discipline > 0.1) return "Stonebound Warden";
   if (pcts.strength > 0.4 && pcts.striking > 0.2) return "Warbreaker";
-  if (pcts.strength > 0.4 && pcts.conditioning > 0.2) return "Vanguard";
-  if (pcts.striking > 0.3 && pcts.conditioning > 0.2) return "Duelist";
-  if (pcts.grappling > 0.3 && pcts.strength > 0.2) return "Titan Controller";
+  if (pcts.strength > 0.4 && pcts.conditioning > 0.2) return "Iron Vanguard";
+  if (pcts.striking > 0.3 && pcts.conditioning > 0.2) return "Storm Duelist";
+  if (pcts.grappling > 0.3 && pcts.strength > 0.2) return "Chainwarden";
+  if (pcts.grappling > 0.25 && pcts.conditioning > 0.2) return "Wilds Warden";
   if (pcts.discipline > 0.2 && pcts.recovery > 0.15) return "Iron Monk";
   if (pcts.conditioning > 0.25 && pcts.recovery > 0.2) return "Wind Guardian";
 
   const dominant = Math.max(...Object.values(pcts));
-  if (dominant < 0.3) return "Adventurer";
+  if (dominant < 0.3) return "Pathfinder";
 
   return null;
 }

@@ -109,10 +109,10 @@ const ACTIVITY_OPTIONS = [
 ] as const;
 
 const GOAL_OPTIONS = [
-  { id: "strength", label: "Forge Power", desc: "Strength and size.", baseClass: "warrior", weightGoal: "gain" as const, bonuses: { strength: 4, agility: 0, stamina: 0, vitality: 2, discipline: 1, sense: 0 } },
-  { id: "allround", label: "All-Around Adventurer", desc: "Balanced fitness and discipline.", baseClass: "adventurer", weightGoal: "maintain" as const, bonuses: { strength: 2, agility: 1, stamina: 1, vitality: 1, discipline: 2, sense: 0 } },
-  { id: "combat", label: "Combat Arts", desc: "Striking, grappling, and skill practice.", baseClass: "striker", weightGoal: "gain" as const, bonuses: { strength: 1, agility: 2, stamina: 1, vitality: 0, discipline: 2, sense: 1 } },
-  { id: "endurance", label: "Endurance Path", desc: "Conditioning, resilience, and recovery.", baseClass: "ranger", weightGoal: "maintain" as const, bonuses: { strength: 0, agility: 1, stamina: 4, vitality: 1, discipline: 1, sense: 1 } },
+  { id: "strength", label: "Forge Power", desc: "Strength and size.", baseClass: "Iron Knight", weightGoal: "gain" as const, bonuses: { strength: 4, agility: 0, stamina: 0, vitality: 2, discipline: 1, sense: 0 } },
+  { id: "allround", label: "All-Around Adventurer", desc: "Balanced fitness and discipline.", baseClass: "Pathfinder", weightGoal: "maintain" as const, bonuses: { strength: 2, agility: 1, stamina: 1, vitality: 1, discipline: 2, sense: 0 } },
+  { id: "combat", label: "Combat Arts", desc: "Striking, grappling, and skill practice.", baseClass: "Spellblade", weightGoal: "gain" as const, bonuses: { strength: 1, agility: 2, stamina: 1, vitality: 0, discipline: 2, sense: 1 } },
+  { id: "endurance", label: "Endurance Path", desc: "Conditioning, resilience, and recovery.", baseClass: "Ranger", weightGoal: "maintain" as const, bonuses: { strength: 0, agility: 1, stamina: 4, vitality: 1, discipline: 1, sense: 1 } },
 ] as const;
 
 const ORIGIN_OPTIONS = [
@@ -145,16 +145,16 @@ const RITE_SOUNDS = {
 
 const CLASS_PATHS = [
   {
-    id: "warrior",
-    name: "Warrior",
-    specialty: "Iron Vanguard",
+    id: "iron_knight",
+    name: "Iron Knight",
+    specialty: "Runebound Vanguard",
     desc: "Power first. Heavy work and hard-earned resilience open the frontline path.",
     weights: { strength: 4, vitality: 2, discipline: 1, stamina: 1, agility: 0, sense: 0 },
   },
   {
-    id: "striker",
-    name: "Striker",
-    specialty: "Aether Duelist",
+    id: "spellblade",
+    name: "Spellblade",
+    specialty: "Storm Duelist",
     desc: "Speed, combat practice, and discipline shape a fighter who wins exchanges.",
     weights: { agility: 3, discipline: 2, sense: 2, strength: 1, stamina: 1, vitality: 0 },
   },
@@ -166,8 +166,8 @@ const CLASS_PATHS = [
     weights: { stamina: 4, sense: 2, discipline: 1, vitality: 1, agility: 1, strength: 0 },
   },
   {
-    id: "adventurer",
-    name: "Adventurer",
+    id: "pathfinder",
+    name: "Pathfinder",
     specialty: "Mythril Pathfinder",
     desc: "Balanced effort keeps multiple class doors open until your record chooses one.",
     weights: { discipline: 2, strength: 1, agility: 1, stamina: 1, vitality: 1, sense: 1 },

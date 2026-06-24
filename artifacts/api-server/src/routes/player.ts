@@ -5,8 +5,16 @@ import {
   achievementsTable, playerAchievementsTable, equipmentTable,
   playerInventoryTable, storeItemsTable, dailyLoginsTable,
   playerBiometricsTable, nutritionTargetsTable,
+  bossRaidsTable, combatReplaysTable, dailyCommissionsTable,
+  exerciseProgressionsTable, guildMasterMemoriesTable, guildReportsTable,
+  healthImportsTable, itemDiscoveriesTable, messages, nutritionLogsTable,
+  personalRecordsTable, playerStyleIdentityTable, playerTrainingProfilesTable,
+  questTasksTable, questsTable, regionProgressTable, rpgGearTable,
+  savedMealsTable, storyConsequencesTable, wearableEntriesTable,
+  weightEntriesTable, workoutSessionsTable, workoutSetsTable,
+  worldEventsTable, xpHistoryTable, conversations,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import {
   getOrCreatePlayer, buildPlayerResponse, xpForLevel, rankForLevel, applyXpEvent, getClassXpMultiplier
 } from "../progression";
@@ -460,6 +468,18 @@ router.post("/player/respec", async (req, res) => {
 router.post("/player/reset", async (req, res) => {
   try {
     const { player } = await getOrCreatePlayer(req.userId);
+    const sessions = await db.select({ id: workoutSessionsTable.id })
+      .from(workoutSessionsTable)
+      .where(eq(workoutSessionsTable.playerId, player.id));
+    const sessionIds = sessions.map((session) => session.id);
+    const playerConversations = await db.select({ id: conversations.id })
+      .from(conversations)
+      .where(eq(conversations.playerId, player.id));
+    const conversationIds = playerConversations.map((conversation) => conversation.id);
+    const playerQuests = await db.select({ id: questsTable.id })
+      .from(questsTable)
+      .where(eq(questsTable.playerId, player.id));
+    const questIds = playerQuests.map((quest) => quest.id);
 
     // Reset player to default values
     const [resetPlayer] = await db.update(playerTable).set({
@@ -471,9 +491,19 @@ router.post("/player/reset", async (req, res) => {
       hp: 100,
       maxHp: 100,
       freeStatPoints: 0,
+      streakDays: 0,
+      longestStreak: 0,
+      penaltyQuestActive: false,
+      totalXpEarned: 0,
+      totalWorkouts: 0,
+      totalQuests: 0,
+      totalPrs: 0,
       xpMultiplier: 100,
       baseClass: null,
       activeTitle: null,
+      lastActivityDate: null,
+      loginStreak: 0,
+      lastLoginDate: null,
       setupCompleted: false,
       updatedAt: new Date(),
     }).where(eq(playerTable.id, player.id)).returning();
@@ -485,11 +515,52 @@ router.post("/player/reset", async (req, res) => {
       updatedAt: new Date(),
     }).where(eq(playerStatsTable.playerId, player.id)).returning();
 
+    if (conversationIds.length > 0) {
+      await db.delete(messages).where(inArray(messages.conversationId, conversationIds));
+      await db.delete(conversations).where(inArray(conversations.id, conversationIds));
+    }
+
+    await db.delete(storyConsequencesTable).where(eq(storyConsequencesTable.playerId, player.id));
+    await db.delete(worldEventsTable).where(eq(worldEventsTable.playerId, player.id));
+
+    if (questIds.length > 0) {
+      await db.delete(dailyCommissionsTable).where(eq(dailyCommissionsTable.playerId, player.id));
+      await db.delete(questTasksTable).where(inArray(questTasksTable.questId, questIds));
+      await db.delete(questsTable).where(inArray(questsTable.id, questIds));
+    } else {
+      await db.delete(dailyCommissionsTable).where(eq(dailyCommissionsTable.playerId, player.id));
+    }
+
+    if (sessionIds.length > 0) {
+      await db.delete(combatReplaysTable).where(eq(combatReplaysTable.playerId, player.id));
+      await db.delete(workoutSetsTable).where(inArray(workoutSetsTable.sessionId, sessionIds));
+      await db.delete(workoutSessionsTable).where(inArray(workoutSessionsTable.id, sessionIds));
+    } else {
+      await db.delete(combatReplaysTable).where(eq(combatReplaysTable.playerId, player.id));
+    }
+
+    await db.delete(personalRecordsTable).where(eq(personalRecordsTable.playerId, player.id));
+    await db.delete(playerStyleIdentityTable).where(eq(playerStyleIdentityTable.playerId, player.id));
+    await db.delete(playerTrainingProfilesTable).where(eq(playerTrainingProfilesTable.playerId, player.id));
+    await db.delete(exerciseProgressionsTable).where(eq(exerciseProgressionsTable.playerId, player.id));
+    await db.delete(guildMasterMemoriesTable).where(eq(guildMasterMemoriesTable.playerId, player.id));
+    await db.delete(guildReportsTable).where(eq(guildReportsTable.playerId, player.id));
+    await db.delete(regionProgressTable).where(eq(regionProgressTable.playerId, player.id));
+    await db.delete(bossRaidsTable).where(eq(bossRaidsTable.playerId, player.id));
+    await db.delete(itemDiscoveriesTable).where(eq(itemDiscoveriesTable.playerId, player.id));
+    await db.delete(rpgGearTable).where(eq(rpgGearTable.playerId, player.id));
+    await db.delete(nutritionLogsTable).where(eq(nutritionLogsTable.playerId, player.id));
+    await db.delete(savedMealsTable).where(eq(savedMealsTable.playerId, player.id));
+    await db.delete(weightEntriesTable).where(eq(weightEntriesTable.playerId, player.id));
+    await db.delete(nutritionTargetsTable).where(eq(nutritionTargetsTable.playerId, player.id));
+    await db.delete(wearableEntriesTable).where(eq(wearableEntriesTable.playerId, player.id));
+    await db.delete(healthImportsTable).where(eq(healthImportsTable.playerId, player.id));
+    await db.delete(dailyLoginsTable).where(eq(dailyLoginsTable.playerId, player.id));
+    await db.delete(xpHistoryTable).where(eq(xpHistoryTable.playerId, player.id));
+    await db.delete(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, player.id));
+
     // Clear inventory
     await db.delete(playerInventoryTable).where(eq(playerInventoryTable.playerId, player.id));
-
-    // Reset equipment to unowned
-    await db.update(equipmentTable).set({ owned: false });
 
     // Clear achievements and titles
     await db.delete(playerAchievementsTable).where(eq(playerAchievementsTable.playerId, player.id));

@@ -1629,7 +1629,7 @@ export const UpdateBiometricsResponse = zod.object({
  * @summary Generate an equipment-aware workout plan
  */
 export const GenerateWorkoutPlanBody = zod.object({
-  "goal": zod.enum(['strength', 'hypertrophy', 'conditioning', 'striking', 'recovery', 'back_friendly_lower']),
+  "goal": zod.enum(['strength', 'hypertrophy', 'conditioning', 'striking', 'grappling', 'recovery', 'back_friendly_lower']),
   "excludeEquipmentIds": zod.array(zod.number()).optional(),
   "rpeLimit": zod.number().nullish(),
   "avoidMuscleGroups": zod.array(zod.string()).optional(),

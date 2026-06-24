@@ -522,7 +522,14 @@ export default function HallScreen() {
     }
     if (path?.kind === "workout_builder") {
       setCommissionOpen(false);
-      router.push("/training/planner" as any);
+      router.push({
+        pathname: "/training/planner",
+        params: {
+          goal: path?.intendedStyle ?? commission?.category ?? "strength",
+          commissionTitle: path?.label ?? commission?.expedition?.commissionTitle ?? "Commission Session",
+          commissionNote: buildCommissionNote(commission, path),
+        },
+      } as any);
       return;
     }
     createSession.mutate(

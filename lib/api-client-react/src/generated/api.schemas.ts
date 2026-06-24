@@ -985,6 +985,7 @@ export const PlannerRequestGoal = {
   hypertrophy: 'hypertrophy',
   conditioning: 'conditioning',
   striking: 'striking',
+  grappling: 'grappling',
   recovery: 'recovery',
   back_friendly_lower: 'back_friendly_lower',
 } as const;

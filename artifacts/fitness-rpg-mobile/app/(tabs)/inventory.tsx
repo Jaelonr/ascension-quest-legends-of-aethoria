@@ -69,6 +69,20 @@ const STYLE_META: Record<string, { label: string; color: string }> = {
   discipline:   { label: "Discipline",   color: "#eab308" },
 };
 
+function displayClassName(value?: string | null) {
+  const key = (value ?? "").trim().toLowerCase();
+  const labels: Record<string, string> = {
+    warrior: "Iron Knight",
+    "iron knight": "Iron Knight",
+    striker: "Spellblade",
+    spellblade: "Spellblade",
+    ranger: "Ranger",
+    adventurer: "Pathfinder",
+    pathfinder: "Pathfinder",
+  };
+  return labels[key] ?? value ?? null;
+}
+
 const SLOT_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   head: "hard-drive",
   neck: "circle",
@@ -419,7 +433,7 @@ export default function CharacterScreen() {
   const playerStats = player?.stats ?? {};
   const summaryIdentity = char?.identity ?? identity;
   const activeTitle = summaryIdentity?.activeTitle ?? char?.titles?.[0]?.name ?? "No title equipped";
-  const className = summaryIdentity?.class ?? player?.baseClass ?? identity?.hybridArchetype ?? "Unranked Adventurer";
+  const className = displayClassName(summaryIdentity?.class ?? player?.baseClass) ?? identity?.hybridArchetype ?? "Unranked Adventurer";
   const bio = char?.biometrics ?? {};
   const realEquipment = char?.realEquipment ?? [];
   const inventorySummary = char?.inventorySummary ?? { items: 0, gear: 0, equippedGear: 0 };

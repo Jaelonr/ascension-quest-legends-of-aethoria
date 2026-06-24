@@ -2913,7 +2913,7 @@ components:
       properties:
         goal:
           type: string
-          enum: [strength, hypertrophy, conditioning, striking, recovery, back_friendly_lower]
+          enum: [strength, hypertrophy, conditioning, striking, grappling, recovery, back_friendly_lower]
         excludeEquipmentIds:
           type: array
           items:

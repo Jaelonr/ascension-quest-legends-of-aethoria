@@ -34,6 +34,20 @@ function displaySlot(slot: string) {
   return slot;
 }
 
+function displayClassName(value?: string | null) {
+  const key = (value ?? "").trim().toLowerCase();
+  const labels: Record<string, string> = {
+    warrior: "Iron Knight",
+    "iron knight": "Iron Knight",
+    striker: "Spellblade",
+    spellblade: "Spellblade",
+    ranger: "Ranger",
+    adventurer: "Pathfinder",
+    pathfinder: "Pathfinder",
+  };
+  return labels[key] ?? value ?? null;
+}
+
 router.get("/character/summary", async (req, res) => {
   try {
     const { player, stats } = await getOrCreatePlayer(req.userId);
@@ -76,7 +90,7 @@ router.get("/character/summary", async (req, res) => {
     res.json({
       player: playerSummary,
       identity: {
-        class: player.baseClass ?? identity[0]?.hybridArchetype ?? "Unclassed Adventurer",
+        class: displayClassName(player.baseClass) ?? identity[0]?.hybridArchetype ?? "Unclassed Adventurer",
         rank: playerSummary.rank,
         activeTitle: player.activeTitle,
         dominantStyle: identity[0] ? {

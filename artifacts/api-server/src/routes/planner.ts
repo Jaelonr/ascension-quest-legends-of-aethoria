@@ -43,7 +43,7 @@ interface PlanExercise {
   recommendedWeightKg?: number | null;
 }
 
-type WorkoutGoal = "strength" | "hypertrophy" | "conditioning" | "striking" | "recovery" | "back_friendly_lower";
+type WorkoutGoal = "strength" | "hypertrophy" | "conditioning" | "striking" | "grappling" | "recovery" | "back_friendly_lower";
 
 const GOAL_CONFIGS: Record<WorkoutGoal, {
   label: string;
@@ -101,7 +101,7 @@ const GOAL_CONFIGS: Record<WorkoutGoal, {
     finisherNotes: "Tabata finisher: 20s on / 10s off for 4 rounds.",
   },
   striking: {
-    label: "Striker's Protocol (Striking)",
+    label: "Spellblade Protocol (Striking)",
     category: "striking",
     mainSets: 6, mainReps: "3 min rounds", mainRpe: 8,
     accessorySets: 3, accessoryReps: "2 min", accessoryRpe: 7,
@@ -111,6 +111,18 @@ const GOAL_CONFIGS: Record<WorkoutGoal, {
     categories: ["martial_arts"],
     warmupNotes: "Shadowbox for 5 minutes, focus on footwork and guard position.",
     finisherNotes: "Final round: max intensity combinations, 1 full minute nonstop.",
+  },
+  grappling: {
+    label: "Warden Protocol (Grappling)",
+    category: "grappling",
+    mainSets: 5, mainReps: "2-3 min rounds", mainRpe: 7.5,
+    accessorySets: 3, accessoryReps: "8-12", accessoryRpe: 7,
+    rest: 75, accessoryRest: 75,
+    xpBase: 175, estimatedMinutes: 50,
+    targetMuscles: ["Core", "Back", "Legs"],
+    categories: ["martial_arts", "bodyweight"],
+    warmupNotes: "Move through bridges, sprawls, and hip escapes before harder control work.",
+    finisherNotes: "Controlled positional round: keep pressure without rushing or grinding.",
   },
   recovery: {
     label: "Recovery Protocol (Active Rest)",
@@ -311,6 +323,7 @@ router.post("/training/planner/generate", async (req, res) => {
       recovery: "✅ Sub-maximal effort only. Stop any movement that creates pain (not discomfort).",
       strength: "Focus on technique over load. Don't sacrifice form for numbers.",
       striking: "Wrap hands before bag work. Keep guard up even when fatigued.",
+      grappling: "Protect joints and neck. Control matters more than force.",
     };
 
     res.json({
@@ -360,7 +373,7 @@ router.post("/training/planner/save", async (req, res) => {
 
     const [template] = await db.insert(workoutTemplatesTable).values({
       name: planName,
-      category: goal === "striking" ? "striking" : goal === "conditioning" ? "conditioning" : "strength",
+      category: goal === "striking" ? "striking" : goal === "grappling" ? "grappling" : goal === "conditioning" ? "conditioning" : goal === "recovery" ? "recovery" : "strength",
       description: `Generated plan — ${goal} focus`,
       exercises: templateExercises,
       estimatedDuration,

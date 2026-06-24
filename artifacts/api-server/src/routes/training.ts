@@ -385,7 +385,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
           ].filter(Boolean) as string[],
           gearDrop: null,
           playerRank: xpResult?.newRank ?? freshPlayer.rank ?? "E",
-          baseClass: freshPlayer.baseClass ?? "Warrior",
+          baseClass: freshPlayer.baseClass ?? "Iron Knight",
           playerName: freshPlayer.name ?? "Adventurer",
           narrativeIntensity,
           elementalAffinity: equippedGear.find((item) => item.elementalAffinity !== "physical")?.elementalAffinity ?? "physical",

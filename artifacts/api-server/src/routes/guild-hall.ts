@@ -248,6 +248,13 @@ function buildCounsel(input: { sleepHours: number | null; equipment: string[]; i
   return `Discipline is built in small, honored actions. ${tools} Finish today's commission, then report to me.`;
 }
 
+function buildFirstRecordCounsel(input: { playerName: string; commission?: any }) {
+  const place = input.commission?.location?.name ?? "the roads nearest the Hall";
+  const region = input.commission?.location?.region ?? "Valecrest";
+  const firstDuty = input.commission?.expedition?.commissionTitle ?? "your first commission";
+  return `Welcome to the Adventurer's Guild, ${input.playerName || "adventurer"}. You were summoned into Aethoria by an undertaking large enough to shake kingdoms; the deeper mechanism is not something the Guild fully understands, but the effect is plain: effort changes you here. Training sharpens the body and spirit, food and rest keep the vessel from breaking, and honest records become power you can carry into the Gates. Aethoria is under pressure from incursions, missing patrols, and a greater enemy moving beyond the horizon. We begin with ${firstDuty} near ${place}, ${region}. Complete it cleanly, then return to the Hall and report what you did.`;
+}
+
 async function getAethoriaLocations() {
   try {
     const rows = await db.select().from(aethoriaLocationsTable);
@@ -757,7 +764,20 @@ async function getGuildHallSnapshot(userId: string) {
   }
 
   const progress = await syncCommissionProgress(player.id, quest.id);
-  const counsel = buildCounsel({
+  const commissionContext = (commission?.context ?? plan.context) as any;
+  const firstRecord = player.setupCompleted &&
+    player.level === 1 &&
+    player.xp === 0 &&
+    playerContext.recentWorkoutCount === 0 &&
+    playerContext.recentPrCount === 0 &&
+    !playerContext.dominantStyle &&
+    memories.length === 0 &&
+    consequences.length === 0 &&
+    worldEvents.length === 0;
+  const counsel = firstRecord ? buildFirstRecordCounsel({
+    playerName: player.name,
+    commission: commissionContext,
+  }) : buildCounsel({
     sleepHours: playerContext.sleepHours,
     equipment: playerContext.equipment,
     incomplete: progress.incomplete,
@@ -776,7 +796,6 @@ async function getGuildHallSnapshot(userId: string) {
   }
 
   const [freshQuest] = await db.select().from(questsTable).where(eq(questsTable.id, quest.id)).limit(1);
-  const commissionContext = (commission?.context ?? plan.context) as any;
   const regionProgress = await ensureRegionProgress(player.id, commissionContext);
   return {
     date: today,
