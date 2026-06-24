@@ -652,6 +652,7 @@ async function getGuildHallSnapshot(userId: string) {
     !(commission.context as any)?.location ||
     !(commission.context as any)?.travel ||
     !(commission.context as any)?.expedition ||
+    !(commission.context as any)?.expedition?.recommendedPath ||
     (commission.context as any)?.travel?.continentSquareMiles !== 2_000_000
   ) {
     const existingTravel = (commission.context as any)?.travel;

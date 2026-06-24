@@ -369,15 +369,19 @@ function CommissionDetailModal({
 
           <View style={s.detailPanel}>
             <Text style={s.detailSectionTitle}>Choose a completion path</Text>
+            {paths.length === 1 ? <Text style={s.pathGuidance}>This commission leaves little room for improvisation. The Guild wants this handled cleanly.</Text> : null}
+            {paths.length > 1 ? <Text style={s.pathGuidance}>Aldric has approved more than one route. Choose the one you can complete honestly today.</Text> : null}
             {paths.map((path: any) => (
               <TouchableOpacity key={path.id} style={[s.pathButton, path.recommended && s.pathButtonRecommended]} onPress={() => onStartPath(path)} disabled={isStarting} activeOpacity={0.82}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.pathButtonTitle}>{path.label}</Text>
-                  <Text style={s.pathButtonMeta}>{path.kind.replace(/_/g, " ")} - {path.intendedStyle}</Text>
+                  {path.narrative ? <Text style={s.pathButtonNarrative}>{path.narrative}</Text> : null}
+                  <Text style={s.pathButtonMeta}>{path.kind.replace(/_/g, " ")}</Text>
                 </View>
                 {path.recommended ? <Text style={s.pathRecommended}>Best</Text> : null}
               </TouchableOpacity>
             ))}
+            {paths.length === 0 ? <Text style={s.pathGuidance}>The Guild is still preparing this route. Return to the Hall or refresh the commission board.</Text> : null}
             {isStarting ? <ActivityIndicator color="#d9ad63" style={{ marginTop: 10 }} /> : null}
           </View>
 
@@ -846,7 +850,9 @@ const s = StyleSheet.create({
   pathButton: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, marginTop: 8 },
   pathButtonRecommended: { borderColor: "#49a3a0" },
   pathButtonTitle: { color: "#eee5d7", fontSize: 13, lineHeight: 18, fontFamily: "Inter_700Bold" },
+  pathButtonNarrative: { color: "#c9b99e", fontSize: 11, lineHeight: 16, marginTop: 5, fontFamily: "Inter_400Regular" },
   pathButtonMeta: { color: "#8f887d", fontSize: 10, textTransform: "uppercase", marginTop: 3, fontFamily: "Inter_400Regular" },
+  pathGuidance: { color: "#b6aa97", fontSize: 12, lineHeight: 18, marginTop: 8, fontFamily: "Inter_400Regular" },
   pathRecommended: { borderWidth: 1, borderColor: "#49a3a0", color: "#49a3a0", paddingHorizontal: 7, paddingVertical: 3, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   detailReward: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 14 },
 });

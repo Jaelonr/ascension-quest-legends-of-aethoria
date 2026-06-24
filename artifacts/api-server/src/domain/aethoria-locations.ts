@@ -26,6 +26,7 @@ export type CommissionCompletionPath = {
   kind: "workout_builder" | "template" | "program" | "steps" | "nutrition" | "recovery";
   intendedStyle: string;
   completionPath: string;
+  narrative: string;
   recommended?: boolean;
 };
 
@@ -353,37 +354,50 @@ export function buildCommissionTravelPlan(category: string, location: AethoriaLo
 function pathsFor(category: string, region: RegionTrainingIdentity): CommissionCompletionPath[] {
   const map: Record<string, CommissionCompletionPath[]> = {
     conditioning: [
-      { id: "build_endurance", label: "Build endurance workout", kind: "workout_builder", intendedStyle: "conditioning", completionPath: "endurance_workout", recommended: true },
-      { id: "start_cardio", label: "Start cardio session", kind: "template", intendedStyle: "conditioning", completionPath: "cardio_session" },
-      { id: "log_steps", label: "Log steps / walking", kind: "steps", intendedStyle: "conditioning", completionPath: "walking" },
-      { id: "open_conditioning_plan", label: "Open 8-week conditioning plan", kind: "program", intendedStyle: "conditioning", completionPath: "eight_week_conditioning" },
+      { id: "build_endurance", label: "Scout the long road", kind: "workout_builder", intendedStyle: "conditioning", completionPath: "endurance_workout", narrative: "A clean endurance session proves the route can be held after the caravan breaks camp.", recommended: true },
+      { id: "start_cardio", label: "Run the final approach", kind: "template", intendedStyle: "conditioning", completionPath: "cardio_session", narrative: "The wagons stop short. The last stretch needs lungs, rhythm, and patience." },
+      { id: "log_steps", label: "Walk the scout line", kind: "steps", intendedStyle: "conditioning", completionPath: "walking", narrative: "Measured steps can still count as field work when the route itself is the test." },
+      { id: "open_conditioning_plan", label: "Follow the roadwarden plan", kind: "program", intendedStyle: "conditioning", completionPath: "eight_week_conditioning", narrative: "Use the longer conditioning plan if today fits the campaign road." },
     ],
     training: [
-      { id: "build_strength", label: "Build strength workout", kind: "workout_builder", intendedStyle: "strength", completionPath: "strength_workout", recommended: true },
-      { id: "full_body_strength", label: "Start full-body strength session", kind: "template", intendedStyle: "strength", completionPath: "full_body_strength" },
-      { id: "lower_strength", label: "Start lower-body strength session", kind: "template", intendedStyle: "strength", completionPath: "lower_body_strength" },
-      { id: "open_strength_plan", label: "Open 8-week strength plan", kind: "program", intendedStyle: "strength", completionPath: "eight_week_strength" },
+      { id: "build_strength", label: "Break the barricade", kind: "workout_builder", intendedStyle: "strength", completionPath: "strength_workout", narrative: "The Guild needs force applied carefully: lift, brace, carry, and leave the road usable.", recommended: true },
+      { id: "full_body_strength", label: "Answer with full-body work", kind: "template", intendedStyle: "strength", completionPath: "full_body_strength", narrative: "A broad field threat calls for the whole body, not a single favored weapon." },
+      { id: "lower_strength", label: "Drive through the ash road", kind: "template", intendedStyle: "strength", completionPath: "lower_body_strength", narrative: "The footing is poor. Legs and trunk decide whether the line holds." },
+      { id: "open_strength_plan", label: "Follow the forge plan", kind: "program", intendedStyle: "strength", completionPath: "eight_week_strength", narrative: "Use the strength campaign if today belongs to the forge rather than the road." },
     ],
     recovery: [
-      { id: "build_recovery", label: "Build recovery/mobility session", kind: "workout_builder", intendedStyle: "recovery", completionPath: "recovery_mobility", recommended: true },
-      { id: "mobility", label: "Start mobility session", kind: "template", intendedStyle: "recovery", completionPath: "mobility" },
-      { id: "low_impact", label: "Start low-impact cardio", kind: "template", intendedStyle: "conditioning", completionPath: "low_impact_cardio" },
-      { id: "hydration", label: "Complete hydration/provisioning task", kind: "nutrition", intendedStyle: "discipline", completionPath: "nutrition_preparation" },
+      { id: "build_recovery", label: "Tend the field camp", kind: "workout_builder", intendedStyle: "recovery", completionPath: "recovery_mobility", narrative: "The assignment calls for restoration: joints, breath, and enough restraint to return stronger.", recommended: true },
+      { id: "mobility", label: "Move through the healer's forms", kind: "template", intendedStyle: "recovery", completionPath: "mobility", narrative: "Slow work is still work when the body needs repair more than spectacle." },
+      { id: "low_impact", label: "Keep the tide moving", kind: "template", intendedStyle: "conditioning", completionPath: "low_impact_cardio", narrative: "Low impact movement keeps the expedition alive without turning recovery into punishment." },
+      { id: "hydration", label: "Prepare the recovery stores", kind: "nutrition", intendedStyle: "discipline", completionPath: "nutrition_preparation", narrative: "Food, water, and consistency are sometimes the whole commission." },
     ],
     grappling: [
-      { id: "build_control", label: "Build grappling/control workout", kind: "workout_builder", intendedStyle: "grappling", completionPath: "subdue_control", recommended: true },
-      { id: "mat_work", label: "Start mat-work session", kind: "template", intendedStyle: "grappling", completionPath: "mat_work" },
-      { id: "functional_circuit", label: "Start functional strength circuit", kind: "template", intendedStyle: "strength", completionPath: "functional_strength" },
-      { id: "mixed_conditioning", label: "Start mixed conditioning", kind: "template", intendedStyle: "conditioning", completionPath: "mixed_conditioning" },
+      { id: "build_control", label: "Take it alive", kind: "workout_builder", intendedStyle: "grappling", completionPath: "subdue_control", narrative: "Control is the cleaner answer if the creature can be stopped without slaughter.", recommended: true },
+      { id: "mat_work", label: "Drill the binding forms", kind: "template", intendedStyle: "grappling", completionPath: "mat_work", narrative: "The Guild values position, pressure, and patience when a blade would make things worse." },
+      { id: "functional_circuit", label: "Carry the frontier burden", kind: "template", intendedStyle: "strength", completionPath: "functional_strength", narrative: "If control fails, practical strength keeps the trail from becoming a grave marker." },
+      { id: "mixed_conditioning", label: "Outlast the chase", kind: "template", intendedStyle: "conditioning", completionPath: "mixed_conditioning", narrative: "Some beasts cannot be met head-on. Make the pursuit the training." },
     ],
     skill_practice: [
-      { id: "build_skill", label: "Build skill practice workout", kind: "workout_builder", intendedStyle: region.trainingStyles.includes("walking") ? "conditioning" : "striking", completionPath: "skill_practice", recommended: true },
-      { id: "mobility_roads", label: "Start mobility / footwork session", kind: "template", intendedStyle: "recovery", completionPath: "mobility_footwork" },
-      { id: "log_steps", label: "Log steps / travel", kind: "steps", intendedStyle: "conditioning", completionPath: "walking" },
-      { id: "provisions", label: "Prepare provisions", kind: "nutrition", intendedStyle: "discipline", completionPath: "nutrition_preparation" },
+      { id: "build_skill", label: "Move like dockside trouble", kind: "workout_builder", intendedStyle: region.trainingStyles.includes("walking") ? "conditioning" : "striking", completionPath: "skill_practice", narrative: "The roads are narrow, the eyes are many, and clean timing prevents a larger incident.", recommended: true },
+      { id: "mobility_roads", label: "Practice quiet footwork", kind: "template", intendedStyle: "recovery", completionPath: "mobility_footwork", narrative: "A careful step can do more than a loud swing on diplomatic ground." },
+      { id: "log_steps", label: "Walk the trade route", kind: "steps", intendedStyle: "conditioning", completionPath: "walking", narrative: "The job is movement, observation, and arriving with the seal intact." },
+      { id: "provisions", label: "Set the convoy stores", kind: "nutrition", intendedStyle: "discipline", completionPath: "nutrition_preparation", narrative: "Some missions fail before they begin because no one packed properly." },
+    ],
+    penalty_restoration: [
+      { id: "restore_oath", label: "Settle the restoration oath", kind: "template", intendedStyle: "discipline", completionPath: "restoration_oath", narrative: "A missed commission leaves a mark in the ledger. Aldric offers one clean way to close it.", recommended: true },
+    ],
+    story_linked: [
+      { id: "boss_prep", label: "Prepare for the Gate", kind: "workout_builder", intendedStyle: region.trainingStyles[0] ?? "strength", completionPath: "boss_preparation", narrative: "The larger threat is moving. The Guild narrows the work because hesitation costs lives.", recommended: true },
+      { id: "field_session", label: "Run the assigned field drill", kind: "template", intendedStyle: region.trainingStyles[1] ?? region.trainingStyles[0] ?? "conditioning", completionPath: "field_drill", narrative: "Aldric has chosen the drill that best fits the pressure around this Gate." },
     ],
   };
   return map[category] ?? map.training;
+}
+
+function choiceLimitFor(category: string, context: { injuryNotesPresent?: boolean; readiness?: string; neglectedStyle?: string | null }) {
+  if (category === "penalty_restoration" || context.injuryNotesPresent || context.readiness === "limited") return 1;
+  if (category === "story_linked" || category === "conditioning" || category === "recovery" || context.neglectedStyle) return 2;
+  return 3;
 }
 
 export function buildCommissionExpeditionDetail(category: string, location: AethoriaLocation, travel: CommissionTravelPlan, context: {
@@ -393,7 +407,7 @@ export function buildCommissionExpeditionDetail(category: string, location: Aeth
   injuryNotesPresent?: boolean;
 } = {}): CommissionExpeditionDetail {
   const region = REGION_TRAINING_IDENTITIES[location.region] ?? REGION_TRAINING_IDENTITIES.Valecrest;
-  const paths = pathsFor(category, region);
+  const paths = pathsFor(category, region).slice(0, choiceLimitFor(category, context));
   const recommendedPath = paths.find((path) => path.recommended) ?? paths[0];
   const threatByCategory: Record<string, string> = {
     conditioning: location.region === "Frostveil Peaks" || location.region === "Frostvale"
@@ -426,9 +440,9 @@ export function buildCommissionExpeditionDetail(category: string, location: Aeth
   const aldricReason = context.injuryNotesPresent || context.readiness === "limited"
     ? "You are not lesser for needing recovery. You are alive. The assignment must build you without gambling with pain."
     : context.dominantStyle === "strength" && (category === "conditioning" || region.regionId === "frostveil-peaks")
-      ? "You have built power, but this route will not be impressed by power alone. Endurance is the lesson today."
+      ? "Frostveil does not care how hard a person can strike if the pass outlasts their breath. This road asks for a different kind of steel."
       : context.neglectedStyle
-        ? `Your record shows ${context.neglectedStyle} needs attention. The region gives that weakness a useful shape.`
+        ? "The Guild has chosen ground that will round the edge of your current legend. Take the lesson the road is offering."
         : "This commission fits the tools, record, and road in front of you.";
   return {
     commissionTitle: `${location.name} Commission`,

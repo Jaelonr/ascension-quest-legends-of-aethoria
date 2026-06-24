@@ -249,6 +249,8 @@ function CommissionDetailDialog({
 
             <div className="border border-[#6b4d2f] bg-[#11100e] p-4">
               <p className="font-serif text-base font-bold text-[#d9ad63]">Choose a completion path</p>
+              {paths.length === 1 && <p className="mt-2 text-xs leading-5 text-[#b6aa97]">This commission leaves little room for improvisation. The Guild wants this handled cleanly.</p>}
+              {paths.length > 1 && <p className="mt-2 text-xs leading-5 text-[#b6aa97]">Aldric has approved more than one route. Choose the one you can complete honestly today.</p>}
               <div className="mt-3 grid gap-2 md:grid-cols-2">
                 {paths.map((path: any) => (
                   <button
@@ -262,10 +264,12 @@ function CommissionDetailDialog({
                       <span className="font-serif text-sm font-bold text-[#eee5d7]">{path.label}</span>
                       {path.recommended && <span className="border border-[#49a3a0] px-1.5 py-0.5 text-[9px] uppercase text-[#49a3a0]">Recommended</span>}
                     </div>
-                    <p className="mt-1 text-[10px] uppercase tracking-wide text-[#8f887d]">{path.kind.replace(/_/g, " ")} - {path.intendedStyle}</p>
+                    {path.narrative && <p className="mt-2 text-xs leading-5 text-[#c9b99e]">{path.narrative}</p>}
+                    <p className="mt-1 text-[10px] uppercase tracking-wide text-[#8f887d]">{path.kind.replace(/_/g, " ")}</p>
                   </button>
                 ))}
               </div>
+              {paths.length === 0 && <p className="mt-3 text-xs leading-5 text-[#b6aa97]">The Guild is still preparing this route. Return to the Hall or refresh the commission board.</p>}
             </div>
 
             <div className="flex items-center justify-center gap-8 border border-[#3b3328] bg-[#0c0b09] py-4 text-center">
