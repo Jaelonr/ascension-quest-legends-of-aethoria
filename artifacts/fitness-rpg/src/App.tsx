@@ -192,11 +192,13 @@ function PlayerSetupSync() {
   const { user } = useUser();
   const { data: player } = useGetPlayer({ query: { queryKey: ["/api/player"], enabled: !!user } });
   const [, setLocation] = useLocation();
-  const syncedForRef = useRef<number | null>(null);
+  const syncedForRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!player || syncedForRef.current === player.id) return;
-    syncedForRef.current = player.id;
+    if (!player) return;
+    const syncKey = `${player.id}:${player.setupCompleted ? "complete" : "incomplete"}`;
+    if (syncedForRef.current === syncKey) return;
+    syncedForRef.current = syncKey;
     if (!player.setupCompleted) {
       clearOnboardingAndSetup();
       setLocation("/onboarding");

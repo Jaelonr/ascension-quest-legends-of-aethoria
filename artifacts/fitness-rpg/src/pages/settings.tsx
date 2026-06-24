@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth, useClerk } from "@clerk/react";
 import { useResetPlayer } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { clearOnboardingAndSetup } from "@/hooks/use-story";
 import { useLocation } from "wouter";
 import { useSettings } from "@/hooks/use-settings";
@@ -137,11 +138,28 @@ function ClerkAccountAction() {
 
 export default function Settings() {
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
   const [confirmReset, setConfirmReset] = useState(false);
   const resetPlayer = useResetPlayer({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async (result: any) => {
         clearOnboardingAndSetup();
+        await queryClient.cancelQueries({ queryKey: ["/api/player"] });
+        const resetRecord = result?.player ?? null;
+        queryClient.setQueryData(["/api/player"], (existing: any) => ({
+          ...(existing ?? {}),
+          ...(resetRecord ?? {}),
+          name: resetRecord?.name ?? "Adventurer",
+          level: resetRecord?.level ?? 1,
+          xp: resetRecord?.xp ?? 0,
+          gold: resetRecord?.gold ?? 500,
+          setupCompleted: false,
+        }));
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["/api/player"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/guild-hall/today"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/character/summary"] }),
+        ]);
         navigate("/onboarding");
       },
     },

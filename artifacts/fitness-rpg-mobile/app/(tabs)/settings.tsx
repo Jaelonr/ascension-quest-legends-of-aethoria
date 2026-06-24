@@ -221,9 +221,24 @@ export default function SettingsScreen() {
   const { signOut } = useClerk();
   const resetPlayer = useResetPlayer({
     mutation: {
-      onSuccess: async () => {
+      onSuccess: async (result: any) => {
         await clearMobileOnboarding();
-        await queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+        await queryClient.cancelQueries({ queryKey: ["/api/player"] });
+        const resetRecord = result?.player ?? null;
+        queryClient.setQueryData(["/api/player"], (existing: any) => ({
+          ...(existing ?? {}),
+          ...(resetRecord ?? {}),
+          name: resetRecord?.name ?? "Adventurer",
+          level: resetRecord?.level ?? 1,
+          xp: resetRecord?.xp ?? 0,
+          gold: resetRecord?.gold ?? 500,
+          setupCompleted: false,
+        }));
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["/api/player"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/guild-hall/today"] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/character/summary"] }),
+        ]);
         router.replace("/onboarding" as any);
       },
       onError: () => Alert.alert("Reset failed", "The Guild could not recreate your character yet. Try again in a moment."),

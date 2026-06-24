@@ -462,7 +462,7 @@ router.post("/player/reset", async (req, res) => {
     const { player } = await getOrCreatePlayer(req.userId);
 
     // Reset player to default values
-    await db.update(playerTable).set({
+    const [resetPlayer] = await db.update(playerTable).set({
       name: "Adventurer",
       level: 1,
       rank: "E",
@@ -476,14 +476,14 @@ router.post("/player/reset", async (req, res) => {
       activeTitle: null,
       setupCompleted: false,
       updatedAt: new Date(),
-    }).where(eq(playerTable.id, player.id));
+    }).where(eq(playerTable.id, player.id)).returning();
 
     // Reset stats to base 5s
-    await db.update(playerStatsTable).set({
+    const [resetStats] = await db.update(playerStatsTable).set({
       strength: 5, agility: 5, stamina: 5,
       vitality: 5, discipline: 5, sense: 5,
       updatedAt: new Date(),
-    }).where(eq(playerStatsTable.playerId, player.id));
+    }).where(eq(playerStatsTable.playerId, player.id)).returning();
 
     // Clear inventory
     await db.delete(playerInventoryTable).where(eq(playerInventoryTable.playerId, player.id));
@@ -495,7 +495,10 @@ router.post("/player/reset", async (req, res) => {
     await db.delete(playerAchievementsTable).where(eq(playerAchievementsTable.playerId, player.id));
     await db.delete(playerTitlesTable).where(eq(playerTitlesTable.playerId, player.id));
 
-    res.json({ success: true });
+    res.json({
+      success: true,
+      player: resetPlayer && resetStats ? buildPlayerResponse(resetPlayer, resetStats) : null,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to reset player" });

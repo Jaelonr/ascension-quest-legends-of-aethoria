@@ -3,7 +3,7 @@ import { loadMobileSettings, type Units, type WeightUnit } from "@/utils/mobile-
 import { useQueryClient } from "@tanstack/react-query";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
-import { usePathname, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, Easing, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, Vibration, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -227,7 +227,6 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const router = useRouter();
-  const pathname = usePathname();
   const queryClient = useQueryClient();
   const { data: player, isLoading: playerLoading } = useGetPlayer();
   const { data, isLoading } = useGetBiometrics();
@@ -265,12 +264,6 @@ export default function ProfileScreen() {
       staysActiveInBackground: false,
     }).catch(() => undefined);
   }, []);
-
-  useEffect(() => {
-    if (player?.setupCompleted && pathname === "/setup") {
-      router.replace("/(tabs)" as any);
-    }
-  }, [pathname, player?.setupCompleted, router]);
 
   useEffect(() => {
     scanPulse.setValue(0);
@@ -769,10 +762,6 @@ export default function ProfileScreen() {
       </View>
     );
   };
-
-  if (player?.setupCompleted && pathname === "/setup") {
-    return null;
-  }
 
   if (!player?.setupCompleted && !isLoading && !playerLoading) {
     return (
