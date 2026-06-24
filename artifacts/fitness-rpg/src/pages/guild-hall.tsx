@@ -657,6 +657,14 @@ export default function GuildHall() {
               <div className="border border-[#3b3328] bg-[#0c0b09] p-2"><p className="text-[#8f887d]">PRs</p><p className="text-[#d9ad63]">{extended.counsel.trendSummary.recentPrs}</p></div>
             </div>
           )}
+          {extended.counsel?.trendSummary?.trainingLedger && (
+            <div className="mt-3 border border-[#345f5d] bg-[#071111] p-3 text-xs">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#49a3a0]">Hall Training Ledger</p>
+              <p className="mt-1 leading-5 text-[#d8c4a5]">
+                {extended.counsel.trendSummary.trainingLedger.topRecommendation?.reason ?? extended.counsel.trendSummary.trainingLedger.summary}
+              </p>
+            </div>
+          )}
           <div className="mt-3 flex items-center gap-2 text-xs text-[#c6903e]">
             <Flame className="size-4" />
             <span>{data.player.streakDays}-day training streak - Aldric has noticed.</span>

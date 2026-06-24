@@ -57,6 +57,13 @@
       "when": 1782268800000,
       "tag": "0007_region_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782345600000,
+      "tag": "0008_training_intelligence",
+      "breakpoints": true
     }
   ]
 }

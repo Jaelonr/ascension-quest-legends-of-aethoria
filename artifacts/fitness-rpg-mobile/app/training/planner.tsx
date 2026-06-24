@@ -1,4 +1,5 @@
 import {
+  customFetch,
   useGenerateWorkoutPlan,
   useSavePlanAsTemplate,
   useGetEquipment,
@@ -9,7 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -38,7 +39,34 @@ const PHASE_GROUPS: Array<{ key: string; label: string; color: string }> = [
   { key: "finisher", label: "Finisher", color: "#a855f7" },
 ];
 
-function ExerciseCard({ exercise }: { exercise: PlanExercise }) {
+type TrainingIntelligence = {
+  profile: null | {
+    summary?: string | null;
+    progressiveOverloadReadiness?: string;
+    recentProgressTrend?: string;
+    fatigueTrend?: string;
+    deloadRecommended?: boolean;
+    strongestMovementPatterns?: string[];
+    weakestMovementPatterns?: string[];
+  };
+  recommendations: Array<{
+    exerciseId: number;
+    exerciseName: string;
+    movementPattern: string;
+    label: string;
+    trend: string;
+    recommendationType: string;
+    recommendedNextWeight?: number | null;
+    recommendedNextReps?: number | null;
+    recommendedNextSets?: number | null;
+    weightUnit?: string;
+    targetRpe?: number;
+    recommendationReason: string;
+    safetyNote?: string | null;
+  }>;
+};
+
+function ExerciseCard({ exercise, recommendation }: { exercise: PlanExercise; recommendation?: TrainingIntelligence["recommendations"][number] }) {
   const phaseColor = PHASE_COLORS[exercise.phase] ?? "#d9ad63";
   return (
     <View style={[s.exerciseCard, { borderColor: phaseColor + "80" }]}>
@@ -51,6 +79,20 @@ function ExerciseCard({ exercise }: { exercise: PlanExercise }) {
       {exercise.recommendedWeightKg != null && exercise.recommendedWeightKg > 0 && (
         <Text style={s.weight}>{exercise.recommendedWeightKg} kg recommended</Text>
       )}
+      {recommendation ? (
+        <View style={s.progressionNote}>
+          <Text style={s.progressionKicker}>{recommendation.label}</Text>
+          <Text style={s.progressionText}>
+            {recommendation.recommendedNextWeight
+              ? `${recommendation.recommendedNextWeight}${recommendation.weightUnit ?? ""} next target. `
+              : recommendation.recommendedNextReps
+                ? `${recommendation.recommendedNextReps} reps next target. `
+                : ""}
+            {recommendation.recommendationReason}
+          </Text>
+          {recommendation.safetyNote ? <Text style={s.progressionSafety}>{recommendation.safetyNote}</Text> : null}
+        </View>
+      ) : null}
       {exercise.notes ? <Text style={s.notes}>{exercise.notes}</Text> : null}
       {!!exercise.substitutes?.length && (
         <View style={s.subBox}>
@@ -156,6 +198,8 @@ export default function TrainingPlannerScreen() {
   const [selectedGoal, setSelectedGoal] = useState<Goal>("strength");
   const [rpeLimit, setRpeLimit] = useState<number | null>(null);
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
+  const [intelligence, setIntelligence] = useState<TrainingIntelligence | null>(null);
+  const [intelligenceLoading, setIntelligenceLoading] = useState(true);
   const generatePlan = useGenerateWorkoutPlan();
   const savePlan = useSavePlanAsTemplate();
   const { data: equipment } = useGetEquipment();
@@ -163,6 +207,23 @@ export default function TrainingPlannerScreen() {
     ...phase,
     exercises: plan?.exercises.filter((exercise) => exercise.phase === phase.key) ?? [],
   }));
+  const recommendationByName = useMemo(() => {
+    const map = new Map<string, TrainingIntelligence["recommendations"][number]>();
+    for (const rec of intelligence?.recommendations ?? []) {
+      map.set(rec.exerciseName.toLowerCase(), rec);
+    }
+    return map;
+  }, [intelligence]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIntelligenceLoading(true);
+    customFetch<TrainingIntelligence>("/api/training/intelligence")
+      .then((data) => { if (!cancelled) setIntelligence(data); })
+      .catch(() => { if (!cancelled) setIntelligence(null); })
+      .finally(() => { if (!cancelled) setIntelligenceLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const generate = () => {
     generatePlan.mutate(
@@ -204,6 +265,32 @@ export default function TrainingPlannerScreen() {
       <Text style={s.kicker}>GUILD DRILL PLANNER</Text>
       <Text style={s.title}>Workout Planner</Text>
       <Text style={s.subtitle}>Equipment-aware plan generation.</Text>
+
+      <View style={s.intelligenceCard}>
+        <Text style={s.intelligenceKicker}>SYSTEM OBSERVATION</Text>
+        <Text style={s.intelligenceTitle}>
+          {intelligenceLoading
+            ? "Reading the Hall's Training Ledger..."
+            : intelligence?.profile?.deloadRecommended
+              ? "Recovery Before Progression"
+              : intelligence?.profile?.progressiveOverloadReadiness === "ready"
+                ? "Progression Watch Active"
+                : "Observation Phase"}
+        </Text>
+        <Text style={s.intelligenceText}>
+          {intelligenceLoading
+            ? "The System is reviewing recent sessions without interrupting your training."
+            : intelligence?.profile?.summary ?? "Insufficient history to recommend progression. Complete two more sessions before the System adjusts a lift."}
+        </Text>
+        {!intelligenceLoading && intelligence?.recommendations?.[0] ? (
+          <View style={s.intelligenceHighlight}>
+            <Text style={s.intelligenceHighlightLabel}>Aldric's mark</Text>
+            <Text style={s.intelligenceHighlightText}>
+              {intelligence.recommendations[0].exerciseName}: {intelligence.recommendations[0].label}
+            </Text>
+          </View>
+        ) : null}
+      </View>
 
       <View style={s.card}>
         <Text style={s.cardTitle}>Select Training Goal</Text>
@@ -262,7 +349,13 @@ export default function TrainingPlannerScreen() {
                 <View style={[s.phaseDot, { backgroundColor: phase.color }]} />
                 <Text style={[s.phaseTitle, { color: phase.color }]}>{phase.label}</Text>
               </View>
-              {phase.exercises.map((exercise, index) => <ExerciseCard key={`${phase.key}-${exercise.exerciseName}-${index}`} exercise={exercise} />)}
+              {phase.exercises.map((exercise, index) => (
+                <ExerciseCard
+                  key={`${phase.key}-${exercise.exerciseName}-${index}`}
+                  exercise={exercise}
+                  recommendation={recommendationByName.get(exercise.exerciseName.toLowerCase())}
+                />
+              ))}
             </View>
           ) : null)}
           {!plan.hasBiometrics && (
@@ -301,6 +394,13 @@ const s = StyleSheet.create({
   card: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 14, marginBottom: 12 },
   cardTitle: { color: "#d9ad63", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold", fontWeight: "900", marginBottom: 10 },
   cardMeta: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 10 },
+  intelligenceCard: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071615", padding: 14, marginBottom: 12 },
+  intelligenceKicker: { color: "#7ddce4", fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  intelligenceTitle: { color: "#eee5d7", fontSize: 18, fontFamily: "PlayfairDisplay_700Bold", marginTop: 5 },
+  intelligenceText: { color: "#b6aa9c", fontSize: 12, lineHeight: 18, marginTop: 7 },
+  intelligenceHighlight: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#14100b", padding: 10, marginTop: 10 },
+  intelligenceHighlightLabel: { color: "#9d8f80", fontSize: 9, letterSpacing: 1.4, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  intelligenceHighlightText: { color: "#d9ad63", fontSize: 12, lineHeight: 17, marginTop: 4, fontFamily: "Inter_700Bold" },
   goalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   goalCard: { width: "48%", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10, minHeight: 78 },
   goalTitle: { fontSize: 13, fontFamily: "Inter_700Bold" },
@@ -335,6 +435,10 @@ const s = StyleSheet.create({
   exerciseName: { color: "#eee5d7", fontSize: 14, fontFamily: "Inter_700Bold" },
   exerciseMeta: { color: "#8f887d", fontSize: 11, marginTop: 4 },
   weight: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", marginTop: 5 },
+  progressionNote: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071615", padding: 9, marginTop: 8 },
+  progressionKicker: { color: "#7ddce4", fontSize: 9, letterSpacing: 1.3, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  progressionText: { color: "#cfc5b8", fontSize: 11, lineHeight: 16, marginTop: 4 },
+  progressionSafety: { color: "#f09983", fontSize: 10, lineHeight: 15, marginTop: 5 },
   notes: { color: "#9f9586", fontSize: 11, lineHeight: 16, marginTop: 5, fontStyle: "italic" },
   subBox: { borderTopWidth: 1, borderTopColor: "#2a2520", marginTop: 8, paddingTop: 8 },
   subTitle: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", marginBottom: 4 },

@@ -432,6 +432,7 @@ function CommissionDetailModal({
 
 function AldricPanel({ hall, onOpen }: { hall: any; onOpen: () => void }) {
   const trend = hall?.counsel?.trendSummary;
+  const ledger = trend?.trainingLedger;
   return (
     <View style={s.aldricPanel}>
       <View style={s.aldricImageFrame}>
@@ -450,6 +451,12 @@ function AldricPanel({ hall, onOpen }: { hall: any; onOpen: () => void }) {
             <View style={s.trendBox}><Text style={s.trendLabel}>PRs</Text><Text style={s.trendValue}>{trend.recentPrs}</Text></View>
           </View>
         )}
+        {ledger ? (
+          <View style={s.ledgerNote}>
+            <Text style={s.ledgerKicker}>Hall Training Ledger</Text>
+            <Text style={s.ledgerText}>{ledger.topRecommendation?.reason ?? ledger.summary}</Text>
+          </View>
+        ) : null}
         <TouchableOpacity style={s.audienceBtn} onPress={onOpen}>
           <Text style={s.audienceBtnText}>Private Audience</Text>
         </TouchableOpacity>
@@ -761,6 +768,9 @@ const s = StyleSheet.create({
   trendBox: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 8, alignItems: "center" },
   trendLabel: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_400Regular" },
   trendValue: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", marginTop: 2 },
+  ledgerNote: { marginTop: 10, borderWidth: 1, borderColor: "#345f5d", backgroundColor: "#071111", padding: 10 },
+  ledgerKicker: { color: "#49a3a0", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.5 },
+  ledgerText: { color: "#d8c4a5", fontSize: 11, lineHeight: 16, marginTop: 5, fontFamily: "Inter_400Regular" },
   audienceBtn: { marginTop: 12, borderWidth: 1, borderColor: "#8c6a36", paddingVertical: 10, alignItems: "center", backgroundColor: "#15130f" },
   audienceBtnText: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 2 },
   reportBtn: { minHeight: 54, borderWidth: 1, borderColor: "#c08c4e", backgroundColor: "#74291f", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginBottom: 14 },

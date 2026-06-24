@@ -15,6 +15,7 @@ import {
   classifyWorkoutStyle, generateCombatReplay,
   type CombatInput, type NarrativeIntensity, type WorkoutSetData,
 } from "../combat-engine";
+import { getTrainingIntelligence, recomputeTrainingIntelligence } from "../training-intelligence";
 
 const router = Router();
 const COMMISSION_NOTE_PREFIX = "[commission-context]";
@@ -52,6 +53,16 @@ router.get("/training/exercises", async (req, res) => {
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to get exercises" });
+  }
+});
+
+router.get("/training/intelligence", async (req, res) => {
+  try {
+    const { player } = await getOrCreatePlayer(req.userId);
+    res.json(await getTrainingIntelligence(player.id));
+  } catch (err) {
+    req.log.error(err, "training intelligence error");
+    res.status(500).json({ error: "Failed to read training intelligence" });
   }
 });
 
@@ -437,6 +448,12 @@ router.patch("/training/sessions/:id", async (req, res) => {
         }
         // Auto-claim any active campaign mission when workout is complete
         missionClaimed = await autoClaimActiveMission(player.id, today);
+
+        try {
+          await recomputeTrainingIntelligence(player.id);
+        } catch (err) {
+          req.log.warn(err, "training intelligence update failed");
+        }
       }
     } else {
       updates.status = status;

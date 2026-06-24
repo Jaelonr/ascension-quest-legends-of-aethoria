@@ -32,6 +32,7 @@ import {
   chooseCommissionLocation,
   type AethoriaLocation,
 } from "../domain/aethoria-locations";
+import { getTrainingIntelligence } from "../training-intelligence";
 
 const router = Router();
 const RANK_ORDER = ["E", "D", "C", "B", "A", "S", "National-Level"];
@@ -265,6 +266,78 @@ async function getAethoriaLocations() {
   } catch {
     return [];
   }
+}
+
+function buildTrainingLedgerAdjustment(playerContext: GuildPlayerContext, trainingLedger: any | null): CommissionPlan | null {
+  const profile = trainingLedger?.profile;
+  const topRecommendation = trainingLedger?.recommendations?.[0];
+  const weakest = profile?.weakestMovementPatterns?.[0] as string | undefined;
+  if (!profile && !topRecommendation) return null;
+
+  if (profile?.deloadRecommended || profile?.progressiveOverloadReadiness === "recovery_first") {
+    const plan = buildDailyCommissionPlan({
+      ...playerContext,
+      injuryNotes: playerContext.injuryNotes ?? "Training ledger recovery flag",
+    });
+    return {
+      ...plan,
+      category: "recovery",
+      readiness: "recovery",
+      rationale: "The Hall's Training Ledger shows fatigue or pain signals, so Aldric has chosen a restoration duty disguised as field support.",
+      counsel: "Strength can wait. A reckless adventurer does not become an old one.",
+      context: {
+        reason: "training_ledger_recovery",
+        trainingLedgerSummary: profile?.summary,
+        progressiveOverloadReadiness: profile?.progressiveOverloadReadiness,
+      },
+    };
+  }
+
+  if (weakest === "conditioning" || (playerContext.dominantStyle === "strength" && profile?.recentProgressTrend === "stable")) {
+    const plan = buildDailyCommissionPlan({
+      ...playerContext,
+      dominantStyle: playerContext.dominantStyle ?? "strength",
+      neglectedStyle: "conditioning",
+      steps: Math.min(playerContext.steps, 4999),
+    });
+    return {
+      ...plan,
+      category: "conditioning",
+      readiness: "ready",
+      rationale: "The ledger shows power holding steady, but the road will ask for lungs before it asks for force.",
+      counsel: "You have built force. Today the Guild hides a different lesson in the route itself.",
+      context: {
+        reason: "training_ledger_conditioning_gap",
+        trainingLedgerSummary: profile?.summary,
+        weakestMovementPattern: weakest,
+      },
+    };
+  }
+
+  if (topRecommendation?.recommendationType === "add_weight" || topRecommendation?.recommendationType === "add_reps") {
+    const plan = buildDailyCommissionPlan({
+      ...playerContext,
+      missedCommissions: 0,
+      sleepHours: playerContext.sleepHours ?? 7,
+      injuryNotes: null,
+      activeRaidTitle: null,
+    });
+    return {
+      ...plan,
+      category: "training",
+      readiness: "ready",
+      rationale: `The Hall's ledger has marked ${topRecommendation.exerciseName} for modest progression.`,
+      counsel: "The increase should be small. Enough to keep the blade sharp, not enough to court injury.",
+      context: {
+        reason: "training_ledger_progression_ready",
+        trainingLedgerSummary: profile?.summary,
+        progressionExercise: topRecommendation.exerciseName,
+        progressionType: topRecommendation.recommendationType,
+      },
+    };
+  }
+
+  return null;
 }
 
 type RegionProgressRow = typeof regionProgressTable.$inferSelect;
@@ -622,7 +695,7 @@ async function getGuildHallSnapshot(userId: string) {
   await settleExpiredDuties(player.id);
   const quest = await ensureDailyQuest(player.id);
   const today = getTodayStr();
-  const [playerContext, existingCommission, memories, consequences, worldEvents, gear, offerings, raids, locations] = await Promise.all([
+  const [playerContext, existingCommission, memories, consequences, worldEvents, gear, offerings, raids, locations, trainingLedger] = await Promise.all([
     getGuildPlayerContext(player.id),
     db.select().from(dailyCommissionsTable).where(and(eq(dailyCommissionsTable.playerId, player.id), eq(dailyCommissionsTable.date, today))).limit(1),
     db.select().from(guildMasterMemoriesTable).where(eq(guildMasterMemoriesTable.playerId, player.id))
@@ -635,9 +708,14 @@ async function getGuildHallSnapshot(userId: string) {
     db.select().from(storeItemsTable).where(eq(storeItemsTable.available, true)).limit(3),
     db.select({ status: bossRaidsTable.status, difficulty: bossRaidsTable.difficulty }).from(bossRaidsTable).where(eq(bossRaidsTable.playerId, player.id)),
     getAethoriaLocations(),
+    getTrainingIntelligence(player.id).catch((err) => {
+      console.warn("training intelligence unavailable for guild hall", err);
+      return null;
+    }),
   ]);
 
-  const plan = attachCommissionLocation(buildDailyCommissionPlan(playerContext), player.id + today.length + playerContext.recentWorkoutCount, playerContext, locations);
+  const dailyPlan = buildTrainingLedgerAdjustment(playerContext, trainingLedger) ?? buildDailyCommissionPlan(playerContext);
+  const plan = attachCommissionLocation(dailyPlan, player.id + today.length + playerContext.recentWorkoutCount, playerContext, locations);
   let commission = existingCommission[0];
   if (!commission) {
     await applyCommissionPlan(quest.id, plan);
@@ -728,6 +806,18 @@ async function getGuildHallSnapshot(userId: string) {
         proteinToday: Math.round(playerContext.proteinToday),
         proteinTarget: playerContext.proteinTarget,
         mealsToday: playerContext.mealsToday,
+        trainingLedger: trainingLedger?.profile ? {
+          summary: trainingLedger.profile.summary,
+          readiness: trainingLedger.profile.progressiveOverloadReadiness,
+          recentProgressTrend: trainingLedger.profile.recentProgressTrend,
+          deloadRecommended: trainingLedger.profile.deloadRecommended,
+          topRecommendation: trainingLedger.recommendations?.[0] ? {
+            exerciseName: trainingLedger.recommendations[0].exerciseName,
+            label: trainingLedger.recommendations[0].label,
+            recommendationType: trainingLedger.recommendations[0].recommendationType,
+            reason: trainingLedger.recommendations[0].recommendationReason,
+          } : null,
+        } : null,
       },
       guardrails: {
         injuryNotesPresent: !!playerContext.injuryNotes,

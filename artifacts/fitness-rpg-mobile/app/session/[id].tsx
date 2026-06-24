@@ -1,4 +1,5 @@
 import {
+  customFetch,
   useGetWorkoutSession,
   useLogSet,
   useUpdateWorkoutSession,
@@ -49,6 +50,21 @@ interface CompletionData {
     goldReward?: number;
   } | null;
 }
+
+type ExerciseProgressionRecommendation = {
+  exerciseId: number;
+  exerciseName: string;
+  label: string;
+  trend: string;
+  recommendationType: string;
+  recommendedNextWeight?: number | null;
+  recommendedNextReps?: number | null;
+  recommendedNextSets?: number | null;
+  weightUnit?: string;
+  targetRpe?: number;
+  recommendationReason: string;
+  safetyNote?: string | null;
+};
 
 const STYLE_META: Record<string, { label: string; color: string }> = {
   strength: { label: "Strength", color: "#ef4444" },
@@ -274,6 +290,7 @@ export default function ActiveSessionScreen() {
   const [completion, setCompletion] = useState<CompletionData | null>(null);
   const [showReplay, setShowReplay] = useState(false);
   const [weightUnit, setWeightUnit] = useState<WeightUnit>("lbs");
+  const [progressionRecs, setProgressionRecs] = useState<Map<number, ExerciseProgressionRecommendation>>(new Map());
   const [narrativeIntensity, setNarrativeIntensity] =
     useState<WorkoutSessionUpdateNarrativeIntensity>(WorkoutSessionUpdateNarrativeIntensity.balanced);
 
@@ -310,6 +327,17 @@ export default function ActiveSessionScreen() {
 
   const logSet = useLogSet();
   const finishSession = useUpdateWorkoutSession();
+
+  useEffect(() => {
+    let cancelled = false;
+    customFetch<{ recommendations: ExerciseProgressionRecommendation[] }>("/api/training/intelligence")
+      .then((data) => {
+        if (cancelled) return;
+        setProgressionRecs(new Map((data.recommendations ?? []).map((rec) => [rec.exerciseId, rec])));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   // Elapsed timer
   useEffect(() => {
@@ -370,15 +398,25 @@ export default function ActiveSessionScreen() {
       setReps(String(last.reps));
       setRpe(String((last as any).rpe ?? 8));
     } else {
+      const rec = progressionRecs.get(openExId);
+      if (rec?.recommendedNextWeight != null && rec.recommendedNextWeight > 0) {
+        setWeight(String(convertWeight(Number(rec.recommendedNextWeight), rec.weightUnit, weightUnit)));
+      } else {
+        setWeight(weightUnit === "kg" ? "20" : "45");
+      }
+      if (rec?.recommendedNextReps != null && rec.recommendedNextReps > 0) {
+        setReps(String(rec.recommendedNextReps));
+      }
+      if (rec?.targetRpe != null) {
+        setRpe(String(Math.round(rec.targetRpe)));
+      }
       const tmpl = exercises.find((e) => e.exerciseId === openExId);
-      if (tmpl?.reps) {
+      if (!rec?.recommendedNextReps && tmpl?.reps) {
         const m = String(tmpl.reps).match(/\d+/);
         if (m) setReps(m[0]);
       }
-      setWeight(weightUnit === "kg" ? "20" : "45");
-      setRpe("8");
     }
-  }, [openExId, weightUnit]);
+  }, [openExId, weightUnit, progressionRecs]);
 
   const handleLogSet = (exerciseId: number) => {
     Keyboard.dismiss();
@@ -556,6 +594,7 @@ export default function ActiveSessionScreen() {
           const isComplete = done >= planned;
           const isOpen = openExId === exId;
           const isPrEx = prFlash === exId;
+          const progression = progressionRecs.get(exId);
 
           let borderColor = colors.border;
           let bgColor = colors.card;
@@ -590,6 +629,11 @@ export default function ActiveSessionScreen() {
                       {ex.muscleGroup ? `${ex.muscleGroup} · ` : ""}{planned} × {ex.reps ?? "—"} reps
                     </Text>
                   )}
+                  {progression ? (
+                    <Text style={[s.progressionInline, { color: progression.recommendationType === "recovery" || progression.recommendationType === "deload" ? "#f09983" : "#7ddce4" }]}>
+                      {progression.label}: {progression.trend.replace(/_/g, " ")}
+                    </Text>
+                  ) : null}
                 </View>
                 <Text style={[s.exCount, { color: isComplete ? "#22c55e" : colors.primary }]}>
                   {done}/{planned}
@@ -621,6 +665,14 @@ export default function ActiveSessionScreen() {
               {/* Log input — expanded */}
               {isOpen && (
                 <View style={[s.inputBlock, { borderTopColor: colors.border }]}>
+                  {progression ? (
+                    <View style={s.progressionBox}>
+                      <Text style={s.progressionBoxKicker}>ALDRIC'S TRAINING NOTE</Text>
+                      <Text style={s.progressionBoxTitle}>{progression.label}</Text>
+                      <Text style={s.progressionBoxText}>{progression.recommendationReason}</Text>
+                      {progression.safetyNote ? <Text style={s.progressionBoxSafety}>{progression.safetyNote}</Text> : null}
+                    </View>
+                  ) : null}
                   <View style={s.inputRow}>
                     <View style={s.inputGroup}>
                       <Text style={[s.inputLabel, { color: colors.mutedForeground }]}>WEIGHT ({weightUnit})</Text>
@@ -779,6 +831,7 @@ const s = StyleSheet.create({
   exTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 3 },
   exName: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
   exMeta: { fontSize: 10, fontFamily: "Inter_400Regular", marginLeft: 22 },
+  progressionInline: { fontSize: 10, fontFamily: "Inter_700Bold", marginLeft: 22, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.8 },
   exCount: { fontSize: 13, fontFamily: "Inter_700Bold" },
   prBadge: {
     backgroundColor: "#ffbf0020",
@@ -814,6 +867,11 @@ const s = StyleSheet.create({
     padding: 14,
     gap: 10,
   },
+  progressionBox: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071615", padding: 10, borderRadius: 8 },
+  progressionBoxKicker: { color: "#7ddce4", fontSize: 9, letterSpacing: 1.4, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  progressionBoxTitle: { color: "#d9ad63", fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 4 },
+  progressionBoxText: { color: "#d8c4a5", fontSize: 11, lineHeight: 16, marginTop: 4 },
+  progressionBoxSafety: { color: "#f09983", fontSize: 10, lineHeight: 15, marginTop: 5 },
   inputRow: { flexDirection: "row", gap: 10 },
   inputGroup: { flex: 1, gap: 4 },
   rpeInputGroup: { width: 74, gap: 4 },

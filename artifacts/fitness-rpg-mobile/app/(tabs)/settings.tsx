@@ -23,6 +23,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 
 const REMINDER_TIMES = ["06:00", "07:00", "08:00", "09:00", "12:00", "15:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
 
@@ -215,12 +216,14 @@ function Swatch({
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
   const resetPlayer = useResetPlayer({
     mutation: {
       onSuccess: async () => {
         await clearMobileOnboarding();
+        await queryClient.invalidateQueries({ queryKey: ["/api/player"] });
         router.replace("/onboarding" as any);
       },
       onError: () => Alert.alert("Reset failed", "The Guild could not recreate your character yet. Try again in a moment."),

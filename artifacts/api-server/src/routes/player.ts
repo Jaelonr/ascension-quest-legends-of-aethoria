@@ -465,12 +465,16 @@ router.post("/player/reset", async (req, res) => {
     await db.update(playerTable).set({
       name: "Adventurer",
       level: 1,
+      rank: "E",
       xp: 0,
       gold: 500,
       hp: 100,
       maxHp: 100,
       freeStatPoints: 0,
       xpMultiplier: 100,
+      baseClass: null,
+      activeTitle: null,
+      setupCompleted: false,
       updatedAt: new Date(),
     }).where(eq(playerTable.id, player.id));
 
