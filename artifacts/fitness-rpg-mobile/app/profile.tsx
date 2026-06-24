@@ -1,5 +1,6 @@
 import { useGetBiometrics, useGetPlayer, useSetupPlayer, useUpdateBiometrics } from "@workspace/api-client-react";
 import { loadMobileSettings, type Units, type WeightUnit } from "@/utils/mobile-settings";
+import { clearForcedMobileSetup, hasForcedMobileSetup } from "@/utils/onboarding";
 import { useQueryClient } from "@tanstack/react-query";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
@@ -238,6 +239,7 @@ export default function ProfileScreen() {
   const [weightUnitSetting, setWeightUnitSetting] = useState<WeightUnit>("lbs");
   const [scanStep, setScanStep] = useState(0);
   const [sonicRiteEnabled, setSonicRiteEnabled] = useState(true);
+  const [forceSetup, setForceSetup] = useState(false);
   const scanPulse = useRef(new Animated.Value(0)).current;
   const scanReveal = useRef(new Animated.Value(1)).current;
   const transitionFlash = useRef(new Animated.Value(0)).current;
@@ -250,6 +252,18 @@ export default function ProfileScreen() {
         if (!mounted) return;
         setUnitSystem(settings.units);
         setWeightUnitSetting(settings.weightUnit);
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    hasForcedMobileSetup()
+      .then((forced) => {
+        if (mounted) setForceSetup(forced);
       })
       .catch(() => undefined);
     return () => {
@@ -499,6 +513,8 @@ export default function ProfileScreen() {
         onSuccess: () => {
           signalRite("complete");
           setDirty(false);
+          clearForcedMobileSetup().catch(() => undefined);
+          setForceSetup(false);
           queryClient.setQueryData(["/api/player"], (existing: any) =>
             existing
               ? { ...existing, name: form.name.trim(), baseClass: chosenGoal.baseClass, setupCompleted: true }
@@ -763,7 +779,9 @@ export default function ProfileScreen() {
     );
   };
 
-  if (!player?.setupCompleted && !isLoading && !playerLoading) {
+  const setupIncomplete = forceSetup || !player?.setupCompleted;
+
+  if (setupIncomplete && !isLoading && !playerLoading) {
     return (
       <View style={[s.interrogationRoot, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
         <Animated.View pointerEvents="none" style={[s.transitionFlash, { opacity: transitionFlash }]} />
@@ -830,9 +848,9 @@ export default function ProfileScreen() {
         <View style={s.assessmentTop}>
           <View>
             <Text style={s.assessmentKicker}>Adventurer Assessment</Text>
-            <Text style={s.assessmentTitle}>{player?.setupCompleted ? "Record Established" : "Initial Scan Pending"}</Text>
+            <Text style={s.assessmentTitle}>{setupIncomplete ? "Initial Scan Pending" : "Record Established"}</Text>
           </View>
-          <Text style={scanReady || player?.setupCompleted ? s.assessmentReady : s.assessmentOpen}>
+          <Text style={scanReady || !setupIncomplete ? s.assessmentReady : s.assessmentOpen}>
             {completedScanRequirements}/{scanRequirements.length}
           </Text>
         </View>
@@ -873,7 +891,7 @@ export default function ProfileScreen() {
                 <Text style={s.cardTitle}>Initial System Scan</Text>
                 <Text style={s.cardMeta}>Name, age, sex, activity, and first path shape the starting record. Your class is still earned through action.</Text>
               </View>
-              <Text style={player?.setupCompleted ? s.completeBadge : s.openBadge}>{player?.setupCompleted ? "Complete" : "Open"}</Text>
+              <Text style={setupIncomplete ? s.openBadge : s.completeBadge}>{setupIncomplete ? "Open" : "Complete"}</Text>
             </View>
             <Field label="Adventurer Name" value={form.name} onChangeText={(v) => setField("name", v)} placeholder="Jaelon" suffix="" keyboardType="default" />
             <Field label="Age" value={form.ageYears} onChangeText={(v) => setField("ageYears", v)} placeholder="30" suffix="years" />
@@ -1063,7 +1081,7 @@ export default function ProfileScreen() {
             {update.isPending ? <ActivityIndicator color="#0a0908" /> : <Text style={s.saveText}>Save System Record</Text>}
           </TouchableOpacity>
 
-          {!player?.setupCompleted && (
+          {setupIncomplete && (
             <TouchableOpacity style={[s.scanBtn, (!scanReady || setupPlayer.isPending) && { opacity: 0.55 }]} onPress={completeInitialScan} disabled={!scanReady || setupPlayer.isPending}>
               {setupPlayer.isPending ? <ActivityIndicator color="#0a0908" /> : <Text style={s.scanText}>Complete Initial Scan</Text>}
             </TouchableOpacity>

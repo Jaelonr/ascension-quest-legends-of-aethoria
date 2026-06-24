@@ -1,7 +1,7 @@
 import { useAuth, useClerk } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { useResetPlayer } from "@workspace/api-client-react";
-import { clearMobileOnboarding } from "@/utils/onboarding";
+import { clearMobileOnboarding, forceMobileSetup } from "@/utils/onboarding";
 import {
   DEFAULT_MOBILE_SETTINGS,
   loadMobileSettings,
@@ -223,6 +223,7 @@ export default function SettingsScreen() {
     mutation: {
       onSuccess: async (result: any) => {
         await clearMobileOnboarding();
+        await forceMobileSetup();
         await queryClient.cancelQueries({ queryKey: ["/api/player"] });
         const resetRecord = result?.player ?? null;
         queryClient.setQueryData(["/api/player"], (existing: any) => ({

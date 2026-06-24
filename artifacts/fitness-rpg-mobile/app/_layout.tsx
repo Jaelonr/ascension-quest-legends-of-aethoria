@@ -18,7 +18,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { hasCompletedMobileOnboarding } from "@/utils/onboarding";
+import { hasCompletedMobileOnboarding, hasForcedMobileSetup } from "@/utils/onboarding";
 
 const apiBaseUrl =
   process.env.EXPO_PUBLIC_API_BASE_URL || `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
@@ -65,6 +65,22 @@ function PlayerSetupGuard({ enabled }: { enabled: boolean }) {
   const segments = useSegments();
   const router = useRouter();
   const { data: player, isLoading } = useGetPlayer({ query: { queryKey: ["/api/player"], enabled } });
+  const [forceSetup, setForceSetup] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    hasForcedMobileSetup()
+      .then((forced) => {
+        if (!cancelled) setForceSetup(forced);
+      })
+      .catch(() => {
+        if (!cancelled) setForceSetup(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, segments]);
 
   useEffect(() => {
     if (!enabled || isLoading || !player) return;
@@ -72,13 +88,14 @@ function PlayerSetupGuard({ enabled }: { enabled: boolean }) {
     const inAuthGroup = topSegment === "(auth)";
     const inOnboarding = topSegment === "onboarding";
     const inSetup = topSegment === "setup";
-    if (!player.setupCompleted && !inAuthGroup && !inOnboarding && !inSetup) {
+    const setupRequired = forceSetup || !player.setupCompleted;
+    if (setupRequired && !inAuthGroup && !inOnboarding && !inSetup) {
       router.replace("/setup" as never);
     }
-    if (player.setupCompleted && inSetup) {
+    if (!forceSetup && player.setupCompleted && inSetup) {
       router.replace("/(tabs)" as never);
     }
-  }, [enabled, isLoading, player, router, segments]);
+  }, [enabled, forceSetup, isLoading, player, router, segments]);
 
   return null;
 }
