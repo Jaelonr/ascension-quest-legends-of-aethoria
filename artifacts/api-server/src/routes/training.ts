@@ -39,6 +39,44 @@ function getTodayStr() {
   return new Date().toISOString().split("T")[0];
 }
 
+function normalizeRegionKey(value: string | null | undefined) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/n['’]thaloris/g, "sunken kingdom")
+    .replace(/frostvale/g, "frostveil peaks")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function calculateRegionalGearGoldBonus(
+  equippedGear: Array<{ narrativeModifiers: string[] }>,
+  regionName: string | null | undefined,
+) {
+  const regionKey = normalizeRegionKey(regionName);
+  if (!regionKey) return { percent: 0, gold: 0, tags: [] as string[] };
+
+  const matched: string[] = [];
+  let percent = 0;
+  for (const item of equippedGear) {
+    for (const modifier of item.narrativeModifiers ?? []) {
+      const match = modifier.match(/^regional_gold_bonus:([^:]+):(\d+)$/);
+      if (!match) continue;
+      const [, modifierRegion, rawPercent] = match;
+      if (modifierRegion === regionKey) {
+        const bonus = Math.max(0, Math.min(Number(rawPercent), 3));
+        percent += bonus;
+        matched.push(modifier);
+      }
+    }
+  }
+
+  return {
+    percent: Math.min(percent, 6),
+    gold: 0,
+    tags: matched,
+  };
+}
+
 router.get("/training/exercises", async (req, res) => {
   try {
     const { muscleGroup, category } = req.query;
@@ -309,6 +347,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
           volumeBonusBreakdown = `Volume: +${volumeXp} XP (${Math.round(totalVolumeKg)}kg lifted)${intensityXp > 0 ? `, Intensity: +${intensityXp} XP (${Math.round(heaviestRelativeIntensity * 100)}% of 1RM)` : ""}`;
         }
 
+        const commissionContext = parseCommissionContext(session.notes);
         const equippedGear = await db.select().from(rpgGearTable).where(and(
           eq(rpgGearTable.playerId, player.id),
           eq(rpgGearTable.equipped, true),
@@ -318,6 +357,11 @@ router.patch("/training/sessions/:id", async (req, res) => {
         ));
         const totalXp = Math.round((baseXp + volumeBonus) * (1 + xpBonusPercent / 100));
         goldEarned = 25 + Math.floor(durationMinutes / 5) * 5 + prCount * 15 + Math.floor(volumeBonus / 10);
+        const regionalGold = calculateRegionalGearGoldBonus(equippedGear, commissionContext?.regionName);
+        const regionalGoldBonus = regionalGold.percent > 0
+          ? Math.max(1, Math.floor(goldEarned * (regionalGold.percent / 100)))
+          : 0;
+        goldEarned += regionalGoldBonus;
 
         updates.xpEarned = totalXp;
         updates.goldEarned = goldEarned;
@@ -359,8 +403,6 @@ router.patch("/training/sessions/:id", async (req, res) => {
           }
         }
 
-        const commissionContext = parseCommissionContext(session.notes);
-
         // Get active raids for combat context
         const activeRaids = await db.select({ title: bossRaidsTable.title })
           .from(bossRaidsTable)
@@ -389,7 +431,12 @@ router.patch("/training/sessions/:id", async (req, res) => {
           playerName: freshPlayer.name ?? "Adventurer",
           narrativeIntensity,
           elementalAffinity: equippedGear.find((item) => item.elementalAffinity !== "physical")?.elementalAffinity ?? "physical",
-          narrativeModifiers: equippedGear.flatMap((item) => item.narrativeModifiers).slice(0, 3),
+          narrativeModifiers: [
+            ...equippedGear.flatMap((item) => item.narrativeModifiers).filter((modifier) => !modifier.includes(":")).slice(0, 3),
+            ...(regionalGoldBonus > 0 && commissionContext?.regionName
+              ? [`Local gear helped in ${commissionContext.regionName}; +${regionalGoldBonus} gold from regional credibility.`]
+              : []),
+          ],
         };
 
         combatReplay = generateCombatReplay(combatInput);

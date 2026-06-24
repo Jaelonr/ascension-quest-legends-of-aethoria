@@ -304,6 +304,60 @@ function layerOrderFor(slot?: string | null) {
   return order[slot ?? ""] ?? 0;
 }
 
+function gearFlavorForItem(item: Pick<typeof storeItemsTable.$inferSelect, "name" | "styleAffinity" | "category">, elementalAffinity: string) {
+  const name = item.name.toLowerCase();
+  if (name.includes("tideglass")) return "tideglass caught the light, and coastal merchants treated you as someone who understood old sea customs.";
+  if (name.includes("ember")) return "embers stirred along the equipment, lending your movements the look of Ember Plains resolve.";
+  if (name.includes("frost")) return "cold mana settled into your stance, making each controlled breath look deliberate.";
+  if (name.includes("mithril")) return "mithril flashed like a noble charter, opening doors that plain iron would not.";
+  if (name.includes("diamondweave")) return "diamondweave bent spell-light around your silhouette, making your discipline look almost ceremonial.";
+  if (name.includes("robe") || name.includes("focus") || elementalAffinity === "arcane") return "quiet runes answered your focus, changing the shape of your aura before the strike landed.";
+  if (name.includes("bow") || name.includes("crossbow")) return "your equipment marked you as road-capable, the sort of adventurer caravans prefer to hire twice.";
+  if (name.includes("leather") || name.includes("cloak") || name.includes("boots")) return "travel-worn gear made you look native to the road, not merely dropped upon it.";
+  if (name.includes("iron")) return "iron weight gave your silhouette the blunt authority of someone used to hard labor.";
+  return `${elementalAffinity} affinity gathered around your equipped gear, altering the story of the exchange.`;
+}
+
+function regionModifierTagsForItem(
+  item: Pick<typeof storeItemsTable.$inferSelect, "name" | "styleAffinity" | "category">,
+  elementalAffinity: string,
+) {
+  const name = item.name.toLowerCase();
+  const tags: string[] = [`affinity:${elementalAffinity}`, `aura:${elementalAffinity}`, "gear_effect:narrative_first"];
+  const addRegion = (region: string, percent = 2) => {
+    tags.push(`local_attire:${region}`);
+    tags.push(`regional_gold_bonus:${region}:${percent}`);
+  };
+
+  if (name.includes("frost")) addRegion("frostveil_peaks", 3);
+  if (name.includes("ember")) addRegion("ember_plains", 3);
+  if (name.includes("tideglass")) {
+    addRegion("sunken_kingdom", 3);
+    addRegion("silver_coast", 2);
+  }
+  if (name.includes("mithril") || name.includes("diamondweave")) {
+    addRegion("silver_coast", 3);
+    addRegion("valecrest", 2);
+  }
+  if (name.includes("iron") || name.includes("buckler")) {
+    addRegion("blackstone_highlands", 2);
+    addRegion("ember_plains", 1);
+  }
+  if (name.includes("leather") || name.includes("bow") || name.includes("crossbow")) {
+    addRegion("wild_frontier", 2);
+    addRegion("silver_coast", 1);
+  }
+  if (name.includes("cloak") || name.includes("boots")) {
+    addRegion("verdant_basin", 1);
+    addRegion("silver_coast", 1);
+  }
+  if (name.includes("robe") || name.includes("focus")) {
+    addRegion("valecrest", 2);
+  }
+
+  return [...new Set(tags)];
+}
+
 function toStoreClientItem(item: typeof storeItemsTable.$inferSelect) {
   return {
     ...item,
@@ -554,10 +608,10 @@ router.post("/store/purchase", async (req, res) => {
         affinity: item.styleAffinity ?? elementalAffinity,
         elementalAffinity,
         narrativeModifiers: [
-          "hall_offering",
-          item.category,
-          `${elementalAffinity}_affinity`,
-          "narrative_sidegrade",
+          gearFlavorForItem(item, elementalAffinity),
+          ...regionModifierTagsForItem(item, elementalAffinity),
+          `material:${item.category.split(":")[2] ?? "standard"}`,
+          "stat_impact:marginal",
         ],
         xpBonusPercent: Math.max(0, Math.min(item.effectValue ?? 0, 3)),
         cosmeticKey: iconKeyFor(slot, elementalAffinity),
