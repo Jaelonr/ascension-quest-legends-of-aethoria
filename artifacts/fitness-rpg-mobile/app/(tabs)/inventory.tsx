@@ -122,6 +122,27 @@ const OFFERING_SECTION_META = [
   { key: "raid", label: "Raid", note: "Items unlocked by dangerous campaign work.", icon: "shield" },
 ] as const satisfies Array<{ key: string; label: string; note: string; icon: keyof typeof Feather.glyphMap }>;
 
+function xpNeededForLevel(level: number) {
+  if (level < 10) return level * 100;
+  if (level < 20) return 1000 + (level - 9) * 200;
+  if (level < 35) return 3000 + (level - 19) * 400;
+  if (level < 50) return 9000 + (level - 34) * 600;
+  if (level < 75) return 18000 + (level - 49) * 1000;
+  if (level < 100) return 43000 + (level - 74) * 2000;
+  return 93000 + (level - 99) * 5000;
+}
+
+function getXpProgress(player: any) {
+  const level = Number.isFinite(Number(player?.level)) ? Number(player.level) : 1;
+  const currentXp = Math.max(0, Number.isFinite(Number(player?.xp)) ? Number(player.xp) : 0);
+  const nextLevelXp =
+    Number.isFinite(Number(player?.xpToNextLevel)) && Number(player.xpToNextLevel) > 0
+      ? Number(player.xpToNextLevel)
+      : xpNeededForLevel(level + 1);
+  const percent = nextLevelXp > 0 ? Math.min(100, Math.max(0, Math.round((currentXp / nextLevelXp) * 100))) : 0;
+  return { currentXp, nextLevelXp, percent };
+}
+
 const PAPER_DOLL_SLOTS: Array<{ slot: string; label: string; aliases: string[]; side: "left" | "right" | "support"; icon: keyof typeof Feather.glyphMap; x?: number; y?: number }> = [
   { slot: "head", label: "Head", aliases: ["head", "helmet", "helm", "hood", "circlet"], side: "left", icon: "hard-drive", x: 50, y: 9 },
   { slot: "neck", label: "Neck", aliases: ["neck", "necklace", "amulet"], side: "left", icon: "circle", x: 31, y: 21 },
@@ -392,7 +413,8 @@ export default function CharacterScreen() {
 
   const player = char?.player;
   const rankColor = gradeColor(player?.rank);
-  const xpPct = player ? Math.min(100, Math.round((player.xp / Math.max(1, player.xpToNextLevel)) * 100)) : 0;
+  const xpProgress = getXpProgress(player);
+  const xpPct = xpProgress.percent;
   const equippedCount = char?.gearSlots.filter((slot) => slot.item).length ?? 0;
   const playerStats = player?.stats ?? {};
   const summaryIdentity = char?.identity ?? identity;
@@ -461,7 +483,7 @@ export default function CharacterScreen() {
             </View>
             <View style={cs.xpRow}>
               <Text style={cs.xpLabel}>XP to next level</Text>
-              <Text style={cs.xpPct}>{xpPct}%</Text>
+              <Text style={cs.xpPct}>{xpProgress.currentXp}/{xpProgress.nextLevelXp} XP - {xpPct}%</Text>
             </View>
             <View style={[cs.xpTrack, { backgroundColor: "#2a2520" }]}>
               <View style={[cs.xpFill, { width: `${xpPct}%` }]} />

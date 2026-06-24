@@ -35,15 +35,37 @@ const ACCENT_COLORS: Array<{ id: AccentColor; label: string; color: string }> = 
   { id: "purple", label: "Purple", color: "#c084fc" },
 ];
 
+type SettingsPanelKey = "account" | "record" | "units" | "presentation" | "reminders" | "health" | "data" | "diagnostics";
+
+const SETTINGS_WHEEL: Array<{
+  key: SettingsPanelKey;
+  label: string;
+  short: string;
+  icon: keyof typeof Feather.glyphMap;
+  description: string;
+}> = [
+  { key: "account", label: "Account", short: "Acct", icon: "user", description: "Sign-in, identity, and session controls." },
+  { key: "record", label: "Record", short: "Record", icon: "file-text", description: "System interrogation, character rebuild, and profile shortcuts." },
+  { key: "units", label: "Units", short: "Units", icon: "sliders", description: "Imperial, metric, weight, and distance display." },
+  { key: "presentation", label: "Presentation", short: "Audio", icon: "volume-2", description: "Narrative, sound, motion, and visual preferences." },
+  { key: "reminders", label: "Reminders", short: "Bell", icon: "bell", description: "Workout, streak, achievement, and raid alerts." },
+  { key: "health", label: "Health", short: "Health", icon: "activity", description: "Wearables, Health Connect, Samsung, and security readiness." },
+  { key: "data", label: "Data", short: "Data", icon: "shield", description: "Privacy, legal, analytics, export, and deletion controls." },
+  { key: "diagnostics", label: "Diagnostics", short: "Build", icon: "server", description: "API, Clerk, runtime, and launch readiness." },
+];
+
 function Section({
   icon,
   title,
+  visible = true,
   children,
 }: {
   icon: keyof typeof Feather.glyphMap;
   title: string;
+  visible?: boolean;
   children: React.ReactNode;
 }) {
+  if (!visible) return null;
   return (
     <View style={s.section}>
       <View style={s.sectionHeader}>
@@ -207,6 +229,7 @@ export default function SettingsScreen() {
 
   const [settings, setSettings] = useState<MobileSettings>(DEFAULT_MOBILE_SETTINGS);
   const [loaded, setLoaded] = useState(false);
+  const [activePanel, setActivePanel] = useState<SettingsPanelKey>("account");
 
   const environment = useMemo(() => {
     const apiBase = process.env.EXPO_PUBLIC_API_BASE_URL || "Not configured";
@@ -281,6 +304,8 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const activePanelMeta = SETTINGS_WHEEL.find((item) => item.key === activePanel) ?? SETTINGS_WHEEL[0];
+
   if (!loaded) {
     return (
       <View style={s.loading}>
@@ -301,7 +326,31 @@ export default function SettingsScreen() {
           Account access, measurement defaults, health boundaries, privacy controls, and production checks.
         </Text>
 
-        <Section icon="user" title="Account">
+        <View style={s.wheelShell}>
+          <View style={s.wheelCenter}>
+            <Feather name={activePanelMeta.icon} size={22} color="#7ddce4" />
+            <Text style={s.wheelCenterTitle}>{activePanelMeta.label}</Text>
+            <Text style={s.wheelCenterDesc}>{activePanelMeta.description}</Text>
+          </View>
+          <View style={s.wheelGrid}>
+            {SETTINGS_WHEEL.map((item) => {
+              const active = item.key === activePanel;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[s.wheelNode, active && s.wheelNodeActive]}
+                  onPress={() => setActivePanel(item.key)}
+                  activeOpacity={0.82}
+                >
+                  <Feather name={item.icon} size={16} color={active ? "#061010" : "#d9ad63"} />
+                  <Text style={[s.wheelNodeText, active && s.wheelNodeTextActive]}>{item.short}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <Section icon="user" title="Account" visible={activePanel === "account"}>
           <Row
             icon={isSignedIn ? "log-out" : "log-in"}
             label={isSignedIn ? "Sign Out" : "Sign In"}
@@ -317,7 +366,29 @@ export default function SettingsScreen() {
           />
         </Section>
 
-        <Section icon="sliders" title="Units And Presentation">
+        <Section icon="file-text" title="System Record" visible={activePanel === "record"}>
+          <Row
+            icon="user-check"
+            label="Open System Record"
+            description="Update biometrics, equipment, notes, and profile details used for commissions."
+            onPress={() => router.push("/profile" as any)}
+          />
+          <Row
+            icon="refresh-cw"
+            label="Restart Interrogation"
+            description="Replay the summoning setup and rebuild your adventurer record."
+            right={resetPlayer.isPending ? <ActivityIndicator color="#d9ad63" /> : <Feather name="alert-triangle" size={17} color="#b7533d" />}
+            onPress={confirmReset}
+          />
+          <Row
+            icon="shield"
+            label="Character Tab"
+            description="Return to the Adventurer Record, loadout, titles, class path, and armory."
+            onPress={() => router.push("/(tabs)/inventory" as any)}
+          />
+        </Section>
+
+        <Section icon="sliders" title={activePanel === "units" ? "Units And Measurements" : "Audio And Presentation"} visible={activePanel === "units" || activePanel === "presentation"}>
           <Choice
             label="Imperial"
             description="Default for this build: pounds, inches, miles, and calories."
@@ -433,7 +504,7 @@ export default function SettingsScreen() {
           </View>
         </Section>
 
-        <Section icon="bell" title="Notifications">
+        <Section icon="bell" title="Notifications" visible={activePanel === "reminders"}>
           <ToggleRow
             icon="bell"
             label="Push Notifications"
@@ -492,7 +563,7 @@ export default function SettingsScreen() {
           />
         </Section>
 
-        <Section icon="lock" title="Security">
+        <Section icon="lock" title="Security" visible={activePanel === "health"}>
           <ToggleRow
             icon="shield"
             label="Biometric Lock"
@@ -515,7 +586,7 @@ export default function SettingsScreen() {
           />
         </Section>
 
-        <Section icon="activity" title="Health Imports">
+        <Section icon="activity" title="Health Imports" visible={activePanel === "health"}>
           <Row
             icon="smartphone"
             label="Samsung Health"
@@ -539,7 +610,7 @@ export default function SettingsScreen() {
           />
         </Section>
 
-        <Section icon="shield" title="Privacy And Data">
+        <Section icon="shield" title="Privacy And Data" visible={activePanel === "data"}>
           <ToggleRow
             icon="bar-chart-2"
             label="Analytics"
@@ -559,7 +630,7 @@ export default function SettingsScreen() {
           <Row icon="database" label="Export Or Delete Data" description="Production user-control roadmap." onPress={() => router.push("/data" as any)} />
         </Section>
 
-        <Section icon="server" title="Production Readiness">
+        <Section icon="server" title="Production Readiness" visible={activePanel === "diagnostics"}>
           <Row icon="globe" label="API Domain" description={environment.apiBase} />
           <Row
             icon="lock"
@@ -615,6 +686,15 @@ const s = StyleSheet.create({
     marginTop: 4,
   },
   subtitle: { color: "#8f887d", fontSize: 12, lineHeight: 18, marginTop: 8, marginBottom: 18 },
+  wheelShell: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#061111", padding: 12, marginBottom: 18 },
+  wheelCenter: { minHeight: 112, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#123637", backgroundColor: "#030908", padding: 14, marginBottom: 10 },
+  wheelCenterTitle: { color: "#eee5d7", fontSize: 18, fontFamily: "PlayfairDisplay_700Bold", marginTop: 7 },
+  wheelCenterDesc: { color: "#9f9586", fontSize: 11, lineHeight: 16, textAlign: "center", marginTop: 5 },
+  wheelGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  wheelNode: { width: "23.1%", minHeight: 58, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center", gap: 5 },
+  wheelNodeActive: { borderColor: "#8be2df", backgroundColor: "#49a3a0" },
+  wheelNodeText: { color: "#d8c4a5", fontSize: 9, letterSpacing: 0.7, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  wheelNodeTextActive: { color: "#061010" },
   section: { marginBottom: 18 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   sectionLabel: { color: "#9d8f80", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },

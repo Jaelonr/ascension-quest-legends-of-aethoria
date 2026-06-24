@@ -11,7 +11,7 @@ import {
   titlesTable,
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { getOrCreatePlayer } from "../progression";
+import { buildPlayerResponse, getOrCreatePlayer } from "../progression";
 
 const router = Router();
 
@@ -71,11 +71,13 @@ router.get("/character/summary", async (req, res) => {
       equippedBySlot.set(displaySlot(item.slot), item);
     }
 
+    const playerSummary = buildPlayerResponse(player, stats);
+
     res.json({
-      player: { ...player, stats },
+      player: playerSummary,
       identity: {
         class: player.baseClass ?? identity[0]?.hybridArchetype ?? "Unclassed Adventurer",
-        rank: player.rank,
+        rank: playerSummary.rank,
         activeTitle: player.activeTitle,
         dominantStyle: identity[0] ? {
           strength: identity[0].strengthScore,

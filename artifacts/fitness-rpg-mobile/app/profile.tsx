@@ -5,7 +5,7 @@ import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { usePathname, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, Easing, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Easing, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, Vibration, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const EQUIPMENT_TYPES = [
@@ -225,6 +225,7 @@ function toForm(data: any, units: Units, weightUnit: WeightUnit): FormState {
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
@@ -240,6 +241,8 @@ export default function ProfileScreen() {
   const [sonicRiteEnabled, setSonicRiteEnabled] = useState(true);
   const scanPulse = useRef(new Animated.Value(0)).current;
   const scanReveal = useRef(new Animated.Value(1)).current;
+  const transitionFlash = useRef(new Animated.Value(0)).current;
+  const systemSweep = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let mounted = true;
@@ -293,13 +296,34 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     scanReveal.setValue(0);
+    systemSweep.setValue(0);
     Animated.timing(scanReveal, {
       toValue: 1,
       duration: 420,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [scanReveal, scanStep]);
+    Animated.sequence([
+      Animated.timing(transitionFlash, {
+        toValue: 1,
+        duration: 90,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(transitionFlash, {
+        toValue: 0,
+        duration: 520,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+    Animated.timing(systemSweep, {
+      toValue: 1,
+      duration: 980,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [scanReveal, scanStep, systemSweep, transitionFlash]);
 
   const signalRite = (type: "advance" | "select" | "warning" | "complete" = "select") => {
     if (!sonicRiteEnabled) return;
@@ -536,6 +560,8 @@ export default function ProfileScreen() {
   const scanTranslate = scanReveal.interpolate({ inputRange: [0, 1], outputRange: [18, 0] });
   const pulseScale = scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.05] });
   const pulseOpacity = scanPulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.72] });
+  const sweepTranslate = systemSweep.interpolate({ inputRange: [0, 1], outputRange: [-260, 260] });
+  const riteProgress = (scanStep + 1) / scanSteps.length;
 
   const renderInterrogationStep = () => {
     if (currentScan.id === "threshold") {
@@ -750,31 +776,41 @@ export default function ProfileScreen() {
 
   if (!player?.setupCompleted && !isLoading && !playerLoading) {
     return (
-      <ScrollView style={s.interrogationRoot} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 28, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
+      <View style={[s.interrogationRoot, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+        <Animated.View pointerEvents="none" style={[s.transitionFlash, { opacity: transitionFlash }]} />
         <View style={s.riteHeader}>
           <TouchableOpacity onPress={() => router.back()}><Text style={s.back}>Back</Text></TouchableOpacity>
           <TouchableOpacity style={s.soundToggle} onPress={() => { setSonicRiteEnabled((value) => !value); signalRite("select"); }}>
             <Text style={s.soundToggleText}>{sonicRiteEnabled ? "Rite Sound: On" : "Rite Sound: Muted"}</Text>
           </TouchableOpacity>
         </View>
-        <View style={s.summoningStage}>
+        <View style={[s.summoningStage, { minHeight: Math.max(190, Math.min(270, windowHeight * 0.28)) }]}>
           <Animated.View style={[s.outerRing, { opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]} />
           <Animated.View style={[s.innerRing, { opacity: pulseOpacity }]} />
+          <View style={s.verticalSigil} />
+          <View style={s.horizontalSigil} />
           <Text style={s.systemSigil}>SYSTEM</Text>
           <Text style={s.systemLine}>INITIAL SCAN / SUMMONED VESSEL</Text>
+          <Animated.View pointerEvents="none" style={[s.scanSweep, { transform: [{ translateX: sweepTranslate }] }]} />
         </View>
-        <View style={s.scanTrack}>
-          {scanSteps.map((step, i) => (
-            <TouchableOpacity key={step.id} style={[s.scanStep, i === scanStep && s.scanStepActive, step.complete && s.scanStepDone]} onPress={() => { signalRite("select"); setScanStep(i); }}>
-              <Text style={[s.scanStepText, i === scanStep && s.scanStepTextActive]}>{step.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={s.riteProgressWrap}>
+          <View style={s.riteProgressTrack}>
+            <View style={[s.riteProgressFill, { width: `${Math.round(riteProgress * 100)}%` }]} />
+          </View>
+          <Text style={s.riteProgressText}>{scanStep + 1}/{scanSteps.length} SIGNALS</Text>
         </View>
         <Animated.View style={{ opacity: scanOpacity, transform: [{ translateY: scanTranslate }] }}>
           <Text style={s.kicker}>AWE RITE IN PROGRESS</Text>
           <Text style={s.title}>{currentScan.title}</Text>
           <Text style={s.subtitle}>Answer carefully. The System records facts; Aethoria will answer with consequences.</Text>
-          {renderInterrogationStep()}
+          <ScrollView
+            style={s.riteStageScroll}
+            contentContainerStyle={s.riteStageContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {renderInterrogationStep()}
+          </ScrollView>
         </Animated.View>
         <View style={s.riteNav}>
           <TouchableOpacity style={[s.riteNavBtn, scanStep === 0 && s.riteNavDisabled]} onPress={retreatScan} disabled={scanStep === 0}>
@@ -790,7 +826,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </View>
     );
   }
 
@@ -1072,29 +1108,39 @@ function Field({ label, value, onChangeText, placeholder, suffix, keyboardType =
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#0a0908" },
-  interrogationRoot: { flex: 1, backgroundColor: "#020403" },
-  riteHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  interrogationRoot: { flex: 1, backgroundColor: "#020403", paddingHorizontal: 16 },
+  transitionFlash: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, backgroundColor: "#7ddce4" },
+  riteHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
   soundToggle: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#061111", paddingHorizontal: 10, paddingVertical: 7 },
   soundToggleText: { color: "#7ddce4", fontSize: 9, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
-  summoningStage: { height: 210, alignItems: "center", justifyContent: "center", marginBottom: 14, overflow: "hidden" },
+  summoningStage: { alignItems: "center", justifyContent: "center", marginBottom: 12, overflow: "hidden", borderWidth: 1, borderColor: "#123637", backgroundColor: "#030908" },
   outerRing: { position: "absolute", width: 184, height: 184, borderRadius: 92, borderWidth: 1, borderColor: "#7ddce4", backgroundColor: "#092323" },
   innerRing: { position: "absolute", width: 104, height: 104, borderRadius: 52, borderWidth: 1, borderColor: "#d9ad63" },
+  verticalSigil: { position: "absolute", width: 1, height: "86%", backgroundColor: "#123637" },
+  horizontalSigil: { position: "absolute", height: 1, width: "86%", backgroundColor: "#123637" },
+  scanSweep: { position: "absolute", top: 0, bottom: 0, width: 64, backgroundColor: "#7ddce422" },
   systemSigil: { color: "#7ddce4", fontSize: 30, letterSpacing: 6, fontFamily: "Inter_700Bold" },
   systemLine: { color: "#9d8f80", fontSize: 9, letterSpacing: 2.2, textTransform: "uppercase", marginTop: 10, fontFamily: "Inter_700Bold" },
+  riteProgressWrap: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  riteProgressTrack: { flex: 1, height: 6, backgroundColor: "#071110", borderWidth: 1, borderColor: "#123637", overflow: "hidden" },
+  riteProgressFill: { height: 6, backgroundColor: "#7ddce4" },
+  riteProgressText: { color: "#7ddce4", fontSize: 9, letterSpacing: 1.4, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   scanTrack: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 18 },
   scanStep: { borderWidth: 1, borderColor: "#26322f", backgroundColor: "#080a09", paddingHorizontal: 8, paddingVertical: 7 },
   scanStepActive: { borderColor: "#7ddce4", backgroundColor: "#071615" },
   scanStepDone: { borderColor: "#6b4d2f" },
   scanStepText: { color: "#6f6559", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   scanStepTextActive: { color: "#7ddce4" },
-  riteCard: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071110", padding: 14, marginTop: 12, marginBottom: 14 },
+  riteStageScroll: { maxHeight: "58%" },
+  riteStageContent: { paddingBottom: 4 },
+  riteCard: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071110", padding: 14, marginTop: 2, marginBottom: 8 },
   riteWhisper: { color: "#7ddce4", fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", fontFamily: "Inter_700Bold", marginBottom: 8 },
   riteTitle: { color: "#eee5d7", fontSize: 21, lineHeight: 28, fontFamily: "PlayfairDisplay_700Bold", marginBottom: 10 },
   riteBody: { color: "#b6aa9c", fontSize: 13, lineHeight: 20, fontFamily: "Inter_400Regular" },
   systemWarning: { borderWidth: 1, borderColor: "#6b2f28", backgroundColor: "#1a0b08", padding: 12, marginTop: 14 },
   systemWarningText: { color: "#f09983", fontSize: 11, letterSpacing: 1.6, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   systemWarningSub: { color: "#c8afa8", fontSize: 12, lineHeight: 18, marginTop: 5, fontFamily: "Inter_400Regular" },
-  riteNav: { gap: 10, marginTop: 2 },
+  riteNav: { gap: 10, marginTop: "auto" },
   riteNavBtn: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingVertical: 13, alignItems: "center" },
   riteNavPrimary: { borderWidth: 1, borderColor: "#8be2df", backgroundColor: "#49a3a0", paddingVertical: 14, alignItems: "center" },
   riteNavDisabled: { opacity: 0.45 },
