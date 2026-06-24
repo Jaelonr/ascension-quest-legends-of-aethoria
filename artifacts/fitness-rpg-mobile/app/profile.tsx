@@ -594,7 +594,7 @@ export default function ProfileScreen() {
         <View style={s.riteCard}>
           <Text style={s.riteWhisper}>IDENTITY THREAD REQUIRED</Text>
           <Text style={s.riteTitle}>Name the one who crossed.</Text>
-          <Field label="Adventurer Name" value={form.name} onChangeText={(v) => setField("name", v)} placeholder="Jaelon" suffix="" keyboardType="default" />
+          <Field label="Adventurer Name" value={form.name} onChangeText={(v) => setField("name", v)} placeholder="Adventurer" suffix="" keyboardType="default" />
           <Field label="Age" value={form.ageYears} onChangeText={(v) => setField("ageYears", v)} placeholder="30" suffix="years" />
           <Text style={s.groupLabel}>Sex</Text>
           <View style={s.optionRow}>
@@ -783,7 +783,7 @@ export default function ProfileScreen() {
 
   if (setupIncomplete && !isLoading && !playerLoading) {
     return (
-      <View style={[s.interrogationRoot, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+      <View style={[s.interrogationRoot, { paddingTop: insets.top + 12 }]}>
         <Animated.View pointerEvents="none" style={[s.transitionFlash, { opacity: transitionFlash }]} />
         <View style={s.riteHeader}>
           <TouchableOpacity onPress={() => router.back()}><Text style={s.back}>Back</Text></TouchableOpacity>
@@ -806,7 +806,7 @@ export default function ProfileScreen() {
           </View>
           <Text style={s.riteProgressText}>{scanStep + 1}/{scanSteps.length} SIGNALS</Text>
         </View>
-        <Animated.View style={{ opacity: scanOpacity, transform: [{ translateY: scanTranslate }] }}>
+        <Animated.View style={[s.riteQuestionPane, { opacity: scanOpacity, transform: [{ translateY: scanTranslate }] }]}>
           <Text style={s.kicker}>AWE RITE IN PROGRESS</Text>
           <Text style={s.title}>{currentScan.title}</Text>
           <Text style={s.subtitle}>Answer carefully. The System records facts; Aethoria will answer with consequences.</Text>
@@ -819,7 +819,7 @@ export default function ProfileScreen() {
             {renderInterrogationStep()}
           </ScrollView>
         </Animated.View>
-        <View style={s.riteNav}>
+        <View style={[s.riteNav, { paddingBottom: Math.max(insets.bottom, 46) }]}>
           <TouchableOpacity style={[s.riteNavBtn, scanStep === 0 && s.riteNavDisabled]} onPress={retreatScan} disabled={scanStep === 0}>
             <Text style={s.riteNavText}>Previous Signal</Text>
           </TouchableOpacity>
@@ -893,7 +893,7 @@ export default function ProfileScreen() {
               </View>
               <Text style={setupIncomplete ? s.openBadge : s.completeBadge}>{setupIncomplete ? "Open" : "Complete"}</Text>
             </View>
-            <Field label="Adventurer Name" value={form.name} onChangeText={(v) => setField("name", v)} placeholder="Jaelon" suffix="" keyboardType="default" />
+            <Field label="Adventurer Name" value={form.name} onChangeText={(v) => setField("name", v)} placeholder="Adventurer" suffix="" keyboardType="default" />
             <Field label="Age" value={form.ageYears} onChangeText={(v) => setField("ageYears", v)} placeholder="30" suffix="years" />
 
             <Text style={s.groupLabel}>Sex</Text>
@@ -1138,8 +1138,9 @@ const s = StyleSheet.create({
   scanStepDone: { borderColor: "#6b4d2f" },
   scanStepText: { color: "#6f6559", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   scanStepTextActive: { color: "#7ddce4" },
-  riteStageScroll: { maxHeight: "58%" },
-  riteStageContent: { paddingBottom: 4 },
+  riteQuestionPane: { flex: 1, minHeight: 0 },
+  riteStageScroll: { flex: 1 },
+  riteStageContent: { paddingBottom: 18 },
   riteCard: { borderWidth: 1, borderColor: "#235e66", backgroundColor: "#071110", padding: 14, marginTop: 2, marginBottom: 8 },
   riteWhisper: { color: "#7ddce4", fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", fontFamily: "Inter_700Bold", marginBottom: 8 },
   riteTitle: { color: "#eee5d7", fontSize: 21, lineHeight: 28, fontFamily: "PlayfairDisplay_700Bold", marginBottom: 10 },
@@ -1147,7 +1148,7 @@ const s = StyleSheet.create({
   systemWarning: { borderWidth: 1, borderColor: "#6b2f28", backgroundColor: "#1a0b08", padding: 12, marginTop: 14 },
   systemWarningText: { color: "#f09983", fontSize: 11, letterSpacing: 1.6, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   systemWarningSub: { color: "#c8afa8", fontSize: 12, lineHeight: 18, marginTop: 5, fontFamily: "Inter_400Regular" },
-  riteNav: { gap: 10, marginTop: "auto" },
+  riteNav: { gap: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#123637", backgroundColor: "#020403" },
   riteNavBtn: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingVertical: 13, alignItems: "center" },
   riteNavPrimary: { borderWidth: 1, borderColor: "#8be2df", backgroundColor: "#49a3a0", paddingVertical: 14, alignItems: "center" },
   riteNavDisabled: { opacity: 0.45 },
