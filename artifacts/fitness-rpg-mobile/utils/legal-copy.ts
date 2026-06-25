@@ -2,7 +2,7 @@ export const LEGAL_COPY = {
   privacy: {
     title: "Privacy Policy",
     body:
-      "Ascension Quest may store account details, training logs, nutrition entries, biometrics you enter, equipment access, imported health records, Guildmaster memories, and gameplay progression. This data powers commissions, rewards, Chronicle records, and practical guidance.",
+      "Ascension Quest may store account details, training logs, nutrition entries, biometrics you enter, equipment access, imported health records, Guildmaster memories, and gameplay progression. Android preview builds can import Samsung Health / Galaxy Watch records through Health Connect only after permission is granted. This data powers commissions, rewards, Chronicle records, and practical guidance.",
   },
   terms: {
     title: "Terms And Health Disclaimer",
@@ -17,7 +17,7 @@ export const LEGAL_COPY = {
   checklist: {
     title: "Configuration Checklist",
     body:
-      "Before launch: verify Clerk authentication, Google sign-in redirects, PostgreSQL migrations, OpenAI fallback behavior, mock-mode isolation, legal copy review, app versioning, and export/delete workflows.",
+      "Before launch: verify Clerk authentication, Google sign-in redirects, PostgreSQL migrations, OpenAI fallback behavior, mock-mode isolation, Android Health Connect permissions, legal copy review, app versioning, and export/delete workflows.",
   },
 } as const;
 

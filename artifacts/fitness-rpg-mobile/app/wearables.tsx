@@ -617,7 +617,7 @@ export default function WearablesScreen() {
           <View style={{ flex: 1 }}>
             <Text style={w.heroTitle}>{readinessLabel}</Text>
             <Text style={w.heroText}>
-              Manual health logging is live. Device sync is staged honestly so Samsung testing can be added without duplicate rewards or false claims.
+              Manual health logging is live. Samsung watch records can import through Health Connect with permission and duplicate protection.
             </Text>
           </View>
         </View>
@@ -734,7 +734,7 @@ export default function WearablesScreen() {
             <View style={w.emptyCard}>
               <Feather name="clipboard" size={20} color="#6b5d4f" />
               <Text style={w.emptyTitle}>No recovery records yet</Text>
-              <Text style={w.emptyText}>Log today's vitals manually while native Samsung import is prepared.</Text>
+              <Text style={w.emptyText}>Log today's vitals manually or sync Samsung Health through Health Connect above.</Text>
             </View>
           ) : (
             <View style={{ gap: 8 }}>

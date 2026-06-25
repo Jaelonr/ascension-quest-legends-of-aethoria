@@ -11,7 +11,7 @@ const copy = {
     sections: [
       ["Data collected", "Ascension Quest: Legends of Aethoria may store account details, training logs, nutrition entries, biometrics you enter, equipment access, wearable records you import, Guildmaster memories, and gameplay progression."],
       ["How data is used", "Data is used to personalize commissions, combat replays, Guildmaster guidance, rewards, and progress summaries."],
-      ["Wearables", "Native Apple Health and Health Connect collection is not active in this build. Manual logging is supported; future integrations should request explicit permission."],
+      ["Wearables", "Manual logging is supported on web and mobile. The Android preview build can request explicit Health Connect permission to import Samsung Health / Galaxy Watch records with duplicate protection. Apple Health, Garmin, Fitbit, and other direct integrations remain future work."],
       ["Production note", "Before real launch, this placeholder should be reviewed and replaced with counsel-approved policy language."],
     ],
   },
@@ -33,7 +33,7 @@ const copy = {
       ["Delete data", "A production deletion request should remove or anonymize personal records according to the final privacy policy and legal requirements."],
       ["Current status", "This page is a transparent placeholder. The backend deletion/export workflow still needs a launch-ready implementation."],
       ["Configuration checklist", "Before launch, verify Clerk authentication, PostgreSQL migrations, OpenAI fallback behavior, development mock isolation, legal copy review, app versioning, and production export/delete workflows."],
-      ["Health imports", "Apple Health and Health Connect remain coming-soon surfaces unless native permission collection and deduplication are fully implemented in the mobile build."],
+      ["Health imports", "Android Health Connect import is active in preview testing for Samsung-device workflows. Imported records are normalized and deduplicated before affecting readiness, commissions, or progress. Apple Health and direct Garmin/Fitbit integrations remain future work."],
     ],
   },
 };

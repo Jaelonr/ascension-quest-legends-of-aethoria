@@ -36,12 +36,12 @@ interface Summary {
 }
 
 const SOURCES = [
-  { id: "manual", label: "Manual Entry", icon: "✍️", available: true },
-  { id: "apple_health", label: "Apple Health", icon: "🍎", available: false },
-  { id: "health_connect", label: "Health Connect", icon: "🤖", available: false },
-  { id: "fitbit", label: "Fitbit", icon: "⌚", available: false },
-  { id: "garmin", label: "Garmin", icon: "🗺️", available: false },
-  { id: "samsung_health", label: "Samsung Health", icon: "📱", available: false },
+  { id: "manual", label: "Manual Entry", icon: "✍️", available: true, status: "Manual" },
+  { id: "apple_health", label: "Apple Health", icon: "🍎", available: false, status: "Later" },
+  { id: "health_connect", label: "Health Connect", icon: "🤖", available: true, status: "Android app" },
+  { id: "fitbit", label: "Fitbit", icon: "⌚", available: false, status: "Post V1" },
+  { id: "garmin", label: "Garmin", icon: "🗺️", available: false, status: "Post V1" },
+  { id: "samsung_health", label: "Samsung Health", icon: "📱", available: true, status: "Via Health Connect" },
 ] as const;
 
 function StatCard({
@@ -389,9 +389,9 @@ export default function Wearables() {
                   <div className="text-xs font-medium text-foreground/80 truncate">{source.label}</div>
                   <div className="flex items-center gap-1 mt-0.5">
                     {source.available ? (
-                      <><Wifi className="w-2.5 h-2.5 text-cyan-400" /><span className="text-[10px] text-cyan-400">Connect</span></>
+                      <><Wifi className="w-2.5 h-2.5 text-cyan-400" /><span className="text-[10px] text-cyan-400">{source.status}</span></>
                     ) : (
-                      <><WifiOff className="w-2.5 h-2.5 text-muted-foreground/40" /><span className="text-[10px] text-muted-foreground/40">Coming soon</span></>
+                      <><WifiOff className="w-2.5 h-2.5 text-muted-foreground/40" /><span className="text-[10px] text-muted-foreground/40">{source.status}</span></>
                     )}
                   </div>
                 </div>
@@ -399,7 +399,7 @@ export default function Wearables() {
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground/40 mt-2 text-center italic">
-            Manual entry is fully supported. Device sync integrations are planned for a future release.
+            Manual entry works on web. Samsung watch import is available in the Android preview through Samsung Health and Health Connect.
           </p>
         </div>
 
