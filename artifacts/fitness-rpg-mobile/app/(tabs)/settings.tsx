@@ -614,15 +614,15 @@ export default function SettingsScreen() {
           <Row
             icon="smartphone"
             label="Samsung Health"
-            description="Target device path for your testing. Native permissions and deduplication still need final integration."
-            right={<Text style={s.statusSoon}>Soon</Text>}
+            description="Current Android path: Galaxy Watch writes to Samsung Health, Samsung Health shares to Health Connect, Ascension Quest imports allowed records."
+            right={<Text style={s.statusGood}>Active</Text>}
             onPress={() => router.push("/wearables" as any)}
           />
           <Row
             icon="heart"
             label="Health Connect"
-            description="Android bridge for steps, sleep, workouts, and body metrics once permission handling is implemented."
-            right={<Text style={s.statusSoon}>Soon</Text>}
+            description="Request permissions, sync now, manage access, and delete imported health data."
+            right={<Text style={s.statusGood}>Ready</Text>}
             onPress={() => router.push("/wearables" as any)}
           />
           <Row

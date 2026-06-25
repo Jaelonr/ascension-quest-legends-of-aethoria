@@ -98,6 +98,16 @@ type HealthImportEvent = {
   recordType?: string;
 };
 
+type HealthConnectPermissionState = {
+  checked: boolean;
+  moduleAvailable: boolean;
+  sdkAvailable: boolean;
+  initialized: boolean;
+  grantedTypes: RecordType[];
+  lastCheckedAt: string | null;
+  error?: string;
+};
+
 const today = new Date().toISOString().slice(0, 10);
 
 const HEALTH_CONNECT_PERMISSIONS: Permission[] = [
@@ -109,6 +119,16 @@ const HEALTH_CONNECT_PERMISSIONS: Permission[] = [
   { accessType: "read", recordType: "Weight" },
   { accessType: "read", recordType: "ExerciseSession" },
 ];
+
+const HEALTH_CONNECT_RECORD_TYPES = [
+  "Steps",
+  "SleepSession",
+  "RestingHeartRate",
+  "HeartRateVariabilityRmssd",
+  "ActiveCaloriesBurned",
+  "ExerciseSession",
+  "Weight",
+] as const satisfies readonly RecordType[];
 
 const EMPTY_FORM: WearableForm = {
   date: today,
@@ -126,14 +146,14 @@ const CONNECTORS = [
   {
     id: "samsung_health",
     label: "Samsung Health",
-    status: "Via Health Connect",
+    status: "Active path",
     icon: "smartphone" as const,
-    body: "Best fit for your current devices. Galaxy Watch records should flow to Samsung Health first, then into Health Connect for Ascension Quest import.",
+    body: "Galaxy Watch records flow to Samsung Health first. Share them with Health Connect, then Ascension Quest can read them with permission.",
   },
   {
     id: "health_connect",
     label: "Health Connect",
-    status: "Sync ready",
+    status: "Connect",
     icon: "heart" as const,
     body: "Android permission layer for importing steps, sleep, active calories, workouts, HRV, resting heart rate, and weight with duplicate protection.",
   },
@@ -163,6 +183,40 @@ function formatEntrySource(source: string | null | undefined) {
   if (source === "apple_health") return "Apple Health";
   if (source === "manual") return "Manual";
   return source ? source.replace(/_/g, " ") : "Unknown";
+}
+
+function formatDiagnosticStatus(status: string | undefined) {
+  if (!status) return "not checked";
+  return status.replace(/_/g, " ");
+}
+
+function getGrantedRecordTypes(granted: Array<{ accessType?: string; recordType?: string }>) {
+  return new Set(
+    granted
+      .filter(
+        (permission) =>
+          permission.accessType === "read" &&
+          (HEALTH_CONNECT_RECORD_TYPES as readonly string[]).includes(permission.recordType ?? "")
+      )
+      .map((permission) => permission.recordType as RecordType)
+  );
+}
+
+function connectorStatusLabel(connectorId: string, healthState: HealthConnectPermissionState, syncing: boolean) {
+  if (connectorId === "samsung_health") {
+    if (!healthState.checked) return "Check path";
+    if (!healthState.moduleAvailable || !healthState.sdkAvailable) return "Setup needed";
+    if (!healthState.grantedTypes.length) return "Permission needed";
+    return "Sharing path";
+  }
+  if (connectorId === "health_connect") {
+    if (syncing) return "Syncing";
+    if (!healthState.checked) return "Check";
+    if (!healthState.moduleAvailable || !healthState.sdkAvailable) return "Unavailable";
+    if (!healthState.grantedTypes.length) return "Connect";
+    return "Sync ready";
+  }
+  return CONNECTORS.find((connector) => connector.id === connectorId)?.status ?? "Later";
 }
 
 const kgToLbs = (kg: number) => Math.round(kg * 2.20462 * 10) / 10;
@@ -449,6 +503,15 @@ export default function WearablesScreen() {
   const [status, setStatus] = useState<WearableStatus | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [unitSystem, setUnitSystem] = useState<Units>("imperial");
+  const [autoSynced, setAutoSynced] = useState(false);
+  const [healthConnectState, setHealthConnectState] = useState<HealthConnectPermissionState>({
+    checked: false,
+    moduleAvailable: false,
+    sdkAvailable: false,
+    initialized: false,
+    grantedTypes: [],
+    lastCheckedAt: null,
+  });
 
   const entryCount = summary?.entries?.length ?? 0;
   const readinessLabel = useMemo(() => {
@@ -482,6 +545,61 @@ export default function WearablesScreen() {
     }
   };
 
+  const setFormValue = (key: keyof WearableForm, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const checkHealthConnectPermissions = async () => {
+    const unavailableState: HealthConnectPermissionState = {
+      checked: true,
+      moduleAvailable: false,
+      sdkAvailable: false,
+      initialized: false,
+      grantedTypes: [],
+      lastCheckedAt: new Date().toISOString(),
+    };
+
+    const healthConnect = await getHealthConnectModule();
+    if (!healthConnect) {
+      setHealthConnectState(unavailableState);
+      return unavailableState;
+    }
+
+    try {
+      const sdkStatus = await healthConnect.getSdkStatus();
+      if (sdkStatus !== healthConnect.SdkAvailabilityStatus.SDK_AVAILABLE) {
+        const next = {
+          ...unavailableState,
+          moduleAvailable: true,
+        };
+        setHealthConnectState(next);
+        return next;
+      }
+
+      const initialized = await healthConnect.initialize();
+      const granted = initialized ? await healthConnect.getGrantedPermissions() : [];
+      const grantedTypes = Array.from(getGrantedRecordTypes(granted));
+      const next: HealthConnectPermissionState = {
+        checked: true,
+        moduleAvailable: true,
+        sdkAvailable: true,
+        initialized,
+        grantedTypes,
+        lastCheckedAt: new Date().toISOString(),
+      };
+      setHealthConnectState(next);
+      return next;
+    } catch (error) {
+      const next = {
+        ...unavailableState,
+        moduleAvailable: true,
+        error: error instanceof Error ? error.message : "Health Connect check failed.",
+      };
+      setHealthConnectState(next);
+      return next;
+    }
+  };
+
   useEffect(() => {
     loadMobileSettings()
       .then((settings) => setUnitSystem(settings.units))
@@ -491,10 +609,6 @@ export default function WearablesScreen() {
   useEffect(() => {
     loadData();
   }, [unitSystem]);
-
-  const setFormValue = (key: keyof WearableForm, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
 
   const handleSave = async () => {
     const body: Record<string, unknown> = {
@@ -536,17 +650,33 @@ export default function WearablesScreen() {
     }
   };
 
-  const handleHealthConnectSync = async () => {
+  const performHealthConnectSync = async ({
+    requestPermissions,
+    silent = false,
+  }: {
+    requestPermissions: boolean;
+    silent?: boolean;
+  }) => {
     setSyncMessage(null);
 
     const healthConnect = await getHealthConnectModule();
     if (!healthConnect) {
-      Alert.alert(
-        "Health Connect unavailable",
-        Platform.OS === "android"
-          ? "Install the newest Ascension Quest preview APK. Expo Go and older builds cannot read Health Connect."
-          : "Health Connect import is Android-only."
-      );
+      setHealthConnectState({
+        checked: true,
+        moduleAvailable: false,
+        sdkAvailable: false,
+        initialized: false,
+        grantedTypes: [],
+        lastCheckedAt: new Date().toISOString(),
+      });
+      if (!silent) {
+        Alert.alert(
+          "Health Connect unavailable",
+          Platform.OS === "android"
+            ? "Install the newest Ascension Quest preview APK. Expo Go and older builds cannot read Health Connect."
+            : "Health Connect import is Android-only."
+        );
+      }
       return;
     }
 
@@ -554,14 +684,25 @@ export default function WearablesScreen() {
     try {
       const status = await healthConnect.getSdkStatus();
       if (status !== healthConnect.SdkAvailabilityStatus.SDK_AVAILABLE) {
-        Alert.alert(
-          "Open Health Connect",
-          "Health Connect is not ready on this phone. Install or update it, then allow Samsung Health to share data there.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) },
-          ]
-        );
+        setHealthConnectState({
+          checked: true,
+          moduleAvailable: true,
+          sdkAvailable: false,
+          initialized: false,
+          grantedTypes: [],
+          lastCheckedAt: new Date().toISOString(),
+        });
+        setSyncMessage("Health Connect is not ready on this phone yet.");
+        if (!silent) {
+          Alert.alert(
+            "Open Health Connect",
+            "Health Connect is not ready on this phone. Install or update it, then allow Samsung Health to share data there.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) },
+            ]
+          );
+        }
         return;
       }
 
@@ -570,39 +711,40 @@ export default function WearablesScreen() {
         throw new Error("Health Connect could not initialize.");
       }
 
-      const granted = await healthConnect.requestPermission(HEALTH_CONNECT_PERMISSIONS);
-      const grantedTypes = new Set(
-        granted
-          .filter((permission): permission is Permission => "recordType" in permission && permission.accessType === "read")
-          .map((permission) => permission.recordType)
-      );
+      const granted = requestPermissions
+        ? await healthConnect.requestPermission(HEALTH_CONNECT_PERMISSIONS)
+        : await healthConnect.getGrantedPermissions();
+      const grantedTypes = getGrantedRecordTypes(granted);
+      setHealthConnectState({
+        checked: true,
+        moduleAvailable: true,
+        sdkAvailable: true,
+        initialized,
+        grantedTypes: Array.from(grantedTypes),
+        lastCheckedAt: new Date().toISOString(),
+      });
 
       if (!grantedTypes.size) {
-        setSyncMessage("No Health Connect read permissions were granted.");
-        Alert.alert(
-          "Permission needed",
-          "Ascension Quest cannot import Samsung/Health Connect records until at least one read permission is granted.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) },
-          ]
-        );
+        setSyncMessage("Health Connect is available, but Ascension Quest has no read permissions yet.");
+        if (!silent) {
+          Alert.alert(
+            "Permission needed",
+            "Ascension Quest cannot import Samsung/Health Connect records until at least one read permission is granted.",
+            [
+              { text: "Cancel", style: "cancel" },
+              requestPermissions
+                ? { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) }
+                : { text: "Connect", onPress: () => void performHealthConnectSync({ requestPermissions: true }) },
+            ]
+          );
+        }
         return;
       }
 
       const options = oneWeekWindow();
-      const recordTypes = [
-        "Steps",
-        "SleepSession",
-        "RestingHeartRate",
-        "HeartRateVariabilityRmssd",
-        "ActiveCaloriesBurned",
-        "ExerciseSession",
-        "Weight",
-      ] as const satisfies readonly RecordType[];
       const recordsByType: Record<string, any[]> = {};
 
-      for (const recordType of recordTypes) {
+      for (const recordType of HEALTH_CONNECT_RECORD_TYPES) {
         recordsByType[recordType] = grantedTypes.has(recordType)
           ? await readHealthConnectRecords(healthConnect, recordType, options)
           : [];
@@ -610,17 +752,19 @@ export default function WearablesScreen() {
 
       const events = buildHealthConnectEvents(recordsByType);
       const recordCountText = formatRecordCounts(recordsByType);
-      const permissionText = `${grantedTypes.size}/${recordTypes.length} permissions granted`;
+      const permissionText = `${grantedTypes.size}/${HEALTH_CONNECT_RECORD_TYPES.length} permissions granted`;
       if (!events.length) {
         setSyncMessage(`Health Connect is connected: ${permissionText}; found ${recordCountText} in the last seven days.`);
-        Alert.alert(
-          "No records found",
-          "Health Connect did not return supported records yet. Confirm Samsung Health is sharing watch data into Health Connect, then try again.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) },
-          ]
-        );
+        if (!silent) {
+          Alert.alert(
+            "No records found",
+            "Health Connect did not return supported records yet. Confirm Samsung Health is sharing watch data into Health Connect, then try again.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) },
+            ]
+          );
+        }
         return;
       }
 
@@ -643,14 +787,65 @@ export default function WearablesScreen() {
       const samsungText = samsungEvents > 0 ? ` ${samsungEvents} came from Samsung Health through Health Connect.` : "";
       const message = `${permissionText}; found ${recordCountText}. Imported ${result.imported} record${result.imported === 1 ? "" : "s"}; ${result.duplicates} already in the ledger.${samsungText}`;
       setSyncMessage(message);
-      Alert.alert("Health Connect synced", message);
+      if (!silent) {
+        Alert.alert("Health Connect synced", message);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "The import did not complete.";
       setSyncMessage("Health Connect sync failed. Check permissions and try again.");
-      Alert.alert("Sync failed", message);
+      if (!silent) {
+        Alert.alert("Sync failed", message);
+      }
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handleHealthConnectSync = async () => {
+    await performHealthConnectSync({ requestPermissions: healthConnectState.grantedTypes.length === 0 });
+  };
+
+  useEffect(() => {
+    let active = true;
+    checkHealthConnectPermissions()
+      .then((next) => {
+        if (!active || autoSynced || !next.grantedTypes.length) return;
+        setAutoSynced(true);
+        void performHealthConnectSync({ requestPermissions: false, silent: true });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [autoSynced]);
+
+  const healthConnectGrantedCount = healthConnectState.grantedTypes.length;
+  const healthConnectPrimaryLabel = syncing
+    ? "Syncing"
+    : !healthConnectState.checked
+      ? "Check"
+      : !healthConnectState.moduleAvailable || !healthConnectState.sdkAvailable
+        ? "Set Up"
+        : healthConnectGrantedCount === 0
+          ? "Connect"
+          : "Sync Now";
+  const healthConnectDiagnostic = !healthConnectState.checked
+    ? "not checked"
+    : !healthConnectState.moduleAvailable
+      ? "native module unavailable in this build"
+      : !healthConnectState.sdkAvailable
+        ? "Health Connect unavailable or not updated on device"
+        : healthConnectGrantedCount === 0
+          ? "permission required on device"
+          : `${healthConnectGrantedCount}/${HEALTH_CONNECT_RECORD_TYPES.length} read permissions granted`;
+  const hasHealthConnectAccess = healthConnectState.moduleAvailable && healthConnectState.sdkAvailable && healthConnectGrantedCount > 0;
+
+  const handleConnectorPress = async (connectorId: string) => {
+    if (connectorId === "health_connect" || connectorId === "samsung_health") {
+      await handleHealthConnectSync();
+      return;
+    }
+    Alert.alert("Later integration", "This source is not part of the current Android/Samsung testing path yet.");
   };
 
   const disconnectHealthConnect = async () => {
@@ -712,7 +907,7 @@ export default function WearablesScreen() {
           <View style={{ flex: 1 }}>
             <Text style={w.heroTitle}>{readinessLabel}</Text>
             <Text style={w.heroText}>
-              Manual health logging is live. Samsung watch records can import through Health Connect with permission and duplicate protection.
+              Wearable import is optional. Grant Health Connect access to let Galaxy Watch records enter the Guild ledger automatically when the app opens or when you sync.
             </Text>
           </View>
         </View>
@@ -817,37 +1012,47 @@ export default function WearablesScreen() {
             {[
               "Galaxy Watch records the activity.",
               "Samsung Health receives the watch data.",
-              "Health Connect is allowed to read Samsung Health.",
-              "Ascension Quest reads Health Connect and updates the Guild ledger.",
+              "Samsung Health shares supported records with Health Connect.",
+              "Ascension Quest reads allowed Health Connect records and updates the Guild ledger.",
             ].map((step, index) => (
               <View key={step} style={w.setupStep}>
                 <Text style={w.setupIndex}>{index + 1}</Text>
                 <Text style={w.setupText}>{step}</Text>
               </View>
             ))}
-            <TouchableOpacity style={w.settingsBtn} onPress={openHealthConnectSettings} activeOpacity={0.84}>
-              <Feather name="settings" size={14} color="#d9ad63" />
-              <Text style={w.settingsBtnText}>Open Health Connect Settings</Text>
-            </TouchableOpacity>
+            <View style={w.setupActions}>
+              <TouchableOpacity style={w.settingsBtn} onPress={handleHealthConnectSync} activeOpacity={0.84}>
+                <Feather name={hasHealthConnectAccess ? "refresh-cw" : "heart"} size={14} color="#d9ad63" />
+                <Text style={w.settingsBtnText}>{hasHealthConnectAccess ? "Sync Health Connect" : "Connect Health Connect"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={w.secondarySettingsBtn} onPress={openHealthConnectSettings} activeOpacity={0.84}>
+                <Feather name="settings" size={14} color="#8f887d" />
+                <Text style={w.secondarySettingsBtnText}>Manage Access</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={w.syncPanel}>
             <View style={{ flex: 1 }}>
-              <Text style={w.syncTitle}>Samsung Watch Import</Text>
+              <Text style={w.syncTitle}>{hasHealthConnectAccess ? "Samsung Watch Import" : "Connect Wearable Import"}</Text>
               <Text style={w.syncText}>
-                Sync Galaxy Watch data into Samsung Health, share it with Health Connect, then draw it into the Guild ledger.
+                {hasHealthConnectAccess
+                  ? "Ascension Quest can read allowed Health Connect records. Tap sync to pull the latest Samsung Health data into the Guild ledger."
+                  : "Grant Health Connect read access so Ascension Quest can use Samsung Health records from your Galaxy Watch."}
               </Text>
               {syncMessage ? <Text style={w.syncMessage}>{syncMessage}</Text> : null}
             </View>
             <TouchableOpacity style={[w.syncBtn, syncing && w.disabled]} onPress={handleHealthConnectSync} disabled={syncing} activeOpacity={0.84}>
               {syncing ? <ActivityIndicator color="#0a0908" /> : <Feather name="refresh-cw" size={15} color="#0a0908" />}
-              <Text style={w.syncBtnText}>{syncing ? "Syncing" : "Sync"}</Text>
+              <Text style={w.syncBtnText}>{healthConnectPrimaryLabel}</Text>
             </TouchableOpacity>
           </View>
           <View style={w.diagnosticCard}>
             <Text style={w.diagnosticTitle}>Import diagnostics</Text>
-            <Text style={w.diagnosticText}>Status: {status?.diagnostics?.healthConnect?.status?.replace(/_/g, " ") ?? "not checked"}</Text>
+            <Text style={w.diagnosticText}>Health Connect: {healthConnectDiagnostic}</Text>
+            <Text style={w.diagnosticText}>Ledger status: {formatDiagnosticStatus(status?.diagnostics?.healthConnect?.status)}</Text>
             <Text style={w.diagnosticText}>Sources: {status?.sources?.length ? status.sources.map(formatEntrySource).join(", ") : "none yet"}</Text>
             <Text style={w.diagnosticText}>Imported receipts: {status?.importCount ?? 0}</Text>
+            <Text style={w.diagnosticText}>Last checked: {healthConnectState.lastCheckedAt ? new Date(healthConnectState.lastCheckedAt).toLocaleString() : "not checked"}</Text>
             <TouchableOpacity style={[w.disconnectBtn, disconnecting && w.disabled]} onPress={disconnectHealthConnect} disabled={disconnecting} activeOpacity={0.84}>
               <Feather name="trash-2" size={14} color="#d95f45" />
               <Text style={w.disconnectText}>{disconnecting ? "Removing..." : "Disconnect and delete imported health data"}</Text>
@@ -855,20 +1060,20 @@ export default function WearablesScreen() {
           </View>
           <View style={w.connectorGrid}>
             {CONNECTORS.map((connector) => (
-              <View key={connector.id} style={w.connectorCard}>
+              <TouchableOpacity key={connector.id} style={w.connectorCard} activeOpacity={0.84} onPress={() => handleConnectorPress(connector.id)}>
                 <View style={w.connectorHeader}>
                   <View style={w.connectorIcon}>
                     <Feather name={connector.icon} size={17} color="#d9ad63" />
                   </View>
-                  <Text style={w.connectorStatus}>{connector.status}</Text>
+                  <Text style={w.connectorStatus}>{connectorStatusLabel(connector.id, healthConnectState, syncing)}</Text>
                 </View>
                 <Text style={w.connectorTitle}>{connector.label}</Text>
                 <Text style={w.connectorBody}>{connector.body}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
           <Text style={w.disclaimer}>
-            Native imports must normalize source identifiers and deduplicate records before steps, workouts, or sleep can affect progression.
+            Imported records are normalized by source and deduplicated before steps, workouts, or sleep affect progression.
           </Text>
         </View>
 
@@ -987,8 +1192,11 @@ const w = StyleSheet.create({
   setupStep: { flexDirection: "row", alignItems: "flex-start", gap: 9, marginTop: 7 },
   setupIndex: { width: 20, height: 20, color: "#0a0908", backgroundColor: "#d9ad63", textAlign: "center", textAlignVertical: "center", fontSize: 11, fontFamily: "Inter_700Bold", overflow: "hidden" },
   setupText: { flex: 1, color: "#d8c4a5", fontSize: 11, lineHeight: 16 },
+  setupActions: { gap: 8, marginTop: 12 },
   settingsBtn: { minHeight: 40, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", marginTop: 12 },
   settingsBtnText: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  secondarySettingsBtn: { minHeight: 38, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09" },
+  secondarySettingsBtnText: { color: "#8f887d", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
   syncPanel: {
     flexDirection: "row",
     alignItems: "center",

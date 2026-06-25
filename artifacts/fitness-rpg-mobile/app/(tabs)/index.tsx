@@ -620,14 +620,11 @@ export default function HallScreen() {
       >
         {/* Header */}
         <View style={s.headerRow}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={s.hallLabel}>GUILD HALL - AETHORIA</Text>
             <Text style={s.hallTitle}>Guild Hall</Text>
             <Text style={s.hallSub}>Train. Fuel. Recover. Endure.</Text>
           </View>
-          <TouchableOpacity style={s.aldricBtn} onPress={() => setAldricOpen(true)}>
-            <Text style={s.aldricBtnText}>Aldric</Text>
-          </TouchableOpacity>
         </View>
 
         {isLoading ? (
@@ -810,8 +807,6 @@ const s = StyleSheet.create({
   hallLabel: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", fontFamily: "Inter_400Regular", textTransform: "uppercase" },
   hallTitle: { fontSize: 22, fontWeight: "900", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
   hallSub: { fontSize: 10, letterSpacing: 2, color: "#9f9586", fontFamily: "Inter_400Regular", textTransform: "uppercase", marginTop: 2 },
-  aldricBtn: { borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#15130f", paddingHorizontal: 12, paddingVertical: 6 },
-  aldricBtnText: { color: "#d9ad63", fontSize: 12, fontWeight: "700", fontFamily: "Inter_700Bold" },
   card: { borderWidth: 1, borderRadius: 0, padding: 14 },
   loadingBlock: { minHeight: 240, borderWidth: 1, borderColor: "#514332", backgroundColor: "#11100e", alignItems: "center", justifyContent: "center", gap: 12 },
   loadingText: { color: "#9d8f80", fontSize: 12, fontFamily: "Inter_400Regular" },
