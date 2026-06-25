@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { Permission, ReadRecordsOptions, RecordType } from "react-native-health-connect";
 
 type WearableEntry = {
   id: number;
@@ -52,7 +53,33 @@ type WearableForm = {
   notes: string;
 };
 
+type HealthConnectModule = typeof import("react-native-health-connect");
+
+type HealthImportEvent = {
+  externalId: string;
+  recordedAt: string;
+  steps?: number;
+  sleepHours?: number;
+  hrv?: number;
+  restingHr?: number;
+  caloriesBurned?: number;
+  activeMinutes?: number;
+  weight?: number;
+  provider?: string;
+  recordType?: string;
+};
+
 const today = new Date().toISOString().slice(0, 10);
+
+const HEALTH_CONNECT_PERMISSIONS: Permission[] = [
+  { accessType: "read", recordType: "Steps" },
+  { accessType: "read", recordType: "SleepSession" },
+  { accessType: "read", recordType: "RestingHeartRate" },
+  { accessType: "read", recordType: "HeartRateVariabilityRmssd" },
+  { accessType: "read", recordType: "ActiveCaloriesBurned" },
+  { accessType: "read", recordType: "Weight" },
+  { accessType: "read", recordType: "ExerciseSession" },
+];
 
 const EMPTY_FORM: WearableForm = {
   date: today,
@@ -70,16 +97,16 @@ const CONNECTORS = [
   {
     id: "samsung_health",
     label: "Samsung Health",
-    status: "Target path",
+    status: "Via Health Connect",
     icon: "smartphone" as const,
-    body: "Best fit for your current devices. Requires native permission collection, Health Connect/Samsung data mapping, and duplicate protection before it can award progress.",
+    body: "Best fit for your current devices. Galaxy Watch records should flow to Samsung Health first, then into Health Connect for Ascension Quest import.",
   },
   {
     id: "health_connect",
     label: "Health Connect",
-    status: "Android bridge",
+    status: "Sync ready",
     icon: "heart" as const,
-    body: "The likely Android permission layer for steps, sleep, workouts, calories, and body metrics once native integration is wired.",
+    body: "Android permission layer for importing steps, sleep, active calories, workouts, HRV, resting heart rate, and weight with duplicate protection.",
   },
   {
     id: "apple_health",
@@ -103,6 +130,167 @@ function toField(value: number | null | undefined) {
 
 const kgToLbs = (kg: number) => Math.round(kg * 2.20462 * 10) / 10;
 const lbsToKg = (lbs: number) => Math.round((lbs / 2.20462) * 100) / 100;
+const msToHours = (ms: number) => Math.round((ms / 1000 / 60 / 60) * 100) / 100;
+const msToMinutes = (ms: number) => Math.max(1, Math.round(ms / 1000 / 60));
+
+function getRecordId(record: any, fallback: string) {
+  return String(record?.metadata?.id ?? record?.metadata?.clientRecordId ?? fallback);
+}
+
+function getRecordEndTime(record: any) {
+  return String(record?.endTime ?? record?.time ?? new Date().toISOString());
+}
+
+function getRecordStartTime(record: any) {
+  return String(record?.startTime ?? record?.time ?? getRecordEndTime(record));
+}
+
+function getSamsungProvider(record: any) {
+  const origin = String(record?.metadata?.dataOrigin ?? "").toLowerCase();
+  return origin.includes("samsung") ? "samsung_health_via_health_connect" : "health_connect";
+}
+
+function durationMs(record: any) {
+  const start = Date.parse(getRecordStartTime(record));
+  const end = Date.parse(getRecordEndTime(record));
+  return Number.isFinite(start) && Number.isFinite(end) && end > start ? end - start : 0;
+}
+
+function oneWeekWindow(): ReadRecordsOptions {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 7);
+  return {
+    timeRangeFilter: {
+      operator: "between",
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+    },
+    ascendingOrder: true,
+    pageSize: 100,
+  };
+}
+
+async function getHealthConnectModule(): Promise<HealthConnectModule | null> {
+  if (Platform.OS !== "android") return null;
+  try {
+    return await import("react-native-health-connect");
+  } catch {
+    return null;
+  }
+}
+
+async function readHealthConnectRecords(module: HealthConnectModule, recordType: RecordType, options: ReadRecordsOptions) {
+  const records: any[] = [];
+  let pageToken: string | undefined;
+  do {
+    try {
+      const result = await module.readRecords(recordType, { ...options, pageToken });
+      records.push(...((result as { records?: any[] }).records ?? []));
+      pageToken = (result as { pageToken?: string }).pageToken;
+    } catch {
+      pageToken = undefined;
+    }
+  } while (pageToken && records.length < 500);
+  return records;
+}
+
+function buildHealthConnectEvents(recordsByType: Record<string, any[]>) {
+  const events: HealthImportEvent[] = [];
+
+  for (const record of recordsByType.Steps ?? []) {
+    const steps = Number(record?.count ?? 0);
+    if (steps > 0) {
+      events.push({
+        externalId: `health-connect:steps:${getRecordId(record, `${getRecordStartTime(record)}:${getRecordEndTime(record)}`)}`,
+        recordedAt: getRecordEndTime(record),
+        steps: Math.round(steps),
+        provider: getSamsungProvider(record),
+        recordType: "Steps",
+      });
+    }
+  }
+
+  for (const record of recordsByType.SleepSession ?? []) {
+    const sleepHours = msToHours(durationMs(record));
+    if (sleepHours > 0) {
+      events.push({
+        externalId: `health-connect:sleep:${getRecordId(record, `${getRecordStartTime(record)}:${getRecordEndTime(record)}`)}`,
+        recordedAt: getRecordEndTime(record),
+        sleepHours,
+        provider: getSamsungProvider(record),
+        recordType: "SleepSession",
+      });
+    }
+  }
+
+  for (const record of recordsByType.RestingHeartRate ?? []) {
+    const restingHr = Number(record?.beatsPerMinute ?? 0);
+    if (restingHr > 0) {
+      events.push({
+        externalId: `health-connect:resting-hr:${getRecordId(record, getRecordEndTime(record))}`,
+        recordedAt: getRecordEndTime(record),
+        restingHr: Math.round(restingHr),
+        provider: getSamsungProvider(record),
+        recordType: "RestingHeartRate",
+      });
+    }
+  }
+
+  for (const record of recordsByType.HeartRateVariabilityRmssd ?? []) {
+    const hrv = Number(record?.heartRateVariabilityMillis ?? 0);
+    if (hrv > 0) {
+      events.push({
+        externalId: `health-connect:hrv:${getRecordId(record, getRecordEndTime(record))}`,
+        recordedAt: getRecordEndTime(record),
+        hrv: Math.round(hrv),
+        provider: getSamsungProvider(record),
+        recordType: "HeartRateVariabilityRmssd",
+      });
+    }
+  }
+
+  for (const record of recordsByType.ActiveCaloriesBurned ?? []) {
+    const caloriesBurned = Number(record?.energy?.inKilocalories ?? 0);
+    if (caloriesBurned > 0) {
+      events.push({
+        externalId: `health-connect:active-calories:${getRecordId(record, `${getRecordStartTime(record)}:${getRecordEndTime(record)}`)}`,
+        recordedAt: getRecordEndTime(record),
+        caloriesBurned: Math.round(caloriesBurned),
+        provider: getSamsungProvider(record),
+        recordType: "ActiveCaloriesBurned",
+      });
+    }
+  }
+
+  for (const record of recordsByType.ExerciseSession ?? []) {
+    const activeMinutes = msToMinutes(durationMs(record));
+    if (activeMinutes > 0) {
+      events.push({
+        externalId: `health-connect:exercise:${getRecordId(record, `${getRecordStartTime(record)}:${getRecordEndTime(record)}`)}`,
+        recordedAt: getRecordEndTime(record),
+        activeMinutes,
+        provider: getSamsungProvider(record),
+        recordType: "ExerciseSession",
+      });
+    }
+  }
+
+  for (const record of recordsByType.Weight ?? []) {
+    const weight = Number(record?.weight?.inKilograms ?? 0);
+    if (weight > 0) {
+      events.push({
+        externalId: `health-connect:weight:${getRecordId(record, getRecordEndTime(record))}`,
+        recordedAt: getRecordEndTime(record),
+        weight,
+        provider: getSamsungProvider(record),
+        recordType: "Weight",
+      });
+    }
+  }
+
+  return events.slice(0, 500);
+}
 
 function buildForm(entry: WearableEntry | null): WearableForm {
   if (!entry) return EMPTY_FORM;
@@ -191,6 +379,8 @@ export default function WearablesScreen() {
   const [form, setForm] = useState<WearableForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [unitSystem, setUnitSystem] = useState<Units>("imperial");
 
@@ -276,6 +466,96 @@ export default function WearablesScreen() {
       Alert.alert("Could not save", "The recovery record did not reach the Guild ledger.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleHealthConnectSync = async () => {
+    setSyncMessage(null);
+
+    const healthConnect = await getHealthConnectModule();
+    if (!healthConnect) {
+      Alert.alert(
+        "Health Connect unavailable",
+        Platform.OS === "android"
+          ? "Install the newest Ascension Quest preview APK. Expo Go and older builds cannot read Health Connect."
+          : "Health Connect import is Android-only."
+      );
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const status = await healthConnect.getSdkStatus();
+      if (status !== healthConnect.SdkAvailabilityStatus.SDK_AVAILABLE) {
+        Alert.alert(
+          "Open Health Connect",
+          "Health Connect is not ready on this phone. Install or update it, then allow Samsung Health to share data there.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => healthConnect.openHealthConnectSettings() },
+          ]
+        );
+        return;
+      }
+
+      const initialized = await healthConnect.initialize();
+      if (!initialized) {
+        throw new Error("Health Connect could not initialize.");
+      }
+
+      const granted = await healthConnect.requestPermission(HEALTH_CONNECT_PERMISSIONS);
+      const grantedTypes = new Set(
+        granted
+          .filter((permission): permission is Permission => "recordType" in permission && permission.accessType === "read")
+          .map((permission) => permission.recordType)
+      );
+
+      if (!grantedTypes.size) {
+        Alert.alert("Permission needed", "Ascension Quest cannot import Samsung/Health Connect records until at least one read permission is granted.");
+        return;
+      }
+
+      const options = oneWeekWindow();
+      const recordTypes = [
+        "Steps",
+        "SleepSession",
+        "RestingHeartRate",
+        "HeartRateVariabilityRmssd",
+        "ActiveCaloriesBurned",
+        "ExerciseSession",
+        "Weight",
+      ] as const satisfies readonly RecordType[];
+      const recordsByType: Record<string, any[]> = {};
+
+      for (const recordType of recordTypes) {
+        recordsByType[recordType] = grantedTypes.has(recordType)
+          ? await readHealthConnectRecords(healthConnect, recordType, options)
+          : [];
+      }
+
+      const events = buildHealthConnectEvents(recordsByType);
+      if (!events.length) {
+        setSyncMessage("Health Connect is connected, but no supported records were found from the last seven days.");
+        Alert.alert("No records found", "Health Connect did not return supported steps, sleep, calories, workouts, HRV, resting heart rate, or weight records yet.");
+        return;
+      }
+
+      const result = await customFetch<{ imported: number; duplicates: number; total: number }>("/api/health/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "health_connect", events }),
+      });
+
+      await loadData();
+      const message = `Imported ${result.imported} record${result.imported === 1 ? "" : "s"}; ${result.duplicates} already in the ledger.`;
+      setSyncMessage(message);
+      Alert.alert("Health Connect synced", message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The import did not complete.";
+      setSyncMessage("Health Connect sync failed. Check permissions and try again.");
+      Alert.alert("Sync failed", message);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -378,6 +658,19 @@ export default function WearablesScreen() {
 
         <View style={w.sectionBlock}>
           <Text style={w.sectionTitle}>Device Sync</Text>
+          <View style={w.syncPanel}>
+            <View style={{ flex: 1 }}>
+              <Text style={w.syncTitle}>Samsung Watch Import</Text>
+              <Text style={w.syncText}>
+                Sync Galaxy Watch data into Samsung Health, share it with Health Connect, then draw it into the Guild ledger.
+              </Text>
+              {syncMessage ? <Text style={w.syncMessage}>{syncMessage}</Text> : null}
+            </View>
+            <TouchableOpacity style={[w.syncBtn, syncing && w.disabled]} onPress={handleHealthConnectSync} disabled={syncing} activeOpacity={0.84}>
+              {syncing ? <ActivityIndicator color="#0a0908" /> : <Feather name="refresh-cw" size={15} color="#0a0908" />}
+              <Text style={w.syncBtnText}>{syncing ? "Syncing" : "Sync"}</Text>
+            </TouchableOpacity>
+          </View>
           <View style={w.connectorGrid}>
             {CONNECTORS.map((connector) => (
               <View key={connector.id} style={w.connectorCard}>
@@ -495,6 +788,31 @@ const w = StyleSheet.create({
   statusGood: { color: "#4ade80", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   statusSoon: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   connectorGrid: { gap: 8 },
+  syncPanel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#4b3d2d",
+    backgroundColor: "#14120f",
+    padding: 12,
+    marginBottom: 10,
+  },
+  syncTitle: { color: "#eee5d7", fontSize: 14, fontFamily: "Inter_700Bold" },
+  syncText: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
+  syncMessage: { color: "#49a3a0", fontSize: 11, lineHeight: 16, marginTop: 7 },
+  syncBtn: {
+    minWidth: 82,
+    minHeight: 42,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#d9ad63",
+    borderWidth: 1,
+    borderColor: "#f0c77a",
+  },
+  syncBtnText: { color: "#0a0908", fontSize: 12, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
   connectorCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12 },
   connectorHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   connectorIcon: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09" },
