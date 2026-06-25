@@ -292,6 +292,22 @@ function buildHealthConnectEvents(recordsByType: Record<string, any[]>) {
   return events.slice(0, 500);
 }
 
+function formatRecordCounts(recordsByType: Record<string, any[]>) {
+  const labels: Record<string, string> = {
+    Steps: "steps",
+    SleepSession: "sleep",
+    RestingHeartRate: "resting HR",
+    HeartRateVariabilityRmssd: "HRV",
+    ActiveCaloriesBurned: "calories",
+    ExerciseSession: "workouts",
+    Weight: "weight",
+  };
+  const found = Object.entries(recordsByType)
+    .filter(([, records]) => records.length > 0)
+    .map(([recordType, records]) => `${records.length} ${labels[recordType] ?? recordType}`);
+  return found.length ? found.join(", ") : "no supported records";
+}
+
 function buildForm(entry: WearableEntry | null): WearableForm {
   if (!entry) return EMPTY_FORM;
   return {
@@ -511,7 +527,15 @@ export default function WearablesScreen() {
       );
 
       if (!grantedTypes.size) {
-        Alert.alert("Permission needed", "Ascension Quest cannot import Samsung/Health Connect records until at least one read permission is granted.");
+        setSyncMessage("No Health Connect read permissions were granted.");
+        Alert.alert(
+          "Permission needed",
+          "Ascension Quest cannot import Samsung/Health Connect records until at least one read permission is granted.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => healthConnect.openHealthConnectSettings() },
+          ]
+        );
         return;
       }
 
@@ -534,9 +558,18 @@ export default function WearablesScreen() {
       }
 
       const events = buildHealthConnectEvents(recordsByType);
+      const recordCountText = formatRecordCounts(recordsByType);
+      const permissionText = `${grantedTypes.size}/${recordTypes.length} permissions granted`;
       if (!events.length) {
-        setSyncMessage("Health Connect is connected, but no supported records were found from the last seven days.");
-        Alert.alert("No records found", "Health Connect did not return supported steps, sleep, calories, workouts, HRV, resting heart rate, or weight records yet.");
+        setSyncMessage(`Health Connect is connected: ${permissionText}; found ${recordCountText} in the last seven days.`);
+        Alert.alert(
+          "No records found",
+          "Health Connect did not return supported records yet. Confirm Samsung Health is sharing watch data into Health Connect, then try again.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => healthConnect.openHealthConnectSettings() },
+          ]
+        );
         return;
       }
 
@@ -547,7 +580,9 @@ export default function WearablesScreen() {
       });
 
       await loadData();
-      const message = `Imported ${result.imported} record${result.imported === 1 ? "" : "s"}; ${result.duplicates} already in the ledger.`;
+      const samsungEvents = events.filter((event) => event.provider === "samsung_health_via_health_connect").length;
+      const samsungText = samsungEvents > 0 ? ` ${samsungEvents} came from Samsung Health through Health Connect.` : "";
+      const message = `${permissionText}; found ${recordCountText}. Imported ${result.imported} record${result.imported === 1 ? "" : "s"}; ${result.duplicates} already in the ledger.${samsungText}`;
       setSyncMessage(message);
       Alert.alert("Health Connect synced", message);
     } catch (error) {
