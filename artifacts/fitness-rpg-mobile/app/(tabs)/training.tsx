@@ -41,6 +41,17 @@ const EVIDENCE_OUTCOMES: Array<{ icon: keyof typeof Feather.glyphMap; title: str
   { icon: "check-circle", title: "Commission Proof", text: "Relevant work advances today's Guild duty.", color: "#7cc79b" },
 ];
 
+const TRAINING_TYPES: Array<{ goal: string; title: string; text: string; icon: keyof typeof Feather.glyphMap; color: string }> = [
+  { goal: "commission", title: "Commission Duty", text: "Generate field work for today's Guild need.", icon: "flag", color: "#d9ad63" },
+  { goal: "strength", title: "Strength", text: "Heavy work, compounds, carries, and force.", icon: "shield", color: "#ef4444" },
+  { goal: "hypertrophy", title: "Hypertrophy", text: "Volume, muscle, and controlled working sets.", icon: "layers", color: "#f97316" },
+  { goal: "conditioning", title: "Conditioning", text: "Cardio, endurance, intervals, and steps.", icon: "activity", color: "#0dcef5" },
+  { goal: "striking", title: "Striking", text: "Bag work, footwork, timing, and rounds.", icon: "zap", color: "#a855f7" },
+  { goal: "grappling", title: "Grappling", text: "Mat work, control, sprawls, and carries.", icon: "anchor", color: "#c084fc" },
+  { goal: "mobility", title: "Mobility", text: "Range, breath, tissue care, and recovery.", icon: "wind", color: "#7cc79b" },
+  { goal: "skill_practice", title: "Skill Practice", text: "Technique-first combat practice.", icon: "crosshair", color: "#49a3a0" },
+];
+
 function IconBox({ name, color = "#d9ad63" }: { name: keyof typeof Feather.glyphMap; color?: string }) {
   return (
     <View style={s.iconBox}>
@@ -82,6 +93,10 @@ export default function TrainingScreen() {
         onError: () => Alert.alert("Error", "Could not start session. Try again."),
       }
     );
+  };
+
+  const openGeneratedType = (goal: string) => {
+    router.push(`/training/planner?goal=${goal}&autoGenerate=1` as any);
   };
 
   const isLoading = loadingTemplates || loadingSessions;
@@ -162,6 +177,27 @@ export default function TrainingScreen() {
               )}
             </View>
           )}
+
+          <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>CHOOSE TRAINING TYPE</Text>
+          <View style={s.typeGrid}>
+            {TRAINING_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type.goal}
+                style={[s.typeCard, { borderColor: type.color + "55" }]}
+                onPress={() => openGeneratedType(type.goal)}
+                activeOpacity={0.82}
+              >
+                <View style={[s.typeIcon, { borderColor: type.color + "66" }]}>
+                  <Feather name={type.icon} size={15} color={type.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.typeTitle, { color: type.color }]}>{type.title}</Text>
+                  <Text style={s.typeText}>{type.text}</Text>
+                </View>
+                <Text style={s.typeAction}>Generate</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
           <View style={s.actionGrid}>
             <TouchableOpacity style={s.actionCard} activeOpacity={0.8} onPress={() => router.push("/training/program" as any)}>
@@ -373,6 +409,12 @@ const s = StyleSheet.create({
   taskRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10 },
   taskText: { flex: 1, color: "#d8c4a5", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
   taskCount: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold" },
+  typeGrid: { gap: 9, marginBottom: 16 },
+  typeCard: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, backgroundColor: "#11100e", padding: 12 },
+  typeIcon: { width: 34, height: 34, borderWidth: 1, backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
+  typeTitle: { fontSize: 14, fontFamily: "PlayfairDisplay_700Bold", fontWeight: "900" },
+  typeText: { color: "#8f887d", fontSize: 11, lineHeight: 15, marginTop: 2, fontFamily: "Inter_400Regular" },
+  typeAction: { color: "#d8c4a5", fontSize: 10, textTransform: "uppercase", fontFamily: "Inter_700Bold", letterSpacing: 1.2 },
   actionGrid: { gap: 10, marginBottom: 16 },
   actionCard: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14 },
   actionTitle: { color: "#eee5d7", fontSize: 14, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },

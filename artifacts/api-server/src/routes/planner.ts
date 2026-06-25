@@ -43,7 +43,7 @@ interface PlanExercise {
   recommendedWeightKg?: number | null;
 }
 
-type WorkoutGoal = "strength" | "hypertrophy" | "conditioning" | "striking" | "grappling" | "recovery" | "back_friendly_lower";
+type WorkoutGoal = "strength" | "hypertrophy" | "conditioning" | "striking" | "grappling" | "recovery" | "mobility" | "skill_practice" | "commission" | "back_friendly_lower";
 
 const GOAL_CONFIGS: Record<WorkoutGoal, {
   label: string;
@@ -136,6 +136,42 @@ const GOAL_CONFIGS: Record<WorkoutGoal, {
     warmupNotes: "Light mobility work and dynamic stretching for 5 minutes.",
     finisherNotes: "5-minute static stretch. Focus on whatever is tightest.",
   },
+  mobility: {
+    label: "Restoration Protocol (Mobility)",
+    category: "recovery",
+    mainSets: 2, mainReps: "45-60 sec", mainRpe: 4.5,
+    accessorySets: 2, accessoryReps: "8-12 slow reps", accessoryRpe: 4,
+    rest: 45, accessoryRest: 45,
+    xpBase: 90, estimatedMinutes: 30,
+    targetMuscles: ["Mobility", "Core", "Glutes", "Shoulders"],
+    categories: ["bodyweight"],
+    warmupNotes: "Move slowly enough that breathing stays calm.",
+    finisherNotes: "Close with 3 minutes of quiet nasal breathing.",
+  },
+  skill_practice: {
+    label: "Skill Practice Protocol",
+    category: "mixed",
+    mainSets: 5, mainReps: "2 min practice", mainRpe: 6.5,
+    accessorySets: 3, accessoryReps: "quality reps", accessoryRpe: 6,
+    rest: 60, accessoryRest: 60,
+    xpBase: 150, estimatedMinutes: 40,
+    targetMuscles: ["Cardio", "Core", "Back"],
+    categories: ["martial_arts", "bodyweight", "cardio"],
+    warmupNotes: "Technique comes before fatigue. Keep the first rounds clean.",
+    finisherNotes: "Final round is quality under fatigue, not a brawl.",
+  },
+  commission: {
+    label: "Commission Duty Protocol",
+    category: "mixed",
+    mainSets: 4, mainReps: "8-12 or 2 min", mainRpe: 7,
+    accessorySets: 3, accessoryReps: "10-15", accessoryRpe: 6.5,
+    rest: 90, accessoryRest: 60,
+    xpBase: 175, estimatedMinutes: 45,
+    targetMuscles: ["Legs", "Back", "Cardio", "Core"],
+    categories: ["bodyweight", "cardio", "dumbbell", "martial_arts"],
+    warmupNotes: "Prepare for the commission without empty bravado.",
+    finisherNotes: "Close with the task that best proves the commission's purpose.",
+  },
   back_friendly_lower: {
     label: "Back-Friendly Lower (No Axial Load)",
     category: "strength",
@@ -150,6 +186,161 @@ const GOAL_CONFIGS: Record<WorkoutGoal, {
     finisherNotes: "Single-leg work to close — Bulgarian split squats or step-ups.",
   },
 };
+
+const DEFAULT_EQUIPMENT_CATALOG = [
+  ["Power Rack", "rack", "power_rack rack barbell strength"],
+  ["Squat Rack", "rack", "squat_rack rack barbell strength"],
+  ["Smith Machine", "machine", "smith_machine machine strength"],
+  ["Barbell", "barbell", "barbell plates strength"],
+  ["Dumbbells", "free_weights", "dumbbells adjustable_dumbbells strength hypertrophy"],
+  ["Kettlebells", "free_weights", "kettlebells carries conditioning"],
+  ["Adjustable Bench", "bench", "adjustable_bench flat_bench incline_bench bench"],
+  ["Cable Machine", "cable", "cable_machine functional_trainer cable lat_pulldown"],
+  ["Leg Press", "machine", "leg_press hack_squat belt_squat legs"],
+  ["Pull-Up Bar", "other", "pull_up_bar dip_station bodyweight back"],
+  ["Resistance Bands", "other", "resistance_bands bands mobility recovery"],
+  ["Treadmill", "cardio", "treadmill run walk conditioning"],
+  ["Bike", "cardio", "bike cycling conditioning"],
+  ["Rower", "cardio", "rower rowing conditioning"],
+  ["Elliptical", "cardio", "elliptical conditioning"],
+  ["Stair Climber", "cardio", "stair_climber conditioning legs"],
+  ["Jump Rope", "cardio", "jump_rope conditioning footwork"],
+  ["Heavy Bag", "striking", "heavy_bag fightcamp striking boxing"],
+  ["Speed Bag", "striking", "speed_bag double_end_bag striking timing"],
+  ["Wrestling Mat", "mat", "wrestling_mat grappling mat"],
+  ["Yoga Mat", "mat", "yoga_mat mobility recovery bodyweight"],
+  ["Medicine Ball", "other", "medicine_ball slam_ball core power"],
+  ["Sled", "other", "sled conditioning strength"],
+  ["Battle Ropes", "other", "battle_ropes conditioning"],
+  ["Foam Roller", "other", "foam_roller recovery mobility"],
+] as const;
+
+const SEEDED_EXERCISES = [
+  ["Back Squat", "Legs", "barbell", "Brace, descend under control, drive through midfoot.", ["barbell", "power_rack", "squat_rack"]],
+  ["Front Squat", "Legs", "barbell", "Keep torso tall and elbows high.", ["barbell", "power_rack", "squat_rack"]],
+  ["Romanian Deadlift", "Hamstrings", "barbell", "Hinge at the hips and keep lats tight.", ["barbell"]],
+  ["Deadlift", "Back", "barbell", "Brace hard before the pull.", ["barbell", "plates"]],
+  ["Bench Press", "Chest", "barbell", "Control the descent and press with stable shoulders.", ["barbell", "flat_bench"]],
+  ["Overhead Press", "Shoulders", "barbell", "Brace ribs down and press overhead.", ["barbell"]],
+  ["Barbell Row", "Back", "barbell", "Pull elbows toward hips.", ["barbell"]],
+  ["Smith Machine Squat", "Legs", "machine", "Use a steady stance and controlled depth.", ["smith_machine"]],
+  ["Leg Press", "Legs", "machine", "Control the sled and avoid locking knees hard.", ["leg_press"]],
+  ["Hack Squat", "Legs", "machine", "Keep hips and back set against the pad.", ["hack_squat"]],
+  ["Lat Pulldown", "Back", "cable", "Pull elbows down and keep chest tall.", ["lat_pulldown", "cable_machine"]],
+  ["Cable Row", "Back", "cable", "Pause each rep with shoulder blades back.", ["cable_machine", "functional_trainer"]],
+  ["Cable Chest Press", "Chest", "cable", "Press forward with even control.", ["cable_machine", "functional_trainer"]],
+  ["Dumbbell Bench Press", "Chest", "dumbbell", "Move through a controlled range.", ["dumbbells", "adjustable_dumbbells", "flat_bench"]],
+  ["Incline Dumbbell Press", "Chest", "dumbbell", "Drive smoothly without flaring elbows.", ["dumbbells", "adjustable_dumbbells", "incline_bench", "adjustable_bench"]],
+  ["Dumbbell Row", "Back", "dumbbell", "Pull toward your hip and pause.", ["dumbbells", "adjustable_dumbbells"]],
+  ["Goblet Squat", "Legs", "dumbbell", "Sit between the hips and stay tall.", ["dumbbells", "adjustable_dumbbells", "kettlebells"]],
+  ["Dumbbell Romanian Deadlift", "Hamstrings", "dumbbell", "Hinge with control and keep weights close.", ["dumbbells", "adjustable_dumbbells"]],
+  ["Dumbbell Shoulder Press", "Shoulders", "dumbbell", "Press without arching hard.", ["dumbbells", "adjustable_dumbbells"]],
+  ["Kettlebell Swing", "Glutes", "dumbbell", "Snap hips; do not squat the bell.", ["kettlebells"]],
+  ["Farmer Carry", "Core", "dumbbell", "Walk tall with heavy hands and quiet steps.", ["dumbbells", "adjustable_dumbbells", "kettlebells"]],
+  ["Push-Up", "Chest", "bodyweight", "Keep a straight line and full control.", []],
+  ["Bodyweight Squat", "Legs", "bodyweight", "Control depth and tempo.", []],
+  ["Reverse Lunge", "Legs", "bodyweight", "Step back softly and drive through front foot.", []],
+  ["Glute Bridge", "Glutes", "bodyweight", "Pause at the top without overextending.", []],
+  ["Plank", "Core", "bodyweight", "Brace and breathe.", []],
+  ["Side Plank", "Core", "bodyweight", "Keep hips tall and steady.", []],
+  ["Mountain Climber", "Core", "bodyweight", "Move knees fast while shoulders stay stacked.", []],
+  ["Burpee", "Cardio", "bodyweight", "Move with rhythm; scale as needed.", []],
+  ["Bear Crawl", "Core", "bodyweight", "Crawl low with quiet hips.", []],
+  ["Pull-Up", "Back", "bodyweight", "Pull chest toward bar with control.", ["pull_up_bar"]],
+  ["Band Pull-Apart", "Shoulders", "bodyweight", "Open the chest and squeeze shoulder blades.", ["resistance_bands"]],
+  ["Band Face Pull", "Shoulders", "bodyweight", "Pull toward eyes with elbows high.", ["resistance_bands"]],
+  ["Treadmill Walk", "Cardio", "cardio", "Walk at an honest pace you can sustain.", ["treadmill"]],
+  ["Incline Treadmill Walk", "Cardio", "cardio", "Use incline for steady effort without sprinting.", ["treadmill"]],
+  ["Treadmill Intervals", "Cardio", "cardio", "Alternate controlled hard efforts with recovery.", ["treadmill"]],
+  ["Stationary Bike", "Cardio", "cardio", "Keep cadence smooth.", ["bike"]],
+  ["Bike Intervals", "Cardio", "cardio", "Push short hard intervals with full control.", ["bike"]],
+  ["Rowing Machine", "Cardio", "cardio", "Drive legs, swing hips, pull arms.", ["rower"]],
+  ["Elliptical Tempo", "Cardio", "cardio", "Sustain smooth effort without impact.", ["elliptical"]],
+  ["Stair Climber", "Cardio", "cardio", "Step tall and steady.", ["stair_climber"]],
+  ["Jump Rope Rounds", "Cardio", "cardio", "Keep jumps low and wrists relaxed.", ["jump_rope"]],
+  ["Sled Push", "Legs", "cardio", "Drive powerfully with a neutral spine.", ["sled"]],
+  ["Battle Rope Waves", "Arms", "cardio", "Keep ribs down and waves even.", ["battle_ropes"]],
+  ["Shadow Boxing", "Cardio", "martial_arts", "Work footwork, guard, and clean punches.", []],
+  ["Heavy Bag Rounds", "Cardio", "martial_arts", "Strike with structure, not wild effort.", ["heavy_bag", "fightcamp"]],
+  ["Jab-Cross Footwork", "Cardio", "martial_arts", "Step after combinations and reset guard.", ["heavy_bag", "fightcamp"]],
+  ["Hook-Cross Rounds", "Cardio", "martial_arts", "Rotate hips and protect the return.", ["heavy_bag", "fightcamp"]],
+  ["Speed Bag Timing", "Cardio", "martial_arts", "Relax shoulders and keep rhythm.", ["speed_bag"]],
+  ["Double-End Bag Defense", "Cardio", "martial_arts", "Slip, reset, and answer cleanly.", ["double_end_bag"]],
+  ["Sprawls", "Core", "martial_arts", "Drop hips back and recover stance.", ["wrestling_mat", "yoga_mat"]],
+  ["Hip Escapes", "Core", "martial_arts", "Make space with hips, not panic.", ["wrestling_mat", "yoga_mat"]],
+  ["Bridges", "Glutes", "martial_arts", "Bridge through feet and shoulders.", ["wrestling_mat", "yoga_mat"]],
+  ["Technical Stand-Up", "Core", "martial_arts", "Protect yourself while standing.", ["wrestling_mat", "yoga_mat"]],
+  ["Pummeling Drill", "Back", "martial_arts", "Hand fight for inside control.", ["wrestling_mat"]],
+  ["Shot Entries", "Legs", "martial_arts", "Step deep, level change, recover stance.", ["wrestling_mat"]],
+  ["Dead Bug", "Core", "bodyweight", "Brace while limbs move slowly.", []],
+  ["Bird Dog", "Core", "bodyweight", "Reach long without rotating.", []],
+  ["Cat Cow", "Core", "bodyweight", "Move spine gently through range.", ["yoga_mat"]],
+  ["World's Greatest Stretch", "Mobility", "bodyweight", "Open hips, hamstrings, and thoracic spine.", ["yoga_mat"]],
+  ["Hip Flexor Stretch", "Mobility", "bodyweight", "Tuck pelvis and breathe.", ["yoga_mat"]],
+  ["Couch Stretch", "Mobility", "bodyweight", "Scale intensity and breathe.", ["yoga_mat"]],
+  ["Thoracic Open Book", "Mobility", "bodyweight", "Rotate gently through upper back.", ["yoga_mat"]],
+  ["Foam Roll Quads", "Mobility", "bodyweight", "Slow pressure, no rushing.", ["foam_roller"]],
+  ["Foam Roll Upper Back", "Mobility", "bodyweight", "Roll slowly and breathe.", ["foam_roller"]],
+] as const;
+
+function normalizeKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+async function ensurePlannerCatalog() {
+  const existingEquipment = await db.select().from(equipmentTable);
+  const existingEquipmentNames = new Set(existingEquipment.map((item) => item.name));
+  const missingEquipment = DEFAULT_EQUIPMENT_CATALOG
+    .filter(([name]) => !existingEquipmentNames.has(name))
+    .map(([name, category, notes]) => ({
+      name,
+      category: category as any,
+      description: `${name} available for the Guild planner.`,
+      owned: true,
+      available: true,
+      notes,
+    }));
+  if (missingEquipment.length > 0) {
+    await db.insert(equipmentTable).values(missingEquipment);
+  }
+
+  const allEquipment = await db.select().from(equipmentTable);
+  const equipmentByKey = new Map<string, number>();
+  for (const item of allEquipment) {
+    const haystack = `${item.name} ${item.category} ${item.notes ?? ""}`.toLowerCase();
+    for (const [name, category, notes] of DEFAULT_EQUIPMENT_CATALOG) {
+      const keys = `${name} ${category} ${notes}`.split(/\s+/).map(normalizeKey);
+      if (keys.some((key) => key && haystack.includes(key))) {
+        for (const key of keys) equipmentByKey.set(key, item.id);
+      }
+    }
+    equipmentByKey.set(normalizeKey(item.name), item.id);
+    equipmentByKey.set(normalizeKey(item.category), item.id);
+  }
+
+  const existingExercises = await db.select({ name: exercisesTable.name }).from(exercisesTable);
+  const existingExerciseNames = new Set(existingExercises.map((item) => item.name));
+  const missingExercises = SEEDED_EXERCISES
+    .filter(([name]) => !existingExerciseNames.has(name))
+    .map(([name, muscleGroup, category, instructions, equipmentKeys]) => ({
+      name,
+      muscleGroup,
+      category: category as any,
+      instructions,
+      equipmentIds: [...new Set(equipmentKeys.map((key) => equipmentByKey.get(normalizeKey(key))).filter((id): id is number => Boolean(id)))],
+    }));
+  if (missingExercises.length > 0) {
+    await db.insert(exercisesTable).values(missingExercises);
+  }
+}
+
+function equipmentMatchesProfile(equipment: any, profileEquipmentTypes: string[]) {
+  if (profileEquipmentTypes.length === 0) return equipment.owned && equipment.available;
+  const selected = new Set(profileEquipmentTypes.map(normalizeKey));
+  if (selected.size === 1 && selected.has("bodyweight")) return false;
+  const haystack = `${equipment.name} ${equipment.category} ${equipment.notes ?? ""}`.toLowerCase();
+  return [...selected].some((key) => haystack.includes(key));
+}
 
 function pickExercises(
   all: any[],
@@ -204,6 +395,7 @@ function buildSubstitutes(exercise: any, all: any[], availableEquipmentIds: Set<
 
 router.post("/training/planner/generate", async (req, res) => {
   try {
+    await ensurePlannerCatalog();
     const { player, stats } = await getOrCreatePlayer(req.userId);
     const {
       goal,
@@ -219,11 +411,12 @@ router.post("/training/planner/generate", async (req, res) => {
       customNotes?: string;
     };
 
-    if (!GOAL_CONFIGS[goal]) {
+    const requestedGoal = GOAL_CONFIGS[goal] ? goal : "commission";
+    if (!GOAL_CONFIGS[requestedGoal]) {
       return void res.status(400).json({ error: `Unknown goal. Valid: ${Object.keys(GOAL_CONFIGS).join(", ")}` });
     }
 
-    const config = GOAL_CONFIGS[goal];
+    const config = GOAL_CONFIGS[requestedGoal];
 
     // Load biometrics for weight recommendations
     const [bioRow] = await db.select().from(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, player.id));
@@ -238,9 +431,10 @@ router.post("/training/planner/generate", async (req, res) => {
 
     // Get available equipment — use biometrics equipmentTypes to pre-filter if set
     const allEquipment = await db.select().from(equipmentTable);
+    const profileEquipmentTypes = (bioRow?.equipmentTypes ?? []).map(normalizeKey);
     const availableIds = new Set(
       allEquipment
-        .filter(e => e.owned && e.available && !excludeEquipmentIds.includes(e.id))
+        .filter(e => equipmentMatchesProfile(e, profileEquipmentTypes) && !excludeEquipmentIds.includes(e.id))
         .map(e => e.id)
     );
 
@@ -249,19 +443,19 @@ router.post("/training/planner/generate", async (req, res) => {
     const avoidAll = [...avoidMuscleGroups, ...(config.avoidMuscles || [])];
 
     // Warmup: 2-3 bodyweight / light movements
-    const warmupExercises = pickExercises(allExercises, availableIds, goal, 2, ["Core", "Cardio"], avoidAll, ["bodyweight", "cardio"]);
+    const warmupExercises = pickExercises(allExercises, availableIds, requestedGoal, 2, ["Core", "Cardio", "Mobility"], avoidAll, ["bodyweight", "cardio"]);
 
     // Main: 2-4 compound movements
-    const mainExercises = pickExercises(allExercises, availableIds, goal, 3, config.targetMuscles, avoidAll, config.categories);
+    const mainExercises = pickExercises(allExercises, availableIds, requestedGoal, 3, config.targetMuscles, avoidAll, config.categories);
 
     // Accessories: 3-4 isolation / secondary
     const usedIds = new Set([...warmupExercises, ...mainExercises].map(e => e.id));
     const accessoryPool = allExercises.filter(e => !usedIds.has(e.id));
-    const accessoryExercises = pickExercises(accessoryPool, availableIds, goal, 3, config.targetMuscles, avoidAll);
+    const accessoryExercises = pickExercises(accessoryPool, availableIds, requestedGoal, 3, config.targetMuscles, avoidAll);
 
     // Finisher: 1 high-intensity close
     const finisherPool = allExercises.filter(e => !usedIds.has(e.id) && !accessoryExercises.find(a => a.id === e.id));
-    const finisher = pickExercises(finisherPool, availableIds, goal, 1, ["Cardio", "Core"], avoidAll, ["bodyweight", "cardio", "martial_arts"]);
+    const finisher = pickExercises(finisherPool, availableIds, requestedGoal, 1, ["Cardio", "Core", "Mobility"], avoidAll, ["bodyweight", "cardio", "martial_arts"]);
 
     const plan: PlanExercise[] = [];
 
@@ -328,7 +522,7 @@ router.post("/training/planner/generate", async (req, res) => {
 
     res.json({
       planName: config.label,
-      goal,
+      goal: requestedGoal,
       estimatedDuration: config.estimatedMinutes,
       xpPreview,
       totalSets,
@@ -342,6 +536,13 @@ router.post("/training/planner/generate", async (req, res) => {
       injuryNotes: injuryNotes[goal] || null,
       customNotes: customNotes || null,
       availableEquipmentCount: availableIds.size,
+      equipmentUsed: allEquipment
+        .filter((item) => availableIds.has(item.id))
+        .map((item) => item.name)
+        .slice(0, 12),
+      equipmentFallbackNote: availableIds.size === 0
+        ? "No matching equipment was found in your profile, so the System generated a bodyweight-safe session."
+        : null,
       generatedFor: {
         level: player.level,
         rank: player.rank,
@@ -373,7 +574,12 @@ router.post("/training/planner/save", async (req, res) => {
 
     const [template] = await db.insert(workoutTemplatesTable).values({
       name: planName,
-      category: goal === "striking" ? "striking" : goal === "grappling" ? "grappling" : goal === "conditioning" ? "conditioning" : goal === "recovery" ? "recovery" : "strength",
+      category: goal === "striking" ? "striking"
+        : goal === "grappling" ? "grappling"
+          : goal === "conditioning" ? "conditioning"
+            : goal === "recovery" || goal === "mobility" ? "recovery"
+              : goal === "skill_practice" || goal === "commission" ? "mixed"
+                : "strength",
       description: `Generated plan — ${goal} focus`,
       exercises: templateExercises,
       estimatedDuration,
