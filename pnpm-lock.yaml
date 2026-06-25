@@ -527,6 +527,9 @@ importers:
       '@babel/core':
         specifier: ^7.25.2
         version: 7.29.0
+      '@expo/config-plugins':
+        specifier: ~54.0.4
+        version: 54.0.4
       '@types/react':
         specifier: ~19.1.10
         version: 19.1.17
