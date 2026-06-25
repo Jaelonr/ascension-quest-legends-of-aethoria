@@ -200,6 +200,13 @@ router.post("/health/import", async (req, res) => {
   if (events.length === 0 || events.length > 500) {
     return void res.status(400).json({ error: "events must contain between 1 and 500 records" });
   }
+  const samsungHealthEvents = events.filter((event) => event.provider === "samsung_health_via_health_connect").length;
+  const healthConnectEvents = events.length - samsungHealthEvents;
+  const recordTypes = events.reduce<Record<string, number>>((counts, event) => {
+    const key = event.recordType ?? "Unknown";
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
   try {
     const { player } = await getOrCreatePlayer(req.userId!);
     let imported = 0;
@@ -256,7 +263,7 @@ router.post("/health/import", async (req, res) => {
         }
       }
     });
-    res.json({ source, imported, duplicates, total: events.length });
+    res.json({ source, imported, duplicates, total: events.length, samsungHealthEvents, healthConnectEvents, recordTypes });
   } catch (error) {
     req.log.error(error, "health import error");
     res.status(400).json({ error: error instanceof Error ? error.message : "Failed to import health data" });

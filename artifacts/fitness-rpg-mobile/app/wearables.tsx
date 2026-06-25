@@ -573,14 +573,21 @@ export default function WearablesScreen() {
         return;
       }
 
-      const result = await customFetch<{ imported: number; duplicates: number; total: number }>("/api/health/import", {
+      const result = await customFetch<{
+        imported: number;
+        duplicates: number;
+        total: number;
+        samsungHealthEvents?: number;
+        healthConnectEvents?: number;
+        recordTypes?: Record<string, number>;
+      }>("/api/health/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "health_connect", events }),
       });
 
       await loadData();
-      const samsungEvents = events.filter((event) => event.provider === "samsung_health_via_health_connect").length;
+      const samsungEvents = result.samsungHealthEvents ?? events.filter((event) => event.provider === "samsung_health_via_health_connect").length;
       const samsungText = samsungEvents > 0 ? ` ${samsungEvents} came from Samsung Health through Health Connect.` : "";
       const message = `${permissionText}; found ${recordCountText}. Imported ${result.imported} record${result.imported === 1 ? "" : "s"}; ${result.duplicates} already in the ledger.${samsungText}`;
       setSyncMessage(message);

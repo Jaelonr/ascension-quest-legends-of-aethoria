@@ -1056,7 +1056,21 @@ router.get("/character/summary", (_req, res) => {
 
 router.post("/health/import", (req, res) => {
   const events = Array.isArray(req.body?.events) ? req.body.events : [];
-  res.json({ source: req.body?.source ?? "health_connect", imported: events.length, duplicates: 0, total: events.length });
+  const samsungHealthEvents = events.filter((event: any) => event?.provider === "samsung_health_via_health_connect").length;
+  const recordTypes: Record<string, number> = events.reduce((counts: Record<string, number>, event: any) => {
+    const key = event?.recordType ?? "Unknown";
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
+  res.json({
+    source: req.body?.source ?? "health_connect",
+    imported: events.length,
+    duplicates: 0,
+    total: events.length,
+    samsungHealthEvents,
+    healthConnectEvents: events.length - samsungHealthEvents,
+    recordTypes,
+  });
 });
 
 export default router;
