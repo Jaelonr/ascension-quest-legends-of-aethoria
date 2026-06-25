@@ -128,6 +128,14 @@ function toField(value: number | null | undefined) {
   return value == null ? "" : String(value);
 }
 
+function formatEntrySource(source: string | null | undefined) {
+  if (source === "samsung_health") return "Samsung Health";
+  if (source === "health_connect") return "Health Connect";
+  if (source === "apple_health") return "Apple Health";
+  if (source === "manual") return "Manual";
+  return source ? source.replace(/_/g, " ") : "Unknown";
+}
+
 const kgToLbs = (kg: number) => Math.round(kg * 2.20462 * 10) / 10;
 const lbsToKg = (lbs: number) => Math.round((lbs / 2.20462) * 100) / 100;
 const msToHours = (ms: number) => Math.round((ms / 1000 / 60 / 60) * 100) / 100;
@@ -790,7 +798,7 @@ export default function WearablesScreen() {
                     <Text style={w.historyDate}>
                       {new Date(`${entry.date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </Text>
-                    <Text style={w.historySource}>{entry.source}</Text>
+                    <Text style={w.historySource}>{formatEntrySource(entry.source)}</Text>
                   </View>
                   <View style={w.historyValues}>
                     {entry.steps != null ? <Text style={w.historyValue}>Steps {entry.steps.toLocaleString()}</Text> : null}
