@@ -601,6 +601,24 @@ export default function WearablesScreen() {
     }
   };
 
+  const openHealthConnectSettings = async () => {
+    const healthConnect = await getHealthConnectModule();
+    if (!healthConnect) {
+      Alert.alert(
+        "Health Connect unavailable",
+        Platform.OS === "android"
+          ? "Install the newest Ascension Quest preview APK. Expo Go and older builds cannot open Health Connect settings."
+          : "Health Connect settings are Android-only."
+      );
+      return;
+    }
+    try {
+      await healthConnect.openHealthConnectSettings();
+    } catch {
+      Alert.alert("Could not open settings", "Open Android Settings, find Health Connect, then allow Samsung Health and Ascension Quest to share the supported records.");
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={w.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView
@@ -700,6 +718,27 @@ export default function WearablesScreen() {
 
         <View style={w.sectionBlock}>
           <Text style={w.sectionTitle}>Device Sync</Text>
+          <View style={w.setupCard}>
+            <View style={w.setupHeader}>
+              <Feather name="smartphone" size={16} color="#49a3a0" />
+              <Text style={w.setupTitle}>Samsung setup path</Text>
+            </View>
+            {[
+              "Galaxy Watch records the activity.",
+              "Samsung Health receives the watch data.",
+              "Health Connect is allowed to read Samsung Health.",
+              "Ascension Quest reads Health Connect and updates the Guild ledger.",
+            ].map((step, index) => (
+              <View key={step} style={w.setupStep}>
+                <Text style={w.setupIndex}>{index + 1}</Text>
+                <Text style={w.setupText}>{step}</Text>
+              </View>
+            ))}
+            <TouchableOpacity style={w.settingsBtn} onPress={openHealthConnectSettings} activeOpacity={0.84}>
+              <Feather name="settings" size={14} color="#d9ad63" />
+              <Text style={w.settingsBtnText}>Open Health Connect Settings</Text>
+            </TouchableOpacity>
+          </View>
           <View style={w.syncPanel}>
             <View style={{ flex: 1 }}>
               <Text style={w.syncTitle}>Samsung Watch Import</Text>
@@ -830,6 +869,14 @@ const w = StyleSheet.create({
   statusGood: { color: "#4ade80", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   statusSoon: { color: "#d9ad63", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   connectorGrid: { gap: 8 },
+  setupCard: { borderWidth: 1, borderColor: "#345f5d", backgroundColor: "#071111", padding: 12, marginBottom: 10 },
+  setupHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  setupTitle: { color: "#49a3a0", fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  setupStep: { flexDirection: "row", alignItems: "flex-start", gap: 9, marginTop: 7 },
+  setupIndex: { width: 20, height: 20, color: "#0a0908", backgroundColor: "#d9ad63", textAlign: "center", textAlignVertical: "center", fontSize: 11, fontFamily: "Inter_700Bold", overflow: "hidden" },
+  setupText: { flex: 1, color: "#d8c4a5", fontSize: 11, lineHeight: 16 },
+  settingsBtn: { minHeight: 40, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", marginTop: 12 },
+  settingsBtnText: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
   syncPanel: {
     flexDirection: "row",
     alignItems: "center",
