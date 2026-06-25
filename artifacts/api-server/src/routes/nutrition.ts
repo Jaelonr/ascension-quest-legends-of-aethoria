@@ -1,11 +1,17 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import {
-  nutritionLogsTable, nutritionTargetsTable, savedMealsTable, weightEntriesTable, playerBiometricsTable
+  nutritionLogsTable, nutritionTargetsTable, savedMealsTable, weightEntriesTable, playerBiometricsTable, wearableEntriesTable
 } from "@workspace/db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { getOrCreatePlayer } from "./player";
 import { searchFoodMacroDatabase, type FoodMacroItem } from "../data/food-macro-database";
+import {
+  SYSTEM_CITATIONS,
+  confidencePercent,
+  createSystemRecommendation,
+  type SystemConfidenceLevel,
+} from "../system-recommendations";
 
 const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   sedentary: 1.2,
@@ -41,6 +47,161 @@ function calcTargets(params: {
   return { calories, protein: Math.max(protein, 80), carbs: Math.max(carbs, 50), fat: Math.max(fat, 30) };
 }
 
+function calcMaintenance(params: {
+  sex: "male" | "female" | "other";
+  ageYears: number;
+  heightCm: number;
+  weightKg: number;
+  activityLevel: string;
+}) {
+  const { sex, ageYears, heightCm, weightKg, activityLevel } = params;
+  const maleBmr = 10 * weightKg + 6.25 * heightCm - 5 * ageYears + 5;
+  const femaleBmr = 10 * weightKg + 6.25 * heightCm - 5 * ageYears - 161;
+  const bmr = sex === "male" ? maleBmr : sex === "female" ? femaleBmr : (maleBmr + femaleBmr) / 2;
+  return Math.round(bmr * (ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.55));
+}
+
+function weightToKg(weight: number, unit: string | null | undefined) {
+  return unit === "kg" ? weight : weight / 2.20462;
+}
+
+function avg(values: number[]) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+}
+
+function goalAdjustment(goal: string | null | undefined) {
+  if (goal === "lose") return -400;
+  if (goal === "gain") return 250;
+  return 0;
+}
+
+async function buildNutritionSystemAnalysis(playerId: number, target: typeof nutritionTargetsTable.$inferSelect) {
+  const [bio] = await db.select().from(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, playerId)).limit(1);
+  const since = new Date();
+  since.setDate(since.getDate() - 28);
+  const sinceStr = since.toISOString().split("T")[0];
+  const [weights, logs, wearables] = await Promise.all([
+    db.select().from(weightEntriesTable)
+      .where(and(eq(weightEntriesTable.playerId, playerId), gte(weightEntriesTable.date, sinceStr)))
+      .orderBy(weightEntriesTable.date),
+    db.select().from(nutritionLogsTable)
+      .where(and(eq(nutritionLogsTable.playerId, playerId), gte(nutritionLogsTable.date, sinceStr))),
+    db.select().from(wearableEntriesTable)
+      .where(and(eq(wearableEntriesTable.playerId, playerId), gte(wearableEntriesTable.date, sinceStr))),
+  ]);
+
+  const sex = target.sex ?? "other";
+  const ageYears = target.ageYears ?? null;
+  const heightCm = bio?.heightCm ?? null;
+  const weightKg = bio?.weightKg ?? (weights[0] ? weightToKg(weights[0].weight, weights[0].unit) : null);
+  const activityLevel = target.activityLevel ?? "moderate";
+  const goal = target.weightGoal ?? "maintain";
+  const dailyCalories = Object.values(logs.reduce<Record<string, number>>((days, log) => {
+    days[log.date] = (days[log.date] ?? 0) + log.calories;
+    return days;
+  }, {}));
+  const avgLoggedCalories = avg(dailyCalories);
+  const avgSteps = avg(wearables.map((entry) => entry.steps ?? 0).filter((value) => value > 0));
+  const avgActiveMinutes = avg(wearables.map((entry) => entry.activeMinutes ?? 0).filter((value) => value > 0));
+  const firstWeight = weights[0] ? weightToKg(weights[0].weight, weights[0].unit) : null;
+  const lastWeight = weights[weights.length - 1] ? weightToKg(weights[weights.length - 1].weight, weights[weights.length - 1].unit) : null;
+  const daysBetweenWeights = weights.length >= 2
+    ? Math.max(1, (Date.parse(weights[weights.length - 1].date) - Date.parse(weights[0].date)) / 86400000)
+    : 0;
+  const weeklyWeightChangeKg = firstWeight != null && lastWeight != null && daysBetweenWeights > 0
+    ? ((lastWeight - firstWeight) / daysBetweenWeights) * 7
+    : null;
+
+  let estimatedMaintenance: number | null = null;
+  if (ageYears && heightCm && weightKg) {
+    estimatedMaintenance = calcMaintenance({ sex: sex as "male" | "female" | "other", ageYears, heightCm, weightKg, activityLevel });
+  }
+
+  let recommendedCalories = estimatedMaintenance != null
+    ? estimatedMaintenance + goalAdjustment(goal)
+    : target.calories;
+  const reasoning: string[] = [];
+  const playerDataUsed: string[] = [];
+  let observedAdjustment = 0;
+
+  if (estimatedMaintenance != null) {
+    reasoning.push(`Estimated maintenance is ${estimatedMaintenance} kcal using profile biometrics and activity level.`);
+    playerDataUsed.push(`Age: ${ageYears}`, `Height: ${heightCm} cm`, `Weight: ${Math.round(weightKg! * 10) / 10} kg`, `Activity: ${activityLevel}`, `Goal: ${goal}`);
+  } else {
+    reasoning.push("Profile biometrics are incomplete, so the current target is retained until more data is available.");
+  }
+
+  if (weeklyWeightChangeKg != null && avgLoggedCalories != null && dailyCalories.length >= 10) {
+    const fastLoss = goal === "lose" && weeklyWeightChangeKg < -0.9;
+    const slowLossOrGain = goal === "lose" && weeklyWeightChangeKg >= 0;
+    const fastGain = goal === "gain" && weeklyWeightChangeKg > 0.6;
+    const noGain = goal === "gain" && weeklyWeightChangeKg <= 0;
+    if (fastLoss) observedAdjustment = 150;
+    else if (slowLossOrGain) observedAdjustment = -150;
+    else if (fastGain) observedAdjustment = -100;
+    else if (noGain) observedAdjustment = 150;
+    if (observedAdjustment !== 0) {
+      recommendedCalories += observedAdjustment;
+      reasoning.push(`Observed weight trend adjusted calories by ${observedAdjustment > 0 ? "+" : ""}${observedAdjustment} kcal.`);
+    } else {
+      reasoning.push("Observed weight trend is compatible with the current goal, so no calorie adjustment was applied.");
+    }
+    playerDataUsed.push(`28-day logged intake days: ${dailyCalories.length}`, `Average logged intake: ${Math.round(avgLoggedCalories)} kcal`, `Weekly weight change: ${Math.round(weeklyWeightChangeKg * 100) / 100} kg`);
+  } else {
+    reasoning.push("More logged intake and weight history is needed before adjusting maintenance from observed results.");
+  }
+
+  if (avgSteps != null) playerDataUsed.push(`Average synced steps: ${Math.round(avgSteps)}`);
+  if (avgActiveMinutes != null) playerDataUsed.push(`Average active minutes: ${Math.round(avgActiveMinutes)}`);
+
+  const dataPoints = [ageYears, heightCm, weightKg, dailyCalories.length >= 10 ? 1 : null, weights.length >= 2 ? 1 : null, wearables.length ? 1 : null]
+    .filter(Boolean).length;
+  const confidenceLevel: SystemConfidenceLevel = estimatedMaintenance == null
+    ? "insufficient_data"
+    : dataPoints >= 5
+      ? "moderate"
+      : "low";
+  recommendedCalories = Math.max(1200, Math.round(recommendedCalories / 10) * 10);
+  const protein = weightKg ? Math.max(80, Math.round((weightKg * 1.8) / 5) * 5) : target.protein;
+  const fat = Math.max(30, Math.round((recommendedCalories * 0.25) / 9 / 5) * 5);
+  const carbs = Math.max(50, Math.round((recommendedCalories - protein * 4 - fat * 9) / 4 / 5) * 5);
+
+  return {
+    estimatedMaintenance,
+    recommendedCalories,
+    recommendedProtein: protein,
+    recommendedCarbs: carbs,
+    recommendedFat: fat,
+    observedAdjustment,
+    avgLoggedCalories: avgLoggedCalories == null ? null : Math.round(avgLoggedCalories),
+    weeklyWeightChangeKg: weeklyWeightChangeKg == null ? null : Math.round(weeklyWeightChangeKg * 100) / 100,
+    recommendation: createSystemRecommendation({
+      id: "nutrition:calorie-target",
+      domain: "nutrition",
+      recommendation: confidenceLevel === "insufficient_data" ? "Keep current calorie target until more data is available." : `Aim for about ${recommendedCalories} kcal/day.`,
+      action: confidenceLevel === "insufficient_data"
+        ? "Complete setup biometrics and log body weight/intake consistently."
+        : `Set daily targets to ${recommendedCalories} kcal, ${protein}g protein, ${carbs}g carbs, and ${fat}g fat.`,
+      confidenceLevel,
+      confidencePercent: confidencePercent(confidenceLevel, dataPoints),
+      reasoning,
+      playerDataUsed,
+      evidence: [
+        "Initial calorie estimates should be treated as estimates and adjusted using observed body-weight response over time.",
+        "Protein targets for active users commonly fall around 1.4-2.0 g/kg/day depending on goal and context.",
+      ],
+      citations: [
+        SYSTEM_CITATIONS.mifflinStJeor1990,
+        SYSTEM_CITATIONS.mifflinValidation2005,
+        SYSTEM_CITATIONS.issnProtein2017,
+        SYSTEM_CITATIONS.acsmWeightManagement2009,
+      ],
+      safetyNote: null,
+      insufficientData: confidenceLevel === "insufficient_data",
+    }),
+  };
+}
+
 const router = Router();
 
 function getTodayStr() {
@@ -74,9 +235,10 @@ router.get("/nutrition/targets", async (req, res) => {
       const [created] = await db.insert(nutritionTargetsTable)
         .values({ playerId: player.id, calories: 2500, protein: 180, carbs: 250, fat: 80 })
         .returning();
-      return void res.json(created);
+      return void res.json({ ...created, systemAnalysis: await buildNutritionSystemAnalysis(player.id, created) });
     }
-    res.json(targets[0]);
+    const systemAnalysis = await buildNutritionSystemAnalysis(player.id, targets[0]);
+    res.json({ ...targets[0], systemAnalysis });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to get targets" });
@@ -132,13 +294,13 @@ router.patch("/nutrition/targets", async (req, res) => {
       const [created] = await db.insert(nutritionTargetsTable)
         .values({ playerId: player.id, calories: resolvedCalories ?? 2500, protein: resolvedProtein ?? 180, carbs: resolvedCarbs ?? 250, fat: resolvedFat ?? 80, ...values })
         .returning();
-      return void res.json(created);
+      return void res.json({ ...created, systemAnalysis: await buildNutritionSystemAnalysis(player.id, created) });
     }
     const [updated] = await db.update(nutritionTargetsTable)
       .set(values)
       .where(eq(nutritionTargetsTable.playerId, player.id))
       .returning();
-    res.json(updated);
+    res.json({ ...updated, systemAnalysis: await buildNutritionSystemAnalysis(player.id, updated) });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to update targets" });

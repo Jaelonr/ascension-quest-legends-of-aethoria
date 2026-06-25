@@ -1,11 +1,12 @@
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
-import { Tabs } from "expo-router";
+import { Tabs, usePathname, useRouter } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, TouchableOpacity, View, useColorScheme } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 function NativeTabLayout() {
@@ -67,6 +68,47 @@ function ClassicTabLayout() {
   );
 }
 
-export default function TabLayout() {
-  return isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />;
+function SettingsGear() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  if (pathname?.includes("/settings")) return null;
+  return (
+    <TouchableOpacity
+      accessibilityLabel="Open Guild Settings"
+      style={[styles.settingsGear, { top: insets.top + 8 }]}
+      onPress={() => router.push("/(tabs)/settings" as any)}
+      activeOpacity={0.82}
+    >
+      <Feather name="settings" size={19} color="#d9ad63" />
+    </TouchableOpacity>
+  );
 }
+
+export default function TabLayout() {
+  return (
+    <View style={{ flex: 1 }}>
+      {isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />}
+      <SettingsGear />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  settingsGear: {
+    position: "absolute",
+    right: 14,
+    zIndex: 40,
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#6b4d2f",
+    backgroundColor: "#11100ef2",
+    shadowColor: "#d9ad63",
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+});

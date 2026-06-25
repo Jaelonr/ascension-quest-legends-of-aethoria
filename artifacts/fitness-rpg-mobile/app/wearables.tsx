@@ -179,6 +179,17 @@ function oneWeekWindow(): ReadRecordsOptions {
   };
 }
 
+async function openHealthConnectSettingsSafely(module: HealthConnectModule) {
+  try {
+    await module.openHealthConnectSettings();
+  } catch {
+    Alert.alert(
+      "Could not open settings",
+      "Open Android Settings, find Health Connect, then allow Samsung Health and Ascension Quest to share supported records."
+    );
+  }
+}
+
 async function getHealthConnectModule(): Promise<HealthConnectModule | null> {
   if (Platform.OS !== "android") return null;
   try {
@@ -516,7 +527,7 @@ export default function WearablesScreen() {
           "Health Connect is not ready on this phone. Install or update it, then allow Samsung Health to share data there.",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => healthConnect.openHealthConnectSettings() },
+            { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) },
           ]
         );
         return;
@@ -541,7 +552,7 @@ export default function WearablesScreen() {
           "Ascension Quest cannot import Samsung/Health Connect records until at least one read permission is granted.",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => healthConnect.openHealthConnectSettings() },
+            { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) },
           ]
         );
         return;
@@ -575,7 +586,7 @@ export default function WearablesScreen() {
           "Health Connect did not return supported records yet. Confirm Samsung Health is sharing watch data into Health Connect, then try again.",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => healthConnect.openHealthConnectSettings() },
+            { text: "Open Settings", onPress: () => void openHealthConnectSettingsSafely(healthConnect) },
           ]
         );
         return;
@@ -621,7 +632,7 @@ export default function WearablesScreen() {
       return;
     }
     try {
-      await healthConnect.openHealthConnectSettings();
+      await openHealthConnectSettingsSafely(healthConnect);
     } catch {
       Alert.alert("Could not open settings", "Open Android Settings, find Health Connect, then allow Samsung Health and Ascension Quest to share the supported records.");
     }

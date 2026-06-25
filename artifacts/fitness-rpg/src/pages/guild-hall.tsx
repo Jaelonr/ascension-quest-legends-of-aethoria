@@ -754,7 +754,7 @@ export default function GuildHall() {
               <p className="font-serif text-lg font-bold text-[#d9ad63]">{extended.hallOfferings.title}</p>
               <p className="mt-1 text-xs leading-relaxed text-[#8f887d]">{extended.hallOfferings.lore}</p>
             </div>
-            <a href="/inventory" className="shrink-0 border border-[#6b4d2f] px-3 py-2 text-[10px] font-bold uppercase text-[#d9ad63]">Open</a>
+            <a href="/inventory?tab=shop" className="shrink-0 border border-[#6b4d2f] px-3 py-2 text-[10px] font-bold uppercase text-[#d9ad63]">Open</a>
           </div>
           <div className="grid gap-2 md:grid-cols-3">
             {(extended.hallOfferings.preview ?? []).map((item: any) => (

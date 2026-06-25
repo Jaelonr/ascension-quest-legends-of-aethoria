@@ -739,7 +739,7 @@ export default function HallScreen() {
                     <Text style={s.commissionHeading}>{hallAny.hallOfferings.title}</Text>
                     <Text style={s.offeringLore}>{hallAny.hallOfferings.lore}</Text>
                   </View>
-                  <TouchableOpacity style={s.offerOpenBtn} onPress={() => router.push("/(tabs)/inventory" as any)}>
+                  <TouchableOpacity style={s.offerOpenBtn} onPress={() => router.push("/(tabs)/inventory?tab=shop" as any)}>
                     <Text style={s.offerOpenText}>Open</Text>
                   </TouchableOpacity>
                 </View>

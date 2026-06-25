@@ -74,14 +74,25 @@ function Toggle({
   );
 }
 
-function SectionHeader({ title, icon: Icon }: { title: string; icon: React.ElementType }) {
+function SectionHeader({ title, icon: Icon, id }: { title: string; icon: React.ElementType; id?: string }) {
   return (
-    <div className="flex items-center gap-2 mb-2 mt-2">
+    <div id={id} className="scroll-mt-20 flex items-center gap-2 mb-2 mt-2">
       <Icon className="w-3.5 h-3.5 text-muted-foreground" />
       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</span>
     </div>
   );
 }
+
+const SETTINGS_WHEEL = [
+  { id: "account", label: "Account", icon: User, description: "Sign-in and character reset." },
+  { id: "notifications", label: "Reminders", icon: Bell, description: "Workout and streak alerts." },
+  { id: "security", label: "Security", icon: Shield, description: "Biometric lock and session safety." },
+  { id: "gameplay", label: "Gameplay", icon: Swords, description: "Narrative mode and training story." },
+  { id: "units", label: "Units", icon: Scale, description: "Imperial, metric, weight, and distance." },
+  { id: "appearance", label: "Presentation", icon: Palette, description: "Sound, motion, and accent color." },
+  { id: "privacy", label: "Data", icon: Eye, description: "Privacy, export, and deletion controls." },
+  { id: "about", label: "Diagnostics", icon: Database, description: "Version and launch readiness." },
+];
 
 const ACCENT_COLORS = [
   { id: "cyan", label: "Cyan", class: "bg-cyan-400", border: "border-cyan-400" },
@@ -219,8 +230,31 @@ export default function Settings() {
     <AethoriaPage className="animate-in fade-in duration-500">
       <AethoriaHeader icon={SlidersHorizontal} title="Guild Settings" subtitle="Controls, safety, privacy, and presentation" />
 
+      <Card className="border-[#6b4d2f] bg-[#11100e]/90">
+        <CardHeader className="pb-2">
+          <CardTitle className="font-serif text-lg text-[#d9ad63]">Settings Wheel</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-2 p-3 pt-0">
+          {SETTINGS_WHEEL.map(({ id, label, icon: Icon, description }) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="group flex min-h-[72px] items-start gap-2 border border-[#3b3328] bg-[#0c0b09] p-3 transition-colors hover:border-[#d9ad63]"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center border border-[#6b4d2f] bg-[#15110d] text-[#d9ad63]">
+                <Icon className="size-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs font-bold uppercase tracking-[0.18em] text-[#d8c4a5] group-hover:text-[#d9ad63]">{label}</span>
+                <span className="mt-1 block text-[10px] leading-snug text-[#8f887d]">{description}</span>
+              </span>
+            </a>
+          ))}
+        </CardContent>
+      </Card>
+
       {/* Account */}
-      <SectionHeader title="Account" icon={User} />
+      <SectionHeader id="account" title="Account" icon={User} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-3">
           <AccountAction />
@@ -273,7 +307,7 @@ export default function Settings() {
       {/* Install App */}
       {(canInstall || isInstalled) && (
         <>
-          <SectionHeader title="App" icon={Smartphone} />
+          <SectionHeader id="app" title="App" icon={Smartphone} />
           <Card className="border-border/50 bg-card/50">
             <CardContent className="p-4">
               <SettingRow
@@ -297,7 +331,7 @@ export default function Settings() {
       )}
 
       {/* Notifications */}
-      <SectionHeader title="Notifications" icon={Bell} />
+      <SectionHeader id="notifications" title="Notifications" icon={Bell} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-0">
           <SettingRow
@@ -370,7 +404,7 @@ export default function Settings() {
       </Card>
 
       {/* Security */}
-      <SectionHeader title="Security" icon={Shield} />
+      <SectionHeader id="security" title="Security" icon={Shield} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-0">
           <SettingRow
@@ -415,7 +449,7 @@ export default function Settings() {
       </Card>
 
       {/* Gameplay */}
-      <SectionHeader title="Gameplay" icon={Swords} />
+      <SectionHeader id="gameplay" title="Gameplay" icon={Swords} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4">
           <div className="flex items-center gap-3 mb-3">
@@ -457,7 +491,7 @@ export default function Settings() {
       </Card>
 
       {/* Units & Preferences */}
-      <SectionHeader title="Units & Preferences" icon={Scale} />
+      <SectionHeader id="units" title="Units & Preferences" icon={Scale} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-0">
           <SettingRow icon={Scale} label="Measurement System" description="Imperial is the default for setup and profile" iconColor="text-amber-400">
@@ -527,7 +561,7 @@ export default function Settings() {
       </Card>
 
       {/* Appearance */}
-      <SectionHeader title="Appearance" icon={Palette} />
+      <SectionHeader id="appearance" title="Appearance" icon={Palette} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-0">
           <div className="py-3 border-b border-border/30">
@@ -583,7 +617,7 @@ export default function Settings() {
       </Card>
 
       {/* Narrative Engine */}
-      <SectionHeader title="Narrative Engine" icon={Swords} />
+      <SectionHeader id="narrative" title="Narrative Engine" icon={Swords} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-4">
           <div>
@@ -629,7 +663,7 @@ export default function Settings() {
       </Card>
 
       {/* Privacy */}
-      <SectionHeader title="Data & Privacy" icon={Eye} />
+      <SectionHeader id="privacy" title="Data & Privacy" icon={Eye} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-0">
           <SettingRow icon={Activity} label="Usage Analytics" description="Help improve the app with anonymous data" iconColor="text-blue-400">
@@ -658,7 +692,7 @@ export default function Settings() {
       </Card>
 
       {/* About */}
-      <SectionHeader title="About" icon={Info} />
+      <SectionHeader id="about" title="About" icon={Info} />
       <Card className="border-border/50 bg-card/50">
         <CardContent className="p-4 space-y-0">
           <SettingRow icon={Swords} label="Ascension Quest: Legends of Aethoria" description={`Version ${appVersion}`} iconColor="text-primary">

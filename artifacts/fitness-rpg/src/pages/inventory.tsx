@@ -214,7 +214,7 @@ function StoreItemCard({
       <CardContent className="p-3">
         <div className="flex items-start gap-3">
           <div className="text-xl shrink-0 mt-0.5">
-            {CATEGORY_ICONS[item.category] ?? "🎁"}
+            {storeCategoryIcon(item)}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
@@ -272,8 +272,87 @@ function StoreItemCard({
   );
 }
 
-const CATEGORY_FILTERS = ["all", "consumable", "gear", "cosmetic", "title", "utility"] as const;
+const SHOP_CATEGORY_FILTERS = [
+  { key: "all", label: "All", icon: "✦" },
+  { key: "armor", label: "Armor", icon: "🛡️" },
+  { key: "weapons", label: "Weapons", icon: "⚔️" },
+  { key: "jewelry", label: "Jewelry", icon: "💍" },
+  { key: "relics", label: "Relics", icon: "✹" },
+  { key: "potions", label: "Potions", icon: "🧪" },
+  { key: "scrolls", label: "Scrolls", icon: "📜" },
+  { key: "cosmetics", label: "Cosmetics", icon: "✨" },
+  { key: "titles", label: "Titles", icon: "🏳" },
+] as const;
+
+const SHOP_SUBCATEGORY_LABELS: Record<string, string> = {
+  head: "Head",
+  helmet: "Head",
+  neck: "Neck",
+  shoulders: "Shoulders",
+  chest: "Chest",
+  arms: "Arms",
+  gloves: "Hands",
+  hands: "Hands",
+  waist: "Waist",
+  legs: "Legs",
+  boots: "Feet",
+  feet: "Feet",
+  cloak: "Cloaks",
+  back: "Back",
+  weapon: "Main Hand",
+  main_hand: "Main Hand",
+  offhand: "Off Hand",
+  off_hand: "Off Hand",
+  staff: "Staves",
+  bow: "Bows",
+  crossbow: "Crossbows",
+  sword: "Swords",
+  ring: "Rings",
+  ring_left: "Rings",
+  ring_right: "Rings",
+  necklace: "Necklaces",
+  relic: "Relics",
+  potion: "Potions",
+  scroll: "Scrolls",
+  title: "Titles",
+  aura: "Auras",
+  aura_cosmetic: "Auras",
+  cosmetic: "Cosmetics",
+};
 const TAB_VALUES = ["armory", "items", "store"] as const;
+
+function titleCase(value: string) {
+  return value
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function storeCategoryKey(item: any) {
+  const category = String(item.category ?? item.itemType ?? "utility").toLowerCase();
+  const slot = String(item.slot ?? "").toLowerCase();
+  if (category.includes("potion") || category === "consumable") return "potions";
+  if (category.includes("scroll") || category.includes("utility")) return "scrolls";
+  if (category.includes("title") || slot === "title") return "titles";
+  if (category.includes("cosmetic") || slot.includes("aura")) return "cosmetics";
+  if (category.includes("relic") || slot === "relic") return "relics";
+  if (category.includes("ring") || category.includes("necklace") || ["ring", "ring_left", "ring_right", "neck", "necklace"].includes(slot)) return "jewelry";
+  if (category.includes("weapon") || ["weapon", "main_hand", "offhand", "off_hand"].includes(slot)) return "weapons";
+  if (category.startsWith("gear") || slot) return "armor";
+  return "scrolls";
+}
+
+function storeSubcategoryKey(item: any) {
+  const category = String(item.category ?? "").toLowerCase();
+  const slot = String(item.slot ?? "").toLowerCase();
+  const parts = category.split(":").filter(Boolean);
+  if (parts[0] === "gear" && parts[1]) return parts[1];
+  if (parts[0] === "consumable" && parts[1]) return parts[1];
+  return slot || parts[0] || "misc";
+}
+
+function storeCategoryIcon(item: any) {
+  return SHOP_CATEGORY_FILTERS.find((filter) => filter.key === storeCategoryKey(item))?.icon ?? "✦";
+}
 
 function displaySlot(slot: string) {
   if (slot === "helmet") return "head";
@@ -290,6 +369,7 @@ function displaySlot(slot: string) {
 
 function initialTab() {
   const requested = new URLSearchParams(window.location.search).get("tab");
+  if (requested === "shop" || requested === "offerings") return "store";
   return TAB_VALUES.includes(requested as typeof TAB_VALUES[number]) ? requested as typeof TAB_VALUES[number] : "store";
 }
 
@@ -339,31 +419,66 @@ function StoreSection({
   onBuy: (id: number) => void;
 }) {
   const [catFilter, setCatFilter] = useState<string>("all");
-  const filtered = catFilter === "all" ? items : items.filter(i => i.category === catFilter);
-  const availableCats = new Set(items.map(i => i.category));
+  const [subFilter, setSubFilter] = useState<string>("all");
+  const availableCats = new Set(items.map(storeCategoryKey));
+  const categoryFiltered = catFilter === "all" ? items : items.filter(i => storeCategoryKey(i) === catFilter);
+  const availableSubs = [...new Set(categoryFiltered.map(storeSubcategoryKey))]
+    .filter(Boolean)
+    .sort((a, b) => (SHOP_SUBCATEGORY_LABELS[a] ?? a).localeCompare(SHOP_SUBCATEGORY_LABELS[b] ?? b));
+  const filtered = subFilter === "all" ? categoryFiltered : categoryFiltered.filter(i => storeSubcategoryKey(i) === subFilter);
+
+  function selectCategory(category: string) {
+    setCatFilter(category);
+    setSubFilter("all");
+  }
 
   return (
     <div className="space-y-3">
-      {/* Category filter pills */}
       <div className="flex gap-1.5 flex-wrap">
-        {CATEGORY_FILTERS.filter(c => c === "all" || availableCats.has(c)).map(cat => (
+        {SHOP_CATEGORY_FILTERS.filter(c => c.key === "all" || availableCats.has(c.key)).map(cat => (
           <button
-            key={cat}
-            onClick={() => setCatFilter(cat)}
+            key={cat.key}
+            onClick={() => selectCategory(cat.key)}
             className={cn(
               "text-[10px] font-mono px-2.5 py-1 rounded-full border transition-colors capitalize",
-              catFilter === cat
+              catFilter === cat.key
                 ? "bg-primary/20 border-primary/50 text-primary"
                 : "border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
             )}
           >
-            {cat === "all" ? `All (${items.length})` : `${CATEGORY_ICONS[cat] ?? ""} ${cat}`}
+            {cat.icon} {cat.key === "all" ? `All (${items.length})` : cat.label}
           </button>
         ))}
       </div>
 
+      {availableSubs.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap border border-[#2a2520] bg-[#0c0b09] p-2">
+          <button
+            onClick={() => setSubFilter("all")}
+            className={cn(
+              "border px-2 py-1 text-[10px] font-mono uppercase tracking-wide",
+              subFilter === "all" ? "border-[#d9ad63] text-[#d9ad63]" : "border-[#3b3328] text-[#8f887d]"
+            )}
+          >
+            All Types
+          </button>
+          {availableSubs.map(sub => (
+            <button
+              key={sub}
+              onClick={() => setSubFilter(sub)}
+              className={cn(
+                "border px-2 py-1 text-[10px] font-mono uppercase tracking-wide",
+                subFilter === sub ? "border-[#d9ad63] text-[#d9ad63]" : "border-[#3b3328] text-[#8f887d]"
+              )}
+            >
+              {SHOP_SUBCATEGORY_LABELS[sub] ?? titleCase(sub)}
+            </button>
+          ))}
+        </div>
+      )}
+
       {filtered.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">No items in this category.</div>
+        <div className="text-center py-8 text-muted-foreground text-sm">No offerings match this filter.</div>
       ) : (
         <div className="space-y-2.5">
           {filtered.map(item => (

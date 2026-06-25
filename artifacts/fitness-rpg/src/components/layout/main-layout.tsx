@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
+import { Settings } from "lucide-react";
 import { BottomNav } from "./bottom-nav";
 import { InstallBanner } from "@/components/install-banner";
 import { BiometricLock } from "@/components/biometric-lock";
@@ -28,6 +29,7 @@ function AwakeningWatcher() {
 export function MainLayout({ children }: MainLayoutProps) {
   const [location] = useLocation();
   const wideGuildHall = location === "/guild-hall" || location === "/";
+  const showSettingsGear = location !== "/settings";
   return (
     <BiometricLock>
       <LevelUpWatcher />
@@ -43,6 +45,16 @@ export function MainLayout({ children }: MainLayoutProps) {
         )}>
           {children}
         </main>
+        {showSettingsGear && (
+          <Link
+            href="/settings"
+            aria-label="Open Guild Settings"
+            className="fixed right-4 z-40 flex size-11 items-center justify-center border border-[#6b4d2f] bg-[#11100e]/95 text-[#d9ad63] shadow-[0_0_18px_rgba(217,173,99,0.16)] transition-colors hover:border-[#d9ad63] hover:bg-[#1b1511]"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+          >
+            <Settings className="size-5" />
+          </Link>
+        )}
         <BottomNav />
       </div>
     </BiometricLock>

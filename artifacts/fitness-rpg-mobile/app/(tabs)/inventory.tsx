@@ -136,6 +136,54 @@ const OFFERING_SECTION_META = [
   { key: "raid", label: "Raid", note: "Items unlocked by dangerous campaign work.", icon: "shield" },
 ] as const satisfies Array<{ key: string; label: string; note: string; icon: keyof typeof Feather.glyphMap }>;
 
+const OFFERING_CATEGORY_META = [
+  { key: "all", label: "All", icon: "grid" },
+  { key: "armor", label: "Armor", icon: "shield" },
+  { key: "weapons", label: "Weapons", icon: "zap" },
+  { key: "jewelry", label: "Jewelry", icon: "circle" },
+  { key: "relics", label: "Relics", icon: "star" },
+  { key: "potions", label: "Potions", icon: "droplet" },
+  { key: "scrolls", label: "Scrolls", icon: "file-text" },
+  { key: "cosmetics", label: "Cosmetics", icon: "sun" },
+  { key: "titles", label: "Titles", icon: "award" },
+] as const satisfies Array<{ key: string; label: string; icon: keyof typeof Feather.glyphMap }>;
+
+const OFFERING_SUBCATEGORY_LABELS: Record<string, string> = {
+  head: "Head",
+  helmet: "Head",
+  neck: "Neck",
+  necklace: "Necklaces",
+  shoulders: "Shoulders",
+  chest: "Chest",
+  arms: "Arms",
+  hands: "Hands",
+  gloves: "Hands",
+  waist: "Waist",
+  legs: "Legs",
+  feet: "Feet",
+  boots: "Feet",
+  cloak: "Cloaks",
+  back: "Back",
+  weapon: "Main Hand",
+  main_hand: "Main Hand",
+  offhand: "Off Hand",
+  off_hand: "Off Hand",
+  staff: "Staves",
+  bow: "Bows",
+  crossbow: "Crossbows",
+  sword: "Swords",
+  ring: "Rings",
+  ring_left: "Rings",
+  ring_right: "Rings",
+  relic: "Relics",
+  potion: "Potions",
+  scroll: "Scrolls",
+  title: "Titles",
+  aura: "Auras",
+  aura_cosmetic: "Auras",
+  cosmetic: "Cosmetics",
+};
+
 function titleCase(value: string) {
   return value
     .replace(/[_-]/g, " ")
@@ -155,6 +203,29 @@ function formatItemCategory(item: any) {
     return `${titleCase(kind ?? "consumable")} Consumable`;
   }
   return titleCase(category);
+}
+
+function offeringCategoryKey(item: any) {
+  const category = String(item?.category ?? item?.itemType ?? "utility").toLowerCase();
+  const slot = String(item?.slot ?? "").toLowerCase();
+  if (category.includes("potion") || category === "consumable") return "potions";
+  if (category.includes("scroll") || category.includes("utility")) return "scrolls";
+  if (category.includes("title") || slot === "title") return "titles";
+  if (category.includes("cosmetic") || slot.includes("aura")) return "cosmetics";
+  if (category.includes("relic") || slot === "relic") return "relics";
+  if (category.includes("ring") || category.includes("necklace") || ["ring", "ring_left", "ring_right", "neck", "necklace"].includes(slot)) return "jewelry";
+  if (category.includes("weapon") || ["weapon", "main_hand", "offhand", "off_hand"].includes(slot)) return "weapons";
+  if (category.startsWith("gear") || slot) return "armor";
+  return "scrolls";
+}
+
+function offeringSubcategoryKey(item: any) {
+  const category = String(item?.category ?? "").toLowerCase();
+  const slot = String(item?.slot ?? "").toLowerCase();
+  const parts = category.split(":").filter(Boolean);
+  if (parts[0] === "gear" && parts[1]) return parts[1];
+  if (parts[0] === "consumable" && parts[1]) return parts[1];
+  return slot || parts[0] || "misc";
 }
 
 function xpNeededForLevel(level: number) {
@@ -376,6 +447,8 @@ export default function CharacterScreen() {
 
   const [selectedGear, setSelectedGear] = useState<any | null>(null);
   const [offeringSection, setOfferingSection] = useState<(typeof OFFERING_SECTION_META)[number]["key"]>("permanent");
+  const [offeringCategory, setOfferingCategory] = useState<string>("all");
+  const [offeringSubcategory, setOfferingSubcategory] = useState<string>("all");
 
   useEffect(() => {
     setTab(normalizeCharacterTab(requestedTab));
@@ -464,6 +537,16 @@ export default function CharacterScreen() {
   const appearance = char?.appearance ?? { aura: null, cosmeticCount: 0 };
   const recordedEquipment = realEquipment.filter((item) => item.available !== false);
   const activeOfferings = ((storeSections as any)?.[offeringSection] ?? []) as any[];
+  const availableOfferingCategories = new Set(activeOfferings.map(offeringCategoryKey));
+  const categoryOfferings = offeringCategory === "all"
+    ? activeOfferings
+    : activeOfferings.filter((item) => offeringCategoryKey(item) === offeringCategory);
+  const availableOfferingSubcategories = [...new Set(categoryOfferings.map(offeringSubcategoryKey))]
+    .filter(Boolean)
+    .sort((a, b) => (OFFERING_SUBCATEGORY_LABELS[a] ?? a).localeCompare(OFFERING_SUBCATEGORY_LABELS[b] ?? b));
+  const filteredOfferings = offeringSubcategory === "all"
+    ? categoryOfferings
+    : categoryOfferings.filter((item) => offeringSubcategoryKey(item) === offeringSubcategory);
   const offeringCounts = OFFERING_SECTION_META.reduce<Record<string, number>>((acc, section) => {
     acc[section.key] = (((storeSections as any)?.[section.key] ?? []) as any[]).length;
     return acc;
@@ -696,7 +779,11 @@ export default function CharacterScreen() {
                   <TouchableOpacity
                     key={section.key}
                     style={[cs.offerSectionTab, active && cs.offerSectionTabActive]}
-                    onPress={() => setOfferingSection(section.key)}
+                    onPress={() => {
+                      setOfferingSection(section.key);
+                      setOfferingCategory("all");
+                      setOfferingSubcategory("all");
+                    }}
                     activeOpacity={0.8}
                   >
                     <Feather name={section.icon} size={12} color={active ? "#d9ad63" : "#6b5d4f"} />
@@ -720,21 +807,67 @@ export default function CharacterScreen() {
               </Text>
             </View>
 
+            <View style={cs.offerFilterWrap}>
+              {OFFERING_CATEGORY_META.filter((category) => category.key === "all" || availableOfferingCategories.has(category.key)).map((category) => {
+                const active = offeringCategory === category.key;
+                return (
+                  <TouchableOpacity
+                    key={category.key}
+                    style={[cs.offerFilterChip, active && cs.offerFilterChipActive]}
+                    onPress={() => {
+                      setOfferingCategory(category.key);
+                      setOfferingSubcategory("all");
+                    }}
+                    activeOpacity={0.82}
+                  >
+                    <Feather name={category.icon} size={11} color={active ? "#d9ad63" : "#8f887d"} />
+                    <Text style={[cs.offerFilterText, { color: active ? "#d9ad63" : "#8f887d" }]}>
+                      {category.key === "all" ? `All ${activeOfferings.length}` : category.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {availableOfferingSubcategories.length > 1 ? (
+              <View style={cs.offerSubFilterWrap}>
+                <TouchableOpacity
+                  style={[cs.offerSubFilterChip, offeringSubcategory === "all" && cs.offerSubFilterChipActive]}
+                  onPress={() => setOfferingSubcategory("all")}
+                  activeOpacity={0.82}
+                >
+                  <Text style={[cs.offerSubFilterText, offeringSubcategory === "all" && cs.offerSubFilterTextActive]}>All Types</Text>
+                </TouchableOpacity>
+                {availableOfferingSubcategories.map((subcategory) => (
+                  <TouchableOpacity
+                    key={subcategory}
+                    style={[cs.offerSubFilterChip, offeringSubcategory === subcategory && cs.offerSubFilterChipActive]}
+                    onPress={() => setOfferingSubcategory(subcategory)}
+                    activeOpacity={0.82}
+                  >
+                    <Text style={[cs.offerSubFilterText, offeringSubcategory === subcategory && cs.offerSubFilterTextActive]}>
+                      {OFFERING_SUBCATEGORY_LABELS[subcategory] ?? titleCase(subcategory)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+
             {storeLoading ? (
               <ActivityIndicator color="#d9ad63" style={{ marginTop: 20 }} />
-            ) : activeOfferings.length === 0 ? (
+            ) : filteredOfferings.length === 0 ? (
               <View style={[cs.empty, { borderColor: "#3b3328" }]}>
                 <View style={cs.emptyIcon}>
                   <Feather name="moon" size={20} color="#6b5d4f" />
                 </View>
                 <Text style={[cs.emptyTitle, { color: colors.foreground }]}>Nothing revealed yet</Text>
                 <Text style={[cs.emptyDesc, { color: colors.mutedForeground }]}>
-                  The Hall has no items in this section right now. Commissions and campaigns can unlock more.
+                  The Hall has no offerings matching this filter right now. Try another shelf or return after more commissions.
                 </Text>
               </View>
             ) : (
               <View style={{ gap: 8 }}>
-                {activeOfferings.map((item: any) => {
+                {filteredOfferings.map((item: any) => {
                   const rarityColor = RARITY_COLORS[item.rarity ?? "common"] ?? "#9ca3af";
                   const locked = item.meetsRequirements === false || item.locked === true;
                   const category = formatItemCategory(item);
@@ -1043,6 +1176,15 @@ const cs = StyleSheet.create({
   offerSectionHeader: { borderBottomWidth: 1, borderBottomColor: "#3b3328", paddingBottom: 10, marginBottom: 10 },
   offerSectionTitle: { color: "#eee5d7", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold" },
   offerSectionNote: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 3 },
+  offerFilterWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 9 },
+  offerFilterChip: { minHeight: 32, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingHorizontal: 9, flexDirection: "row", alignItems: "center", gap: 5 },
+  offerFilterChipActive: { borderColor: "#d9ad63", backgroundColor: "#1b1511" },
+  offerFilterText: { fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.8 },
+  offerSubFilterWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", padding: 8, marginBottom: 10 },
+  offerSubFilterChip: { borderWidth: 1, borderColor: "#3b3328", paddingHorizontal: 8, paddingVertical: 6, backgroundColor: "#11100e" },
+  offerSubFilterChipActive: { borderColor: "#d9ad63", backgroundColor: "#21170f" },
+  offerSubFilterText: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.8 },
+  offerSubFilterTextActive: { color: "#d9ad63" },
   offerItem: { borderWidth: 1, backgroundColor: "#171510", padding: 10, flexDirection: "row", alignItems: "center", gap: 10 },
   offerItemIcon: { width: 34, height: 34, borderWidth: 1, backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
   offerAffinity: { color: "#49a3a0", fontSize: 10, marginTop: 4, textTransform: "capitalize", fontFamily: "Inter_700Bold" },

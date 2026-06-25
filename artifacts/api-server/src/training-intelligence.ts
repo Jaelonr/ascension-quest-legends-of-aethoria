@@ -8,6 +8,13 @@ import {
   workoutSetsTable,
 } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
+import {
+  SYSTEM_CITATIONS,
+  confidencePercent,
+  createSystemRecommendation,
+  type SystemConfidenceLevel,
+  type SystemRecommendation,
+} from "./system-recommendations";
 
 type WeightUnit = "lbs" | "kg";
 type MovementPattern =
@@ -110,6 +117,64 @@ function recommendationLabel(type: RecommendationType) {
     case "recovery": return "Recovery recommended";
     default: return "Observe pattern";
   }
+}
+
+function confidenceForProgression(rec: typeof exerciseProgressionsTable.$inferSelect): SystemConfidenceLevel {
+  if (rec.safetyNote) return "moderate";
+  if (rec.recommendationType === "observe" || rec.recentSessions < 2) return "insufficient_data";
+  if (rec.recentSessions >= 3 && rec.averageRpe != null) return "high";
+  return "moderate";
+}
+
+function progressionAction(rec: typeof exerciseProgressionsTable.$inferSelect) {
+  if (rec.recommendationType === "add_weight" && rec.recommendedNextWeight != null) {
+    return `Use ${rec.recommendedNextWeight} ${rec.weightUnit} next time if warm-ups feel normal.`;
+  }
+  if (rec.recommendationType === "add_reps" && rec.recommendedNextReps != null) {
+    return `Add 1-2 reps, targeting about ${rec.recommendedNextReps} reps on the strongest set.`;
+  }
+  if (rec.recommendationType === "add_sets" && rec.recommendedNextSets != null) {
+    return `Add one set only if recovery remains normal, targeting ${rec.recommendedNextSets} sets.`;
+  }
+  if (rec.recommendationType === "deload") return "Reduce volume or load for the next exposure.";
+  if (rec.recommendationType === "recovery") return "Do not progress this movement today; choose recovery or a safer variation.";
+  if (rec.recommendationType === "hold") return "Hold the current target steady for another clean session.";
+  if (rec.recommendationType === "increase_duration") return "Increase duration gradually without a sudden spike.";
+  if (rec.recommendationType === "increase_complexity") return "Increase drill complexity slightly while keeping technique clean.";
+  return "Continue collecting training history before changing the target.";
+}
+
+function toSystemProgressionRecommendation(rec: typeof exerciseProgressionsTable.$inferSelect): SystemRecommendation {
+  const confidenceLevel = confidenceForProgression(rec);
+  const dataPoints = Math.max(0, rec.recentSessions + rec.successfulSessionsInRow);
+  return createSystemRecommendation({
+    id: `progressive-overload:${rec.exerciseId}`,
+    domain: "progressive_overload",
+    recommendation: recommendationLabel(rec.recommendationType as RecommendationType),
+    action: progressionAction(rec),
+    confidenceLevel,
+    confidencePercent: confidencePercent(confidenceLevel, dataPoints),
+    reasoning: [
+      rec.recommendationReason,
+      `Recent sessions observed: ${rec.recentSessions}.`,
+      rec.averageRpe != null ? `Average RPE: ${rec.averageRpe}.` : "RPE history is incomplete.",
+      `Trend: ${rec.trend}.`,
+    ],
+    playerDataUsed: [
+      `${rec.exerciseName}`,
+      rec.lastWeight != null ? `Last top load: ${rec.lastWeight} ${rec.weightUnit}` : "Last top load unavailable",
+      rec.lastReps != null ? `Last reps: ${rec.lastReps}` : "Last reps unavailable",
+      rec.lastSets != null ? `Last sets: ${rec.lastSets}` : "Last sets unavailable",
+      `Successful sessions in row: ${rec.successfulSessionsInRow}`,
+    ],
+    evidence: [
+      "Progression should be conservative and based on repeated successful exposures, not a single workout.",
+      "High effort, pain notes, or regression should hold or reduce progression.",
+    ],
+    citations: [SYSTEM_CITATIONS.acsmResistanceTraining2025, SYSTEM_CITATIONS.acsmProgressionModels2009],
+    safetyNote: rec.safetyNote,
+    insufficientData: confidenceLevel === "insufficient_data",
+  });
 }
 
 export async function recomputeTrainingIntelligence(playerId: number) {
@@ -389,6 +454,8 @@ export async function getTrainingIntelligence(playerId: number) {
     .orderBy(desc(exerciseProgressionsTable.lastUpdatedAt))
     .limit(12);
 
+  const systemRecommendations = recommendations.map(toSystemProgressionRecommendation);
+
   return {
     profile: profile ? {
       ...profile,
@@ -397,8 +464,10 @@ export async function getTrainingIntelligence(playerId: number) {
     recommendations: recommendations.map((rec) => ({
       ...rec,
       label: recommendationLabel(rec.recommendationType as RecommendationType),
+      systemRecommendation: toSystemProgressionRecommendation(rec),
       lastPerformedAt: rec.lastPerformedAt?.toISOString() ?? null,
       lastUpdatedAt: rec.lastUpdatedAt.toISOString(),
     })),
+    systemRecommendations,
   };
 }

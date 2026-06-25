@@ -13,6 +13,8 @@ import { CAMPAIGN_QUESTS, getQuestById } from "../data/campaign-quests";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { eq, and, asc, desc, gte, count } from "drizzle-orm";
 import { getOrCreatePlayer } from "../progression";
+import { getTrainingIntelligence } from "../training-intelligence";
+import { aldricInterpretation } from "../system-recommendations";
 
 const router = Router();
 const GUILD_MASTER_CONTEXT = "guild_master";
@@ -78,7 +80,7 @@ async function buildPlayerContext(playerId: number) {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const cutoffDate = sevenDaysAgo.toISOString().split("T")[0];
 
-  const [recentSessions, recentNutrition, allQuestStatuses, activeRaids, styleRows, recentPRs, equippedGear, recentWearables, memories, worldEvents] = await Promise.all([
+  const [recentSessions, recentNutrition, allQuestStatuses, activeRaids, styleRows, recentPRs, equippedGear, recentWearables, memories, worldEvents, trainingLedger] = await Promise.all([
     db.select({
       name: workoutSessionsTable.name,
       completedAt: workoutSessionsTable.completedAt,
@@ -136,6 +138,8 @@ async function buildPlayerContext(playerId: number) {
       .where(eq(worldEventsTable.playerId, playerId))
       .orderBy(desc(worldEventsTable.occurredAt))
       .limit(5),
+
+    getTrainingIntelligence(playerId).catch(() => null),
   ]);
 
   const activeQuestCount = allQuestStatuses.filter(q => q.status === "active" || q.status === "completed").length;
@@ -143,7 +147,7 @@ async function buildPlayerContext(playerId: number) {
   const activeRaidCount = activeRaids.filter(r => r.status === "active").length;
   const styleIdentity = styleRows[0] ?? null;
 
-  return { recentSessions, recentNutrition, activeQuestCount, completedQuestCount, activeRaidCount, activeRaids, styleIdentity, recentPRs, equippedGear, recentWearables, memories, worldEvents };
+  return { recentSessions, recentNutrition, activeQuestCount, completedQuestCount, activeRaidCount, activeRaids, styleIdentity, recentPRs, equippedGear, recentWearables, memories, worldEvents, trainingLedger };
 }
 
 // ── System Prompt ─────────────────────────────────────────────────────────────
@@ -230,6 +234,19 @@ function buildSystemPrompt(
   const worldSection = context.worldEvents.length > 0
     ? context.worldEvents.map(event => `  • ${event.title}: ${event.description} (${event.status})`).join("\n")
     : "  • No lasting world events recorded.";
+
+  const canonicalRecommendations = context.trainingLedger?.systemRecommendations?.length
+    ? context.trainingLedger.systemRecommendations.slice(0, 3)
+    : [];
+  const canonicalCoachingSection = canonicalRecommendations.length > 0
+    ? canonicalRecommendations.map((rec) => [
+        `  • ${rec.domain}: ${rec.recommendation}`,
+        `    Required action: ${rec.action}`,
+        `    Confidence: ${rec.confidenceLevel}${rec.confidencePercent != null ? ` (${rec.confidencePercent}%)` : ""}`,
+        `    Aldric interpretation: ${aldricInterpretation(rec)}`,
+        rec.safetyNote ? `    Safety note: ${rec.safetyNote}` : null,
+      ].filter(Boolean).join("\n")).join("\n")
+    : "  • No canonical progression recommendation is available yet. Say the ledger needs more history before changing loads or intensity.";
 
   const worldPressure = currentWorldPressure(context);
   const modeInstructions: Record<string, string> = {
@@ -328,6 +345,16 @@ ${memorySection}
 
 LASTING WORLD STATE:
 ${worldSection}
+
+CANONICAL COACHING TRUTH (must not be contradicted):
+${canonicalCoachingSection}
+
+SYSTEM TRUTH BOUNDARY:
+- The recommendation, action, safety note, and confidence above are canonical application truth.
+- Aldric's visible advice must agree with these recommendations.
+- Aldric must not say "System," "confidence," "calculation," "API," "citation," "hidden mechanics," or reveal internal evidence language in his own voice.
+- If asked for technical detail and narrative mode is technical, present the facts plainly as Guild records and training ledger findings, while still avoiding hidden System mechanics.
+- If confidence is insufficient, do not invent certainty. Say the ledger needs more honest entries before the advice can become sharper.
 
 ${modeInstructions[narrativeMode] ?? modeInstructions.balanced}
 
