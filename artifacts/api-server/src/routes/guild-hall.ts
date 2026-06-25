@@ -45,6 +45,7 @@ interface GuildPlayerContext {
   sleepHours: number | null;
   steps: number;
   activeMinutes: number;
+  wearableSource: string | null;
   proteinToday: number;
   proteinTarget: number;
   mealsToday: number;
@@ -484,6 +485,7 @@ async function getGuildPlayerContext(playerId: number): Promise<GuildPlayerConte
     sleepHours: wearable[0]?.sleepHours ?? null,
     steps: wearable[0]?.steps ?? 0,
     activeMinutes: wearable[0]?.activeMinutes ?? 0,
+    wearableSource: wearable[0]?.source ?? null,
     proteinToday,
     proteinTarget: targets[0]?.protein ?? 0,
     mealsToday: nutrition.length,
@@ -869,6 +871,7 @@ async function getGuildHallSnapshot(userId: string) {
       sleepHours: playerContext.sleepHours,
       steps: playerContext.steps,
       activeMinutes: playerContext.activeMinutes,
+      source: playerContext.wearableSource,
       injuryNotesPresent: !!playerContext.injuryNotes,
     },
     consequences,

@@ -281,6 +281,55 @@ function WorldDangerPanel({ danger }: { danger: any }) {
   );
 }
 
+function formatReadinessSource(source?: string | null) {
+  if (source === "health_connect") return "Health Connect";
+  if (source === "samsung_health") return "Samsung Health";
+  if (source === "apple_health") return "Apple Health";
+  if (source === "manual") return "Manual entry";
+  return "No record today";
+}
+
+function ReadinessLedger({ readiness }: { readiness: any }) {
+  const hasRecord = !!readiness?.source || readiness?.steps > 0 || readiness?.sleepHours != null || readiness?.activeMinutes > 0;
+  if (!hasRecord) {
+    return (
+      <View style={s.readinessCard}>
+        <View style={s.readinessHeader}>
+          <Text style={s.sectionLabel}>HEALER'S LEDGER</Text>
+          <Text style={s.readinessSource}>Awaiting report</Text>
+        </View>
+        <Text style={s.readinessNote}>Sync Samsung Health through Health Connect or log vitals manually so Aldric can account for today's recovery.</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={s.readinessCard}>
+      <View style={s.readinessHeader}>
+        <Text style={s.sectionLabel}>HEALER'S LEDGER</Text>
+        <Text style={s.readinessSource}>{formatReadinessSource(readiness?.source)}</Text>
+      </View>
+      <View style={s.readinessGrid}>
+        <View style={s.readinessMetric}>
+          <Feather name="trending-up" size={14} color="#4ade80" />
+          <Text style={s.readinessValue}>{Number(readiness?.steps ?? 0).toLocaleString()}</Text>
+          <Text style={s.readinessLabel}>steps</Text>
+        </View>
+        <View style={s.readinessMetric}>
+          <Feather name="moon" size={14} color="#60a5fa" />
+          <Text style={s.readinessValue}>{readiness?.sleepHours == null ? "--" : `${readiness.sleepHours}h`}</Text>
+          <Text style={s.readinessLabel}>sleep</Text>
+        </View>
+        <View style={s.readinessMetric}>
+          <Feather name="clock" size={14} color="#d9ad63" />
+          <Text style={s.readinessValue}>{Number(readiness?.activeMinutes ?? 0)}</Text>
+          <Text style={s.readinessLabel}>active min</Text>
+        </View>
+      </View>
+      <Text style={s.readinessNote}>These readings can move step duties, recovery checks, active-minute tasks, and Aldric's daily counsel.</Text>
+    </View>
+  );
+}
+
 function buildCommissionNote(commission: any, path: any) {
   return `[commission-context] ${JSON.stringify({
     commissionId: commission?.id,
@@ -613,6 +662,8 @@ export default function HallScreen() {
               </View>
             )}
 
+            <ReadinessLedger readiness={hallAny?.readiness} />
+
             {commission && quest && (
               <TouchableOpacity style={[s.card, { backgroundColor: "#11100e", borderColor: "#514332", marginTop: 14, padding: 0 }]} onPress={() => setCommissionOpen(true)} activeOpacity={0.88}>
                 <View style={s.commissionHeader}>
@@ -787,6 +838,14 @@ const s = StyleSheet.create({
   stripValue: { color: "#e2d8ca", fontSize: 13, fontFamily: "PlayfairDisplay_700Bold", textAlign: "center" },
   stripLabel: { color: "#80796f", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular", marginTop: 3 },
   stripXpTrack: { width: "80%", height: 3, backgroundColor: "#2a2520", marginTop: 5, overflow: "hidden" },
+  readinessCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12, marginBottom: 14 },
+  readinessHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 },
+  readinessSource: { color: "#49a3a0", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  readinessGrid: { flexDirection: "row", gap: 8 },
+  readinessMetric: { flex: 1, minHeight: 68, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#0c0b09", padding: 8 },
+  readinessValue: { color: "#eee5d7", fontSize: 14, fontFamily: "Inter_700Bold", marginTop: 5 },
+  readinessLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, marginTop: 3 },
+  readinessNote: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 10 },
   commissionHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#3b3328", padding: 14, gap: 10 },
   commissionHeading: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   commissionMeta: { color: "#8f887d", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
