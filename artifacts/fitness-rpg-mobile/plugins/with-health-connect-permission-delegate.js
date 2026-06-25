@@ -18,7 +18,7 @@ function ensureHealthConnectDelegate(src) {
     return next;
   }
 
-  const onCreateMatch = next.match(/override fun onCreate\(savedInstanceState: Bundle\?\) \{[\s\S]*?super\.onCreate\(savedInstanceState\)/);
+  const onCreateMatch = next.match(/override fun onCreate\(savedInstanceState: Bundle\?\) \{[\s\S]*?super\.onCreate\([^)]+\)/);
   if (onCreateMatch?.index != null) {
     const insertAt = onCreateMatch.index + onCreateMatch[0].length;
     return `${next.slice(0, insertAt)}\n    HealthConnectPermissionDelegate.setPermissionDelegate(this)${next.slice(insertAt)}`;
