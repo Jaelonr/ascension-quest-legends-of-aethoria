@@ -234,6 +234,11 @@ router.post("/health/import", async (req, res) => {
           const next = Math.min(14, Math.max(0, Number(value)));
           return Math.max(current ?? 0, next);
         };
+        const mergeSource = (current: string | null | undefined) => {
+          if (event.provider === "samsung_health_via_health_connect") return "samsung_health";
+          if (current === "samsung_health") return current;
+          return source;
+        };
         const values = {
           steps: add(existing?.steps ?? null, event.steps, 100000),
           sleepHours: keepBestSleep(existing?.sleepHours ?? null, event.sleepHours),
@@ -242,7 +247,7 @@ router.post("/health/import", async (req, res) => {
           hrv: event.hrv ?? existing?.hrv ?? null,
           restingHr: event.restingHr ?? existing?.restingHr ?? null,
           weight: event.weight ?? existing?.weight ?? null,
-          source,
+          source: mergeSource(existing?.source),
         };
         if (existing) {
           await tx.update(wearableEntriesTable).set(values).where(eq(wearableEntriesTable.id, existing.id));
