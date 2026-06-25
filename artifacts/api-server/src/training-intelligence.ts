@@ -171,7 +171,11 @@ function toSystemProgressionRecommendation(rec: typeof exerciseProgressionsTable
       "Progression should be conservative and based on repeated successful exposures, not a single workout.",
       "High effort, pain notes, or regression should hold or reduce progression.",
     ],
-    citations: [SYSTEM_CITATIONS.acsmResistanceTraining2025, SYSTEM_CITATIONS.acsmProgressionModels2009],
+    sourceDocuments: [
+      SYSTEM_CITATIONS.acsmResistanceTraining2025,
+      SYSTEM_CITATIONS.acsmProgressionModels2009,
+      SYSTEM_CITATIONS.nscaPositionStatements,
+    ],
     safetyNote: rec.safetyNote,
     insufficientData: confidenceLevel === "insufficient_data",
   });

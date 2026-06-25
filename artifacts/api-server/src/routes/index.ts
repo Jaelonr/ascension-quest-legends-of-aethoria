@@ -25,6 +25,7 @@ import guildHallRouter from "./guild-hall";
 import chronicleRouter from "./chronicle";
 import characterRouter from "./character";
 import campaignRouter from "./campaign";
+import systemRouter from "./system";
 
 const router: IRouter = Router();
 const devAuthBypass =
@@ -77,5 +78,6 @@ router.use(guildHallRouter);
 router.use(chronicleRouter);
 router.use(characterRouter);
 router.use(campaignRouter);
+router.use(systemRouter);
 
 export default router;

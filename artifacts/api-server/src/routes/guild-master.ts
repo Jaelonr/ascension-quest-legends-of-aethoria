@@ -14,7 +14,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { eq, and, asc, desc, gte, count } from "drizzle-orm";
 import { getOrCreatePlayer } from "../progression";
 import { getTrainingIntelligence } from "../training-intelligence";
-import { aldricInterpretation } from "../system-recommendations";
+import { SKB_VERSION, aldricInterpretation } from "../system-recommendations";
 
 const router = Router();
 const GUILD_MASTER_CONTEXT = "guild_master";
@@ -242,7 +242,9 @@ function buildSystemPrompt(
     ? canonicalRecommendations.map((rec) => [
         `  • ${rec.domain}: ${rec.recommendation}`,
         `    Required action: ${rec.action}`,
+        `    Evidence version: ${rec.evidenceVersion ?? SKB_VERSION}`,
         `    Confidence: ${rec.confidenceLevel}${rec.confidencePercent != null ? ` (${rec.confidencePercent}%)` : ""}`,
+        rec.sourceDocuments?.length ? `    Approved sources: ${rec.sourceDocuments.map((source) => source.title).join("; ")}` : null,
         `    Aldric interpretation: ${aldricInterpretation(rec)}`,
         rec.safetyNote ? `    Safety note: ${rec.safetyNote}` : null,
       ].filter(Boolean).join("\n")).join("\n")
@@ -350,7 +352,9 @@ CANONICAL COACHING TRUTH (must not be contradicted):
 ${canonicalCoachingSection}
 
 SYSTEM TRUTH BOUNDARY:
-- The recommendation, action, safety note, and confidence above are canonical application truth.
+- The recommendation, action, safety note, confidence, and evidence version above are canonical application truth from SKB Version ${SKB_VERSION}.
+- Recommendation generation is deterministic: same player data, app rules, and SKB version must produce the same recommendation.
+- Approved SKB source documents are the only evidence layer for recommendations. Do not perform, imply, request, or describe open-ended internet search.
 - Aldric's visible advice must agree with these recommendations.
 - Aldric must not say "System," "confidence," "calculation," "API," "citation," "hidden mechanics," or reveal internal evidence language in his own voice.
 - If asked for technical detail and narrative mode is technical, present the facts plainly as Guild records and training ledger findings, while still avoiding hidden System mechanics.

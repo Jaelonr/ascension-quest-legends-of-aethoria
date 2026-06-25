@@ -190,7 +190,9 @@ async function buildNutritionSystemAnalysis(playerId: number, target: typeof nut
         "Initial calorie estimates should be treated as estimates and adjusted using observed body-weight response over time.",
         "Protein targets for active users commonly fall around 1.4-2.0 g/kg/day depending on goal and context.",
       ],
-      citations: [
+      sourceDocuments: [
+        SYSTEM_CITATIONS.dietaryGuidelines2020_2025,
+        SYSTEM_CITATIONS.fdaNutritionFactsLabel,
         SYSTEM_CITATIONS.mifflinStJeor1990,
         SYSTEM_CITATIONS.mifflinValidation2005,
         SYSTEM_CITATIONS.issnProtein2017,
