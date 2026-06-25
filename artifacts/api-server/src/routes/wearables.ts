@@ -24,6 +24,8 @@ interface WearableInput {
 interface HealthImportInput {
   externalId: string;
   recordedAt: string;
+  provider?: string | null;
+  recordType?: string | null;
   steps?: number | null;
   sleepHours?: number | null;
   hrv?: number | null;
@@ -227,9 +229,14 @@ router.post("/health/import", async (req, res) => {
         )).limit(1);
         const add = (current: number | null, value: number | null | undefined, max: number) =>
           value == null ? current : Math.min(max, (current ?? 0) + Math.max(0, Number(value)));
+        const keepBestSleep = (current: number | null, value: number | null | undefined) => {
+          if (value == null) return current;
+          const next = Math.min(14, Math.max(0, Number(value)));
+          return Math.max(current ?? 0, next);
+        };
         const values = {
           steps: add(existing?.steps ?? null, event.steps, 100000),
-          sleepHours: add(existing?.sleepHours ?? null, event.sleepHours, 24),
+          sleepHours: keepBestSleep(existing?.sleepHours ?? null, event.sleepHours),
           caloriesBurned: add(existing?.caloriesBurned ?? null, event.caloriesBurned, 10000),
           activeMinutes: add(existing?.activeMinutes ?? null, event.activeMinutes, 1440),
           hrv: event.hrv ?? existing?.hrv ?? null,
