@@ -38,7 +38,36 @@ type WearableSummary = {
   avgSleepHours: number | null;
   avgHrv: number | null;
   avgRestingHr: number | null;
+  lastSyncedAt?: string | null;
+  readiness?: WearableReadiness | null;
   entries: WearableEntry[];
+};
+
+type WearableReadiness = {
+  source: string | null;
+  lastSyncedAt: string | null;
+  readiness: "high" | "normal" | "limited" | "recovery" | "insufficient_data";
+  recommendation: string;
+  activeRecommendation: string;
+  commissionBias: string;
+  aldricLine: string;
+  systemRecommendation?: {
+    evidenceVersion: string;
+    confidenceLevel: string;
+    confidencePercent: number | null;
+    reasoning: string[];
+    playerDataUsed: string[];
+    sourceDocuments: Array<{ title: string; organization: string; url: string }>;
+  };
+};
+
+type WearableStatus = {
+  connected: boolean;
+  sources: string[];
+  lastSyncedAt: string | null;
+  importCount: number;
+  diagnostics: Record<string, { supported: boolean; status: string; samsungPath?: string }>;
+  analysis: WearableReadiness;
 };
 
 type WearableForm = {
@@ -415,7 +444,9 @@ export default function WearablesScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [status, setStatus] = useState<WearableStatus | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [unitSystem, setUnitSystem] = useState<Units>("imperial");
 
@@ -438,6 +469,7 @@ export default function WearablesScreen() {
       ]);
       setSummary(summaryData);
       setTodayEntry(todayData);
+      customFetch<WearableStatus>("/api/wearables/status").then(setStatus).catch(() => undefined);
       const nextForm = buildForm(todayData);
       if (unitSystem === "imperial" && todayData?.weight != null) {
         nextForm.weight = String(kgToLbs(todayData.weight));
@@ -606,6 +638,7 @@ export default function WearablesScreen() {
       });
 
       await loadData();
+      customFetch<WearableStatus>("/api/wearables/status").then(setStatus).catch(() => undefined);
       const samsungEvents = result.samsungHealthEvents ?? events.filter((event) => event.provider === "samsung_health_via_health_connect").length;
       const samsungText = samsungEvents > 0 ? ` ${samsungEvents} came from Samsung Health through Health Connect.` : "";
       const message = `${permissionText}; found ${recordCountText}. Imported ${result.imported} record${result.imported === 1 ? "" : "s"}; ${result.duplicates} already in the ledger.${samsungText}`;
@@ -617,6 +650,24 @@ export default function WearablesScreen() {
       Alert.alert("Sync failed", message);
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const disconnectHealthConnect = async () => {
+    setDisconnecting(true);
+    try {
+      const result = await customFetch<{ message: string }>("/api/health/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "health_connect" }),
+      });
+      setSyncMessage(result.message);
+      await loadData();
+      Alert.alert("Wearable disconnected", result.message);
+    } catch {
+      Alert.alert("Disconnect failed", "The Guild could not remove imported health records right now.");
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -665,6 +716,27 @@ export default function WearablesScreen() {
             </Text>
           </View>
         </View>
+
+        {(summary?.readiness || status?.analysis) ? (
+          <View style={w.systemCard}>
+            <View style={w.systemHeader}>
+              <View>
+                <Text style={w.systemEyebrow}>SYSTEM ANALYSIS</Text>
+                <Text style={w.systemTitle}>{(status?.analysis ?? summary?.readiness)?.readiness?.replace(/_/g, " ") ?? "insufficient data"}</Text>
+              </View>
+              <View style={w.confidencePill}>
+                <Text style={w.confidenceText}>{(status?.analysis ?? summary?.readiness)?.systemRecommendation?.confidenceLevel ?? "low"}</Text>
+              </View>
+            </View>
+            <Text style={w.systemText}>{(status?.analysis ?? summary?.readiness)?.recommendation}</Text>
+            <Text style={w.systemAction}>{(status?.analysis ?? summary?.readiness)?.activeRecommendation}</Text>
+            <Text style={w.aldricSystemLine}>{(status?.analysis ?? summary?.readiness)?.aldricLine}</Text>
+            <View style={w.systemMetaGrid}>
+              <Text style={w.systemMeta}>Source: {formatEntrySource((status?.analysis ?? summary?.readiness)?.source)}</Text>
+              <Text style={w.systemMeta}>Last sync: {(status?.lastSyncedAt ?? summary?.lastSyncedAt) ? new Date(status?.lastSyncedAt ?? summary?.lastSyncedAt ?? "").toLocaleString() : "Not synced"}</Text>
+            </View>
+          </View>
+        ) : null}
 
         {loading ? (
           <View style={w.loadingBox}>
@@ -771,6 +843,16 @@ export default function WearablesScreen() {
               <Text style={w.syncBtnText}>{syncing ? "Syncing" : "Sync"}</Text>
             </TouchableOpacity>
           </View>
+          <View style={w.diagnosticCard}>
+            <Text style={w.diagnosticTitle}>Import diagnostics</Text>
+            <Text style={w.diagnosticText}>Status: {status?.diagnostics?.healthConnect?.status?.replace(/_/g, " ") ?? "not checked"}</Text>
+            <Text style={w.diagnosticText}>Sources: {status?.sources?.length ? status.sources.map(formatEntrySource).join(", ") : "none yet"}</Text>
+            <Text style={w.diagnosticText}>Imported receipts: {status?.importCount ?? 0}</Text>
+            <TouchableOpacity style={[w.disconnectBtn, disconnecting && w.disabled]} onPress={disconnectHealthConnect} disabled={disconnecting} activeOpacity={0.84}>
+              <Feather name="trash-2" size={14} color="#d95f45" />
+              <Text style={w.disconnectText}>{disconnecting ? "Removing..." : "Disconnect and delete imported health data"}</Text>
+            </TouchableOpacity>
+          </View>
           <View style={w.connectorGrid}>
             {CONNECTORS.map((connector) => (
               <View key={connector.id} style={w.connectorCard}>
@@ -858,6 +940,17 @@ const w = StyleSheet.create({
   heroIcon: { width: 46, height: 46, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09" },
   heroTitle: { color: "#d9ad63", fontSize: 17, fontFamily: "Inter_700Bold" },
   heroText: { color: "#8f887d", fontSize: 12, lineHeight: 18, marginTop: 5 },
+  systemCard: { borderWidth: 1, borderColor: "#2f6966", backgroundColor: "#071111", padding: 13, marginBottom: 16 },
+  systemHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 8 },
+  systemEyebrow: { color: "#49a3a0", fontSize: 9, letterSpacing: 2.4, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  systemTitle: { color: "#e7f7f4", fontSize: 18, fontFamily: "Inter_700Bold", textTransform: "capitalize", marginTop: 2 },
+  confidencePill: { borderWidth: 1, borderColor: "#49a3a0", paddingHorizontal: 8, paddingVertical: 5, backgroundColor: "#0c1b1b" },
+  confidenceText: { color: "#49a3a0", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  systemText: { color: "#d8c4a5", fontSize: 12, lineHeight: 18 },
+  systemAction: { color: "#e6c27b", fontSize: 12, lineHeight: 18, marginTop: 7, fontFamily: "Inter_700Bold" },
+  aldricSystemLine: { color: "#9dbdb8", fontSize: 11, lineHeight: 17, marginTop: 8, fontStyle: "italic" },
+  systemMetaGrid: { borderTopWidth: 1, borderTopColor: "#173533", marginTop: 10, paddingTop: 8, gap: 3 },
+  systemMeta: { color: "#8f887d", fontSize: 10 },
   loadingBox: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 20, alignItems: "center", gap: 8, marginBottom: 16 },
   muted: { color: "#8f887d", fontSize: 12 },
   smallMuted: { color: "#8f887d", fontSize: 11 },
@@ -921,6 +1014,11 @@ const w = StyleSheet.create({
     borderColor: "#f0c77a",
   },
   syncBtnText: { color: "#0a0908", fontSize: 12, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  diagnosticCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 12, marginBottom: 10, gap: 4 },
+  diagnosticTitle: { color: "#d9ad63", fontSize: 12, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  diagnosticText: { color: "#9f9586", fontSize: 11, lineHeight: 16 },
+  disconnectBtn: { minHeight: 38, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: "#6f2d26", backgroundColor: "#160b09", marginTop: 8, paddingHorizontal: 10 },
+  disconnectText: { color: "#d95f45", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.8 },
   connectorCard: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12 },
   connectorHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   connectorIcon: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09" },

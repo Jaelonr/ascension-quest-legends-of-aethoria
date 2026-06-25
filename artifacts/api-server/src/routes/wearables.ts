@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { healthImportsTable, wearableEntriesTable } from "@workspace/db";
-import { eq, and, gte, desc, asc } from "drizzle-orm";
+import { guildMasterMemoriesTable, healthImportsTable, wearableEntriesTable, worldEventsTable } from "@workspace/db";
+import { eq, and, gte, desc, asc, inArray } from "drizzle-orm";
 import { getOrCreatePlayer } from "../progression";
+import { buildWearableSystemAnalysis } from "../wearable-interpretation";
 const router = Router();
 
 const VALID_SOURCES = ["manual", "apple_health", "health_connect", "fitbit", "garmin", "samsung_health"] as const;
@@ -33,6 +34,59 @@ interface HealthImportInput {
   caloriesBurned?: number | null;
   activeMinutes?: number | null;
   weight?: number | null;
+}
+
+function isoDate(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+async function recentWearableEntries(playerId: number, days = 7) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const sinceStr = since.toISOString().split("T")[0];
+  return db.select().from(wearableEntriesTable)
+    .where(and(eq(wearableEntriesTable.playerId, playerId), gte(wearableEntriesTable.date, sinceStr)))
+    .orderBy(asc(wearableEntriesTable.date));
+}
+
+async function recordWearableMilestones(playerId: number, entries: Array<typeof wearableEntriesTable.$inferSelect>, source: string) {
+  const latest = [...entries].sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!latest) return;
+  const sourceLabel = latest.source === "samsung_health" ? "Samsung Health" : latest.source === "health_connect" ? "Health Connect" : source.replace(/_/g, " ");
+  await db.insert(worldEventsTable).values({
+    playerId,
+    worldKey: `wearable:first-sync:${source}`,
+    title: "First synced recovery record",
+    description: `${sourceLabel} records reached the Guild ledger. Future commissions can now account for steps, rest, and recovery signals when available.`,
+    status: "recorded",
+    severity: "minor",
+    reversible: true,
+    metadata: { source, sourceLabel },
+  }).onConflictDoNothing();
+
+  if ((latest.steps ?? 0) >= 10000) {
+    await db.insert(worldEventsTable).values({
+      playerId,
+      worldKey: `wearable:long-travel:${latest.date}`,
+      title: "Long travel day recorded",
+      description: `Your steps on ${latest.date} carried the expedition forward. The Guild counts the road, but does not pretend a continent was crossed on foot.`,
+      status: "recorded",
+      severity: "minor",
+      reversible: true,
+      metadata: { date: latest.date, steps: latest.steps, source: latest.source },
+    }).onConflictDoNothing();
+  }
+
+  const poorSleep = entries.filter((entry) => entry.sleepHours != null && entry.sleepHours < 6);
+  if (poorSleep.length >= 2) {
+    await db.insert(guildMasterMemoriesTable).values({
+      playerId,
+      kind: "recovery",
+      sourceKey: `wearable:poor-sleep:${poorSleep[poorSleep.length - 1].date}`,
+      summary: "Recent synced records show repeated short sleep; Aldric should favor recovery-first counsel until the pattern improves.",
+      importance: 2,
+    }).onConflictDoNothing();
+  }
 }
 
 function validateWearableInput(body: unknown): { data: WearableInput; error: null } | { data: null; error: string } {
@@ -146,7 +200,7 @@ router.post("/wearables", async (req, res) => {
 router.get("/wearables/today", async (req, res) => {
   try {
     const { player } = await getOrCreatePlayer(req.userId!);
-    const today = new Date().toISOString().split("T")[0];
+    const today = isoDate();
 
     const [entry] = await db.select().from(wearableEntriesTable)
       .where(and(eq(wearableEntriesTable.playerId, player.id), eq(wearableEntriesTable.date, today)))
@@ -163,30 +217,65 @@ router.get("/wearables/today", async (req, res) => {
 router.get("/wearables/summary", async (req, res) => {
   try {
     const { player } = await getOrCreatePlayer(req.userId!);
-    const since = new Date();
-    since.setDate(since.getDate() - 7);
-    const sinceStr = since.toISOString().split("T")[0];
-
-    const entries = await db.select().from(wearableEntriesTable)
-      .where(and(eq(wearableEntriesTable.playerId, player.id), gte(wearableEntriesTable.date, sinceStr)))
-      .orderBy(asc(wearableEntriesTable.date));
+    const entries = await recentWearableEntries(player.id, 7);
 
     const withSteps = entries.filter(e => e.steps != null);
     const withSleep = entries.filter(e => e.sleepHours != null);
     const withHrv = entries.filter(e => e.hrv != null);
     const withRhr = entries.filter(e => e.restingHr != null);
 
+    const analysis = buildWearableSystemAnalysis(entries, isoDate());
     res.json({
       days: entries.length,
       avgSteps: withSteps.length > 0 ? Math.round(withSteps.reduce((s, e) => s + (e.steps ?? 0), 0) / withSteps.length) : null,
       avgSleepHours: withSleep.length > 0 ? +(withSleep.reduce((s, e) => s + (e.sleepHours ?? 0), 0) / withSleep.length).toFixed(1) : null,
       avgHrv: withHrv.length > 0 ? +(withHrv.reduce((s, e) => s + (e.hrv ?? 0), 0) / withHrv.length).toFixed(1) : null,
       avgRestingHr: withRhr.length > 0 ? Math.round(withRhr.reduce((s, e) => s + (e.restingHr ?? 0), 0) / withRhr.length) : null,
+      lastSyncedAt: analysis.lastSyncedAt,
+      readiness: analysis,
       entries,
     });
   } catch (err) {
     req.log.error(err, "wearables summary error");
     res.status(500).json({ error: "Failed to load summary" });
+  }
+});
+
+router.get("/wearables/status", async (req, res) => {
+  try {
+    const { player } = await getOrCreatePlayer(req.userId!);
+    const [entries, imports] = await Promise.all([
+      recentWearableEntries(player.id, 30),
+      db.select().from(healthImportsTable)
+        .where(eq(healthImportsTable.playerId, player.id))
+        .orderBy(desc(healthImportsTable.processedAt))
+        .limit(100),
+    ]);
+    const analysis = buildWearableSystemAnalysis(entries, isoDate());
+    const sources = [...new Set([
+      ...entries.map((entry) => entry.source),
+      ...imports.map((entry) => entry.source),
+    ].filter(Boolean))];
+    res.json({
+      connected: imports.length > 0,
+      sources,
+      lastSyncedAt: imports[0]?.processedAt?.toISOString() ?? analysis.lastSyncedAt,
+      importCount: imports.length,
+      diagnostics: {
+        healthConnect: {
+          supported: true,
+          status: sources.includes("health_connect") || sources.includes("samsung_health") ? "records_imported" : "permission_required_on_device",
+          samsungPath: "Galaxy Watch -> Samsung Health -> Health Connect -> Ascension Quest",
+        },
+        appleHealth: { supported: false, status: "ios_build_required" },
+        fitbit: { supported: false, status: "post_v1_direct_integration" },
+        garmin: { supported: false, status: "post_v1_direct_integration" },
+      },
+      analysis,
+    });
+  } catch (err) {
+    req.log.error(err, "wearables status error");
+    res.status(500).json({ error: "Failed to load wearable status" });
   }
 });
 
@@ -263,10 +352,84 @@ router.post("/health/import", async (req, res) => {
         }
       }
     });
-    res.json({ source, imported, duplicates, total: events.length, samsungHealthEvents, healthConnectEvents, recordTypes });
+    const entries = await recentWearableEntries(player.id, 7);
+    await recordWearableMilestones(player.id, entries, source);
+    const analysis = buildWearableSystemAnalysis(entries, isoDate());
+    res.json({
+      source,
+      imported,
+      duplicates,
+      total: events.length,
+      samsungHealthEvents,
+      healthConnectEvents,
+      recordTypes,
+      lastSyncedAt: analysis.lastSyncedAt,
+      readiness: analysis,
+    });
   } catch (error) {
     req.log.error(error, "health import error");
     res.status(400).json({ error: error instanceof Error ? error.message : "Failed to import health data" });
+  }
+});
+
+function deleteSourcesFor(source: string) {
+  if (source === "all") return VALID_SOURCES.filter((item) => item !== "manual");
+  if (source === "health_connect" || source === "samsung_health") return ["health_connect", "samsung_health"] as const;
+  if ((VALID_SOURCES as readonly string[]).includes(source)) return [source as WearableSource];
+  return null;
+}
+
+async function clearImportedHealthData(playerId: number, source: string) {
+  const sources = deleteSourcesFor(source);
+  if (!sources) return null;
+  await db.transaction(async (tx) => {
+    await tx.delete(wearableEntriesTable)
+      .where(and(eq(wearableEntriesTable.playerId, playerId), inArray(wearableEntriesTable.source, [...sources])));
+    const importSources = sources.includes("samsung_health") ? [...new Set([...sources, "health_connect"])] : [...sources];
+    await tx.delete(healthImportsTable)
+      .where(and(eq(healthImportsTable.playerId, playerId), inArray(healthImportsTable.source, importSources)));
+  });
+  return sources;
+}
+
+router.delete("/health/imports", async (req, res) => {
+  try {
+    const source = String(req.query.source ?? "all");
+    const { player } = await getOrCreatePlayer(req.userId!);
+    const sources = await clearImportedHealthData(player.id, source);
+    if (!sources) {
+      return void res.status(400).json({ error: "Unsupported source" });
+    }
+    res.json({
+      disconnected: source !== "manual",
+      deleted: true,
+      source,
+      message: source === "all"
+        ? "Imported health records were removed. Manual logs remain."
+        : `${source.replace(/_/g, " ")} records were removed. You can reconnect later.`,
+    });
+  } catch (err) {
+    req.log.error(err, "health import delete error");
+    res.status(500).json({ error: "Failed to delete imported health data" });
+  }
+});
+
+router.post("/health/disconnect", async (req, res) => {
+  try {
+    const source = String(req.body?.source ?? "health_connect");
+    const { player } = await getOrCreatePlayer(req.userId!);
+    const sources = await clearImportedHealthData(player.id, source);
+    if (!sources) {
+      return void res.status(400).json({ error: "Unsupported source" });
+    }
+    res.json({
+      disconnected: true,
+      source,
+      message: "The wearable source has been disconnected from the Guild ledger. You may continue with manual logging.",
+    });
+  } catch (err) {
+    req.log.error(err, "health disconnect error");
+    res.status(500).json({ error: "Failed to disconnect wearable source" });
   }
 });
 

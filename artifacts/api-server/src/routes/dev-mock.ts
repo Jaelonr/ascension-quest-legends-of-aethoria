@@ -846,7 +846,27 @@ const buildMockGuildHall = () => ({
       { id: 1, name: "Wayfarer's Wraps", rarity: "uncommon", category: "gear", goldCost: 120, loreText: "Plain cloth, stubborn magic." },
     ],
   },
-  readiness: { sleepHours: 7, steps: 4200, activeMinutes: 22, injuryNotesPresent: false },
+  readiness: {
+    sleepHours: 7,
+    steps: 4200,
+    activeMinutes: 22,
+    hrv: 54,
+    restingHr: 62,
+    source: "manual",
+    lastSyncedAt: nowIso(),
+    interpretation: "normal",
+    activeRecommendation: "A light training or walking duty is appropriate while the ledger gathers more synced history.",
+    aldricLine: "The ledger shows no reason to hold you back, provided the work stays honest and recorded.",
+    systemAnalysis: {
+      evidenceVersion: "1.0.0",
+      confidenceLevel: "low",
+      confidencePercent: 42,
+      reasoning: ["Manual readings are present, but imported wearable history is limited."],
+      playerDataUsed: ["Steps today: 4200", "Sleep: 7 hours"],
+      sourceDocuments: [],
+    },
+    injuryNotesPresent: false,
+  },
   consequences: [],
   worldEvents: [],
 });
@@ -1070,7 +1090,65 @@ router.post("/health/import", (req, res) => {
     samsungHealthEvents,
     healthConnectEvents: events.length - samsungHealthEvents,
     recordTypes,
+    lastSyncedAt: nowIso(),
+    readiness: {
+      source: samsungHealthEvents ? "samsung_health" : "health_connect",
+      lastSyncedAt: nowIso(),
+      readiness: "normal",
+      recommendation: "Use imported health data as readiness context, not as a replacement for Samsung Health.",
+      activeRecommendation: "Let steps and sleep inform today's commission selection.",
+      commissionBias: "training",
+      aldricLine: "The Hall has received the travel record. We will use it, not worship it.",
+      systemRecommendation: {
+        evidenceVersion: "1.0.0",
+        confidenceLevel: "moderate",
+        confidencePercent: 70,
+        reasoning: ["Mock Health Connect records were accepted."],
+        playerDataUsed: [`Imported records: ${events.length}`],
+        sourceDocuments: [],
+      },
+    },
   });
+});
+
+router.get("/wearables/status", (_req, res) => {
+  res.json({
+    connected: true,
+    sources: ["manual"],
+    lastSyncedAt: nowIso(),
+    importCount: 0,
+    diagnostics: {
+      healthConnect: { supported: true, status: "permission_required_on_device", samsungPath: "Galaxy Watch -> Samsung Health -> Health Connect -> Ascension Quest" },
+      appleHealth: { supported: false, status: "ios_build_required" },
+      fitbit: { supported: false, status: "post_v1_direct_integration" },
+      garmin: { supported: false, status: "post_v1_direct_integration" },
+    },
+    analysis: {
+      source: "manual",
+      lastSyncedAt: nowIso(),
+      readiness: "normal",
+      recommendation: "Manual records are enough to keep the app useful, but imported wearable records improve confidence.",
+      activeRecommendation: "Continue with manual logging or connect Health Connect on a Samsung device.",
+      commissionBias: "training",
+      aldricLine: "A blank ledger is not a failed one. It is only waiting for facts.",
+      systemRecommendation: {
+        evidenceVersion: "1.0.0",
+        confidenceLevel: "low",
+        confidencePercent: 45,
+        reasoning: ["Mock status uses manual data only."],
+        playerDataUsed: ["No imported records in mock status."],
+        sourceDocuments: [],
+      },
+    },
+  });
+});
+
+router.delete("/health/imports", (_req, res) => {
+  res.json({ disconnected: true, deleted: true, source: "all", message: "Mock imported health records removed." });
+});
+
+router.post("/health/disconnect", (_req, res) => {
+  res.json({ disconnected: true, source: "health_connect", message: "Mock Health Connect source disconnected." });
 });
 
 export default router;

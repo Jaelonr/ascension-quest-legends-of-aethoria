@@ -34,6 +34,7 @@ import {
 } from "../domain/aethoria-locations";
 import { getTrainingIntelligence } from "../training-intelligence";
 import { ensureHallOfferingCatalog } from "./inventory";
+import { buildWearableSystemAnalysis, type WearableSystemAnalysis } from "../wearable-interpretation";
 
 const router = Router();
 const RANK_ORDER = ["E", "D", "C", "B", "A", "S", "National-Level"];
@@ -45,7 +46,10 @@ interface GuildPlayerContext {
   sleepHours: number | null;
   steps: number;
   activeMinutes: number;
+  hrv: number | null;
+  restingHr: number | null;
   wearableSource: string | null;
+  wearableAnalysis: WearableSystemAnalysis;
   proteinToday: number;
   proteinTarget: number;
   mealsToday: number;
@@ -141,13 +145,15 @@ function hasAnyEquipment(equipment: string[], keys: string[]) {
 
 function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
   const hasInjuryFlag = !!input.injuryNotes && /pain|injur|ache|shoulder|back|knee|hip|impingement|strain/i.test(input.injuryNotes);
-  if (hasInjuryFlag || (input.sleepHours != null && input.sleepHours < 6)) {
+  if (hasInjuryFlag || input.wearableAnalysis.commissionBias === "recovery" || (input.sleepHours != null && input.sleepHours < 6)) {
     return {
       category: "recovery",
       readiness: hasInjuryFlag ? "limited" : "recovery",
       rationale: hasInjuryFlag
         ? "Your notes mention a limitation, so the Guild is assigning work that builds consistency without gambling with pain."
-        : "Your recovery is thin today, so the Guild is treating restoration as the mission.",
+        : input.wearableAnalysis.source
+          ? `${input.wearableAnalysis.aldricLine} The Guild is treating restoration as the mission.`
+          : "Your recovery is thin today, so the Guild is treating restoration as the mission.",
       counsel: "Restoration is still duty. Move carefully, eat like you intend to heal, and do not confuse courage with ignoring pain.",
       tasks: [
         { description: "Complete a recovery, mobility, or easy walk session", targetValue: 1, unit: "session", order: 1 },
@@ -173,11 +179,28 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
     };
   }
 
-  if (input.neglectedStyle === "conditioning" || (input.dominantStyle === "strength" && input.steps < 5000)) {
+  if (input.wearableAnalysis.commissionBias === "avoid_extra_conditioning") {
+    return {
+      category: "recovery",
+      readiness: "limited",
+      rationale: `${input.wearableAnalysis.aldricLine} The Guild will count today's travel before demanding more road work.`,
+      counsel: "Do not confuse additional miles with wiser training. Keep the next duty controlled and useful.",
+      tasks: [
+        { description: "Complete a mobility, recovery, or technical skill session", targetValue: 1, unit: "session", order: 1 },
+        { description: "Reach today's protein target for repair", targetValue: input.proteinTarget || 1, unit: "g", order: 2 },
+        { description: "Log sleep or recovery notes honestly", targetValue: 1, unit: "check-in", order: 3 },
+      ],
+      context: { reason: "high_step_load", steps: input.steps, wearableRecommendation: input.wearableAnalysis.recommendation },
+    };
+  }
+
+  if (input.neglectedStyle === "conditioning" || input.wearableAnalysis.commissionBias === "conditioning" || (input.dominantStyle === "strength" && input.steps < 5000)) {
     return {
       category: "conditioning",
       readiness: "ready",
-      rationale: "Your record leans toward force, but the road still tests lungs and legs.",
+      rationale: input.wearableAnalysis.commissionBias === "conditioning"
+        ? `${input.wearableAnalysis.aldricLine} The road still tests lungs and legs.`
+        : "Your record leans toward force, but the road still tests lungs and legs.",
       counsel: "Iron wins clashes. Endurance wins campaigns. Scout the perimeter and teach your body to keep moving after the first strike.",
       tasks: [
         { description: "Complete an endurance scouting session", targetValue: 1, unit: "session", order: 1 },
@@ -451,9 +474,12 @@ async function recordRegionVisit(playerId: number, context: any, intendedStyle: 
 
 async function getGuildPlayerContext(playerId: number): Promise<GuildPlayerContext> {
   const today = getTodayStr();
-  const [biometrics, wearable, nutrition, targets, recentWorkouts, prs, identityRows, misses, raids, memories, equipmentRows, playerRows] = await Promise.all([
+  const wearableSince = new Date();
+  wearableSince.setDate(wearableSince.getDate() - 7);
+  const wearableSinceStr = wearableSince.toISOString().slice(0, 10);
+  const [biometrics, wearables, nutrition, targets, recentWorkouts, prs, identityRows, misses, raids, memories, equipmentRows, playerRows] = await Promise.all([
     db.select().from(playerBiometricsTable).where(eq(playerBiometricsTable.playerId, playerId)).limit(1),
-    db.select().from(wearableEntriesTable).where(and(eq(wearableEntriesTable.playerId, playerId), eq(wearableEntriesTable.date, today))).limit(1),
+    db.select().from(wearableEntriesTable).where(and(eq(wearableEntriesTable.playerId, playerId), gte(wearableEntriesTable.date, wearableSinceStr))).orderBy(desc(wearableEntriesTable.date)),
     db.select().from(nutritionLogsTable).where(and(eq(nutritionLogsTable.playerId, playerId), eq(nutritionLogsTable.date, today))),
     db.select().from(nutritionTargetsTable).where(eq(nutritionTargetsTable.playerId, playerId)).limit(1),
     db.select().from(workoutSessionsTable).where(and(
@@ -481,11 +507,16 @@ async function getGuildPlayerContext(playerId: number): Promise<GuildPlayerConte
   const ranked = rankStyle(identityRows[0]);
   const bioEquipment = biometrics[0]?.equipmentTypes ?? [];
   const realEquipment = equipmentRows.map((item) => item.name);
+  const todayWearable = wearables.find((entry) => entry.date === today) ?? wearables[0] ?? null;
+  const wearableAnalysis = buildWearableSystemAnalysis(wearables, today);
   return {
-    sleepHours: wearable[0]?.sleepHours ?? null,
-    steps: wearable[0]?.steps ?? 0,
-    activeMinutes: wearable[0]?.activeMinutes ?? 0,
-    wearableSource: wearable[0]?.source ?? null,
+    sleepHours: todayWearable?.sleepHours ?? null,
+    steps: todayWearable?.steps ?? 0,
+    activeMinutes: todayWearable?.activeMinutes ?? 0,
+    hrv: todayWearable?.hrv ?? null,
+    restingHr: todayWearable?.restingHr ?? null,
+    wearableSource: todayWearable?.source ?? null,
+    wearableAnalysis,
     proteinToday,
     proteinTarget: targets[0]?.protein ?? 0,
     mealsToday: nutrition.length,
@@ -871,7 +902,15 @@ async function getGuildHallSnapshot(userId: string) {
       sleepHours: playerContext.sleepHours,
       steps: playerContext.steps,
       activeMinutes: playerContext.activeMinutes,
+      hrv: playerContext.hrv,
+      restingHr: playerContext.restingHr,
       source: playerContext.wearableSource,
+      lastSyncedAt: playerContext.wearableAnalysis.lastSyncedAt,
+      interpretation: playerContext.wearableAnalysis.readiness,
+      activeRecommendation: playerContext.wearableAnalysis.activeRecommendation,
+      aldricLine: playerContext.wearableAnalysis.aldricLine,
+      systemAnalysis: playerContext.wearableAnalysis.systemRecommendation,
+      metrics: playerContext.wearableAnalysis.metrics,
       injuryNotesPresent: !!playerContext.injuryNotes,
     },
     consequences,

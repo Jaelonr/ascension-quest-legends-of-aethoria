@@ -32,6 +32,22 @@ interface Summary {
   avgSleepHours: number | null;
   avgHrv: number | null;
   avgRestingHr: number | null;
+  lastSyncedAt?: string | null;
+  readiness?: {
+    source: string | null;
+    readiness: string;
+    recommendation: string;
+    activeRecommendation: string;
+    aldricLine: string;
+    systemRecommendation?: {
+      evidenceVersion: string;
+      confidenceLevel: string;
+      confidencePercent: number | null;
+      reasoning: string[];
+      playerDataUsed: string[];
+      sourceDocuments: Array<{ title: string; organization: string; url: string }>;
+    };
+  } | null;
   entries: WearableEntry[];
 }
 
@@ -95,6 +111,7 @@ export default function Wearables() {
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deletingImports, setDeletingImports] = useState(false);
 
   const [form, setForm] = useState({
     date: today,
@@ -172,6 +189,20 @@ export default function Wearables() {
     }
   };
 
+  const deleteImportedData = async () => {
+    setDeletingImports(true);
+    try {
+      const res = await fetch("/api/health/imports?source=all", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete imports");
+      toast({ title: "Imported health data removed", description: "Manual entries remain available." });
+      await loadData();
+    } catch {
+      toast({ title: "Could not remove imports", variant: "destructive" });
+    } finally {
+      setDeletingImports(false);
+    }
+  };
+
   const isImmersive = settings.narrative.intensity === "immersive";
 
   return (
@@ -242,6 +273,40 @@ export default function Wearables() {
               />
             </div>
           </>
+        )}
+
+        {summary?.readiness && (
+          <Card className="border border-cyan-900/60 bg-cyan-950/10">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-cyan-300/70">System Analysis</p>
+                  <CardTitle className="mt-1 text-lg capitalize text-cyan-100">{summary.readiness.readiness.replace(/_/g, " ")}</CardTitle>
+                </div>
+                <Badge variant="outline" className="border-cyan-700/60 text-cyan-300">
+                  {summary.readiness.systemRecommendation?.confidenceLevel ?? "low"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="leading-relaxed text-[#d8c4a5]">{summary.readiness.recommendation}</p>
+              <p className="font-semibold leading-relaxed text-[#e6c27b]">{summary.readiness.activeRecommendation}</p>
+              <p className="italic leading-relaxed text-cyan-100/70">{summary.readiness.aldricLine}</p>
+              <div className="grid gap-2 border-t border-cyan-900/50 pt-3 text-[11px] text-muted-foreground md:grid-cols-2">
+                <p>Source: {summary.readiness.source?.replace(/_/g, " ") ?? "none"}</p>
+                <p>Last sync: {summary.lastSyncedAt ? new Date(summary.lastSyncedAt).toLocaleString() : "not synced"}</p>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full border-red-900/50 bg-red-950/10 text-red-300 hover:bg-red-950/20"
+                onClick={deleteImportedData}
+                disabled={deletingImports}
+              >
+                {deletingImports ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                Disconnect and delete imported health data
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* Today's Entry */}

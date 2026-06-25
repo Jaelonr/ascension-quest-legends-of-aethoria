@@ -308,6 +308,40 @@ function CommissionDetailDialog({
   );
 }
 
+function ReadinessPanel({ readiness }: { readiness: any }) {
+  if (!readiness) return null;
+  const hasRecord = readiness.source || readiness.steps > 0 || readiness.sleepHours != null || readiness.activeMinutes > 0;
+  if (!hasRecord) {
+    return (
+      <section className="mt-4 border border-[#345f5d] bg-[#071111] p-4">
+        <p className="text-[10px] uppercase tracking-[0.22em] text-[#49a3a0]">Healer's Ledger</p>
+        <h2 className="mt-1 font-serif text-lg font-bold text-[#d9ad63]">Awaiting Recovery Record</h2>
+        <p className="mt-2 text-sm leading-relaxed text-[#b7ab9c]">Sync Samsung Health through Health Connect on Android or log vitals manually so the Guild can account for today's recovery.</p>
+      </section>
+    );
+  }
+  return (
+    <section className="mt-4 border border-[#345f5d] bg-[#071111] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-[#49a3a0]">System Analysis</p>
+          <h2 className="mt-1 font-serif text-lg font-bold capitalize text-[#e7f7f4]">{readiness.interpretation?.replace(/_/g, " ") ?? "Readiness observed"}</h2>
+        </div>
+        <div className="border border-[#49a3a0] px-2 py-1 text-[10px] uppercase tracking-widest text-[#49a3a0]">
+          {readiness.systemAnalysis?.confidenceLevel ?? "low"}
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px]">
+        <div className="border border-[#173533] bg-[#0c0b09] p-2"><p className="text-[#8f887d]">Steps</p><p className="text-[#d9ad63]">{Number(readiness.steps ?? 0).toLocaleString()}</p></div>
+        <div className="border border-[#173533] bg-[#0c0b09] p-2"><p className="text-[#8f887d]">Sleep</p><p className="text-[#d9ad63]">{readiness.sleepHours == null ? "--" : `${readiness.sleepHours}h`}</p></div>
+        <div className="border border-[#173533] bg-[#0c0b09] p-2"><p className="text-[#8f887d]">Source</p><p className="truncate text-[#49a3a0]">{readiness.source?.replace(/_/g, " ") ?? "manual"}</p></div>
+      </div>
+      <p className="mt-3 text-sm font-semibold leading-relaxed text-[#e6c27b]">{readiness.activeRecommendation}</p>
+      {readiness.aldricLine && <p className="mt-2 text-sm italic leading-relaxed text-[#9dbdb8]">{readiness.aldricLine}</p>}
+    </section>
+  );
+}
+
 const GH_DIFF: Record<string, string> = {
   E: "text-[#8f887d] border-[#3b3328]", D: "text-green-400 border-green-600/30",
   C: "text-blue-400 border-blue-600/30", B: "text-purple-400 border-purple-600/30",
@@ -671,6 +705,8 @@ export default function GuildHall() {
           </div>
         </div>
       </section>
+
+      <ReadinessPanel readiness={extended.readiness} />
 
       <Button
         onClick={() => report.mutate()}
