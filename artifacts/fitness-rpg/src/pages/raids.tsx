@@ -44,6 +44,52 @@ function formatTimeRemaining(hours: number): string {
   return `${Math.round(hours / 24)}d ${Math.round(hours % 24)}h`;
 }
 
+function raidStateCopy(raid: BossRaid) {
+  if (raid.status === "failed") {
+    return {
+      label: "Forced Retreat",
+      tone: "border-red-400/30 bg-red-400/10 text-red-200",
+      title: "The boss forced a retreat.",
+      text: "Your earned training remains. The Chronicle remembers the loss, world pressure rises, and the Guild expects recovery before the rematch.",
+    };
+  }
+  if (raid.status === "completed") {
+    return {
+      label: "Boss Forced Back",
+      tone: "border-green-400/30 bg-green-400/10 text-green-200",
+      title: "The opening is won.",
+      text: "The threat has been driven to its knees. Claim the reward to seal the victory, lower pressure, and close this raid ledger.",
+    };
+  }
+  if (raid.status === "claimed") {
+    return {
+      label: "Victory Sealed",
+      tone: "border-yellow-400/30 bg-yellow-400/10 text-yellow-100",
+      title: "Aethoria remembers the victory.",
+      text: "The Guild's scouts report eased pressure. Your real effort became a recorded win in the wider war.",
+    };
+  }
+  return {
+    label: "Guild Directive",
+    tone: "border-primary/30 bg-primary/10 text-foreground",
+    title: "The Guild is holding the line.",
+    text: "Other adventurers are engaged elsewhere. Your qualifying training sessions press directly against this boss.",
+  };
+}
+
+function availableRaidCopy(template: RaidTemplate) {
+  if (template.alreadyCompleted && template.isRepeatable) {
+    return {
+      label: "Rematch Available",
+      text: "The Gate has not forgotten you. This repeat run sharpens the same pattern without pretending the first victory never happened.",
+    };
+  }
+  return {
+    label: "Campaign Directive",
+    text: "This is not ordinary checklist work. Accepting it opens a raid ledger; training remains your weapon, and recovery remains a valid tactical choice.",
+  };
+}
+
 function ActiveRaidCard({ raid }: { raid: BossRaid }) {
   const [expanded, setExpanded] = useState(true);
   const queryClient = useQueryClient();
@@ -90,6 +136,7 @@ function ActiveRaidCard({ raid }: { raid: BossRaid }) {
   const isClaimed = raid.status === "claimed";
   const isCompleted = raid.status === "completed";
   const isFailed = raid.status === "failed";
+  const stateCopy = raidStateCopy(raid);
 
   return (
     <Card className={cn(
@@ -153,6 +200,14 @@ function ActiveRaidCard({ raid }: { raid: BossRaid }) {
 
         {expanded && (
           <div className="space-y-1 mb-3">
+            <div className={cn("rounded border p-3", stateCopy.tone)}>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="text-[9px] font-mono uppercase tracking-widest">{stateCopy.label}</span>
+                <span className="text-[9px] font-mono uppercase">{formatGuildGrade(raid.difficulty)}</span>
+              </div>
+              <p className="font-serif text-sm font-bold">{stateCopy.title}</p>
+              <p className="mt-1 text-[11px] leading-relaxed opacity-85">{stateCopy.text}</p>
+            </div>
             {raid.lore && (
               <p className="text-[11px] text-muted-foreground italic mb-2 border-l-2 border-primary/20 pl-2">{raid.lore}</p>
             )}
@@ -235,6 +290,7 @@ function ActiveRaidCard({ raid }: { raid: BossRaid }) {
 
 function AvailableRaidCard({ template, onStart }: { template: RaidTemplate; onStart: (title: string) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const directive = availableRaidCopy(template);
 
   return (
     <Card className={cn("border bg-card/50 overflow-hidden relative", DIFFICULTY_GLOWS[template.difficulty])}>
@@ -266,6 +322,10 @@ function AvailableRaidCard({ template, onStart }: { template: RaidTemplate; onSt
 
         {expanded && (
           <div className="mb-3">
+            <div className="mb-3 rounded border border-[#6b4d2f] bg-[#11100e] p-3">
+              <p className="text-[9px] font-mono uppercase tracking-widest text-[#d9ad63]">{directive.label}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{directive.text}</p>
+            </div>
             {template.lore && (
               <p className="text-[11px] text-muted-foreground italic mb-2 border-l-2 border-primary/20 pl-2">{template.lore}</p>
             )}

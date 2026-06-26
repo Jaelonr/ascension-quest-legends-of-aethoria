@@ -61,6 +61,52 @@ function formatTimeRemaining(hours: number | null | undefined): string {
 
 type TabKey = "active" | "available" | "history";
 
+function raidStateCopy(raid: BossRaid) {
+  if (raid.status === "failed") {
+    return {
+      label: "Forced Retreat",
+      color: "#ef4444",
+      title: "The boss forced a retreat.",
+      text: "Your earned training remains. The Chronicle remembers the loss, world pressure rises, and the Guild expects recovery before the rematch.",
+    };
+  }
+  if (raid.status === "completed") {
+    return {
+      label: "Boss Forced Back",
+      color: "#22c55e",
+      title: "The opening is won.",
+      text: "The threat has been driven to its knees. Claim the reward to seal the victory, lower pressure, and close this raid ledger.",
+    };
+  }
+  if (raid.status === "claimed") {
+    return {
+      label: "Victory Sealed",
+      color: "#ffbf00",
+      title: "Aethoria remembers the victory.",
+      text: "The Guild's scouts report eased pressure. Your real effort became a recorded win in the wider war.",
+    };
+  }
+  return {
+    label: "Guild Directive",
+    color: "#0dcef5",
+    title: "The Guild is holding the line.",
+    text: "Other adventurers are engaged elsewhere. Your qualifying training sessions press directly against this boss.",
+  };
+}
+
+function availableRaidCopy(template: RaidTemplate) {
+  if (template.alreadyCompleted && template.isRepeatable) {
+    return {
+      label: "Rematch Available",
+      text: "The Gate has not forgotten you. This repeat run sharpens the same pattern without pretending the first victory never happened.",
+    };
+  }
+  return {
+    label: "Campaign Directive",
+    text: "This is not ordinary checklist work. Accepting it opens a raid ledger; training remains your weapon, and recovery remains a valid tactical choice.",
+  };
+}
+
 // ── Claim Reward Modal ───────────────────────────────────────────────────────
 
 function ClaimModal({
@@ -209,6 +255,7 @@ function ActiveRaidCard({
   const isClaimed = raid.status === "claimed";
   const isCompleted = raid.status === "completed";
   const isExpired = raid.isExpired ?? false;
+  const stateCopy = raidStateCopy(raid);
 
   const accentColor =
     isFailed || isExpired
@@ -374,6 +421,14 @@ function ActiveRaidCard({
         {/* Expanded: lore + tasks */}
         {expanded && (
           <View style={s.expandedBlock}>
+            <View style={[s.raidStatePanel, { borderColor: stateCopy.color + "60", backgroundColor: stateCopy.color + "14" }]}>
+              <View style={s.raidStateTop}>
+                <Text style={[s.raidStateKicker, { color: stateCopy.color }]}>{stateCopy.label}</Text>
+                <Text style={[s.raidStateKicker, { color: stateCopy.color }]}>{formatGuildGrade(raid.difficulty)}</Text>
+              </View>
+              <Text style={[s.raidStateTitle, { color: stateCopy.color }]}>{stateCopy.title}</Text>
+              <Text style={s.raidStateText}>{stateCopy.text}</Text>
+            </View>
             {raid.lore ? (
               <View
                 style={[
@@ -600,6 +655,7 @@ function AvailableRaidCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const diffColor = DIFF_COLOR[template.difficulty] ?? colors.primary;
+  const directive = availableRaidCopy(template);
 
   return (
     <View
@@ -669,6 +725,10 @@ function AvailableRaidCard({
 
         {expanded && (
           <View style={s.expandedBlock}>
+            <View style={[s.raidStatePanel, { borderColor: "#6b4d2f", backgroundColor: "#11100e" }]}>
+              <Text style={[s.raidStateKicker, { color: "#d9ad63" }]}>{directive.label}</Text>
+              <Text style={s.raidStateText}>{directive.text}</Text>
+            </View>
             {template.lore ? (
               <View
                 style={[
@@ -1053,6 +1113,11 @@ const s = StyleSheet.create({
     paddingBottom: 10,
     gap: 6,
   },
+  raidStatePanel: { borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 2 },
+  raidStateTop: { flexDirection: "row", justifyContent: "space-between", gap: 8, marginBottom: 4 },
+  raidStateKicker: { fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  raidStateTitle: { fontSize: 13, fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
+  raidStateText: { color: "#cfc5b8", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
   loreBlock: { borderLeftWidth: 2, paddingLeft: 8, marginBottom: 2 },
   loreText: {
     fontSize: 11,
