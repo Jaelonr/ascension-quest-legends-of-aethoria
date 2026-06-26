@@ -55,6 +55,60 @@ const STYLE_NARRATIVES: Record<typeof STYLE_KEYS[number], string> = {
   discipline: "Your record leans toward consistency, preparation, and deliberate execution. Aethoria reads you as the adventurer whose legend is built one kept promise at a time.",
 };
 
+const STYLE_EVOLUTIONS: Record<typeof STYLE_KEYS[number], { base: string; advanced: string; apex: string; missing: string }> = {
+  strength: { base: "Iron Knight", advanced: "Warbreaker", apex: "Mythril Juggernaut", missing: "heavy strength sessions, carries, and progressive overload records" },
+  striking: { base: "Spellblade", advanced: "Storm Duelist", apex: "Diamond Tempest", missing: "striking rounds, footwork, and clean conditioning support" },
+  conditioning: { base: "Wayfarer", advanced: "Wind Guardian", apex: "Mythril Pathfinder", missing: "sustained cardio, steps, and endurance commissions" },
+  grappling: { base: "Chainwarden", advanced: "Wilds Warden", apex: "Diamond Subduer", missing: "mat work, control drills, and functional strength" },
+  recovery: { base: "Verdant Guardian", advanced: "Iron Monk", apex: "Mythril Lifewarden", missing: "recovery sessions, mobility, sleep consistency, and nutrition support" },
+  discipline: { base: "Runesage", advanced: "Runeblade Champion", apex: "Diamond Oathkeeper", missing: "consistent sessions, nutrition adherence, and completed commissions" },
+};
+
+function buildClassPath(input: {
+  totalSessions: number;
+  dominantStyle: typeof STYLE_KEYS[number] | null;
+  secondaryStyle: typeof STYLE_KEYS[number] | null;
+  hybridArchetype?: string | null;
+  percentages: Record<typeof STYLE_KEYS[number], number>;
+}) {
+  if (!input.dominantStyle || input.totalSessions <= 0) {
+    return {
+      current: "Unclassed Adventurer",
+      next: "First Class Recognition",
+      apex: "Unknown",
+      progressLabel: "0 recorded sessions",
+      progressPercent: 0,
+      why: "Aethoria needs completed training records before it can name a path.",
+      missingEvidence: "Complete a few sessions with exercises, effort, and commission choices.",
+    };
+  }
+
+  const path = STYLE_EVOLUTIONS[input.dominantStyle];
+  const dominance = input.percentages[input.dominantStyle] ?? 0;
+  const current = input.hybridArchetype
+    ?? (input.totalSessions >= 12 && dominance >= 45 ? path.advanced : path.base);
+  const next = input.totalSessions >= 24 && dominance >= 50
+    ? path.apex
+    : input.totalSessions >= 12 && dominance >= 45
+      ? path.apex
+      : input.secondaryStyle && input.percentages[input.secondaryStyle] >= 20
+        ? "Hybrid Archetype Recognition"
+        : path.advanced;
+  const progressPercent = Math.min(100, Math.round(((input.totalSessions / 24) * 55) + (dominance * 0.45)));
+
+  return {
+    current,
+    next,
+    apex: path.apex,
+    progressLabel: `${input.totalSessions} recorded session${input.totalSessions === 1 ? "" : "s"}; ${dominance}% ${STYLE_LABELS[input.dominantStyle]} evidence`,
+    progressPercent,
+    why: input.secondaryStyle
+      ? `The record is led by ${STYLE_LABELS[input.dominantStyle]} with ${STYLE_LABELS[input.secondaryStyle]} forming underneath.`
+      : `The record is led by ${STYLE_LABELS[input.dominantStyle]}. Repetition will decide whether it stays pure or becomes hybrid.`,
+    missingEvidence: path.missing,
+  };
+}
+
 function displaySlot(slot: string) {
   if (slot === "armor") return "chest";
   if (slot === "helmet") return "head";
@@ -96,6 +150,13 @@ function serializeStyleIdentity(identity?: typeof playerStyleIdentityTable.$infe
       scores: { strength: 0, striking: 0, conditioning: 0, grappling: 0, recovery: 0, discipline: 0 },
       percentages: { strength: 0, striking: 0, conditioning: 0, grappling: 0, recovery: 0, discipline: 0 },
       narrative: "Complete training sessions to let Aethoria discover how you fight. Your class is earned through behavior, not chosen from a menu.",
+      classPath: buildClassPath({
+        totalSessions: 0,
+        dominantStyle: null,
+        secondaryStyle: null,
+        hybridArchetype: null,
+        percentages: { strength: 0, striking: 0, conditioning: 0, grappling: 0, recovery: 0, discipline: 0 },
+      }),
     };
   }
 
@@ -128,6 +189,13 @@ function serializeStyleIdentity(identity?: typeof playerStyleIdentityTable.$infe
     narrative: dominantStyle
       ? STYLE_NARRATIVES[dominantStyle]
       : "Complete training sessions to let Aethoria discover how you fight. Your class is earned through behavior, not chosen from a menu.",
+    classPath: buildClassPath({
+      totalSessions: identity.totalSessions,
+      dominantStyle,
+      secondaryStyle,
+      hybridArchetype: identity.hybridArchetype,
+      percentages,
+    }),
     updatedAt: identity.updatedAt.toISOString(),
   };
 }

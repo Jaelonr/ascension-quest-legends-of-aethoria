@@ -571,6 +571,7 @@ export default function CharacterScreen() {
   const styleLabel = identityRecord?.dominantStyleLabel ?? identityRecord?.label ?? (dominantStyleKey ? STYLE_META[dominantStyleKey]?.label ?? dominantStyleKey : "Still forming");
   const secondaryStyleLabel = identityRecord?.secondaryStyleLabel ?? null;
   const specialization = identityRecord?.hybridArchetype ?? "Earned through behavior";
+  const classPath = (identityRecord as any)?.classPath ?? null;
   const stylePct = (key: string) => {
     const direct = Number((identityRecord as any)?.percentages?.[key]);
     if (Number.isFinite(direct)) return Math.max(0, Math.min(100, direct));
@@ -602,7 +603,7 @@ export default function CharacterScreen() {
                 <Text style={cs.levelText}>Level {player.level} - {className}</Text>
                 <View style={cs.recordBadges}>
                   <Text style={cs.recordBadge} numberOfLines={1}>{activeTitle}</Text>
-                  <Text style={[cs.recordBadge, cs.recordBadgeAccent]} numberOfLines={1}>{specialization}</Text>
+                  <Text style={[cs.recordBadge, cs.recordBadgeAccent]} numberOfLines={1}>{classPath?.current ?? specialization}</Text>
                 </View>
               </View>
             </View>
@@ -975,6 +976,31 @@ export default function CharacterScreen() {
               Built from {identityRecord?.totalSessions ?? 0} training sessions. Shaped by every rep, set, and combat decision.
             </Text>
             {identityRecord?.narrative ? <Text style={cs.identityNarrative}>{identityRecord.narrative}</Text> : null}
+            {classPath ? (
+              <View style={cs.infoPanel}>
+                <Text style={cs.infoTitle}>Earned Class Path</Text>
+                <View style={cs.infoGrid}>
+                  <View style={cs.infoTile}>
+                    <Text style={cs.infoLabel}>Current</Text>
+                    <Text style={cs.infoValue}>{classPath.current}</Text>
+                  </View>
+                  <View style={cs.infoTile}>
+                    <Text style={cs.infoLabel}>Next</Text>
+                    <Text style={[cs.infoValue, { color: "#49a3a0" }]}>{classPath.next}</Text>
+                  </View>
+                  <View style={cs.infoTile}>
+                    <Text style={cs.infoLabel}>Apex Hint</Text>
+                    <Text style={cs.infoValue}>{classPath.apex}</Text>
+                  </View>
+                </View>
+                <View style={cs.identityBarTrack}>
+                  <View style={[cs.identityBarFill, { width: `${Math.max(0, Math.min(100, Number(classPath.progressPercent ?? 0)))}%`, backgroundColor: "#49a3a0" }]} />
+                </View>
+                <Text style={cs.infoNote}>{classPath.progressLabel}</Text>
+                <Text style={cs.infoNote}>{classPath.why}</Text>
+                <Text style={[cs.infoNote, { color: "#d8c4a5" }]}>To move the path: {classPath.missingEvidence}.</Text>
+              </View>
+            ) : null}
             {["strength", "striking", "conditioning", "grappling", "recovery", "discipline"].map((key) => {
               const pct = stylePct(key);
               const meta = STYLE_META[key]!;
@@ -994,17 +1020,20 @@ export default function CharacterScreen() {
               <View style={cs.infoGrid}>
                 <View style={cs.infoTile}>
                   <Text style={cs.infoLabel}>Current Class</Text>
-                  <Text style={cs.infoValue}>{className}</Text>
+                  <Text style={cs.infoValue}>{classPath?.current ?? className}</Text>
                 </View>
                 <View style={cs.infoTile}>
-                  <Text style={cs.infoLabel}>Dominant Style</Text>
-                  <Text style={cs.infoValue}>{dominantStyleKey ? STYLE_META[dominantStyleKey]?.label ?? dominantStyleKey : "Still forming"}</Text>
+                  <Text style={cs.infoLabel}>Next Evolution</Text>
+                  <Text style={cs.infoValue}>{classPath?.next ?? (dominantStyleKey ? STYLE_META[dominantStyleKey]?.label ?? dominantStyleKey : "Still forming")}</Text>
                 </View>
                 <View style={cs.infoTile}>
-                  <Text style={cs.infoLabel}>Specialization</Text>
-                  <Text style={cs.infoValue}>{specialization}</Text>
+                  <Text style={cs.infoLabel}>Apex Hint</Text>
+                  <Text style={cs.infoValue}>{classPath?.apex ?? specialization}</Text>
                 </View>
               </View>
+              <Text style={cs.infoNote}>
+                {classPath?.why ?? "The System does not ask you to pick a class. It watches what you actually do, then opens paths that fit your record."}
+              </Text>
               <Text style={cs.infoNote}>
                 The System does not ask you to pick a class. It watches what you actually do, then opens paths that fit your record.
               </Text>

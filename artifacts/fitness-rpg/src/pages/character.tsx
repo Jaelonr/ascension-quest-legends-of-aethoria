@@ -96,6 +96,7 @@ export default function Character() {
   const styleLabel = styleIdentity.dominantStyleLabel ?? styleIdentity.label ?? "Still forming";
   const secondaryStyleLabel = styleIdentity.secondaryStyleLabel ?? null;
   const specialization = styleIdentity.hybridArchetype ?? "Earned through behavior";
+  const classPath = styleIdentity.classPath ?? null;
   const stylePercentages = styleIdentity.percentages ?? {};
   const totalStyleSessions = styleIdentity.totalSessions ?? 0;
 
@@ -159,9 +160,21 @@ export default function Character() {
               </div>
               <div className="border border-[#2a2520] bg-[#080706] p-2">
                 <p className="text-[#8f887d]">Class Path</p>
-                <p className="truncate font-serif text-lg font-bold text-[#f1dfc6]">{specialization}</p>
+                <p className="truncate font-serif text-lg font-bold text-[#f1dfc6]">{classPath?.current ?? specialization}</p>
               </div>
             </div>
+            {classPath && (
+              <div className="mt-3 border border-[#2a2520] bg-[#080706] p-3">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-[#8f887d]">Next Recognition</span>
+                  <span className="font-serif font-bold text-[#d9ad63]">{classPath.next}</span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#211b16]">
+                  <div className="h-full rounded-full bg-[#49a3a0]" style={{ width: `${Math.max(0, Math.min(100, Number(classPath.progressPercent ?? 0)))}%` }} />
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-[#8f887d]">{classPath.progressLabel}</p>
+              </div>
+            )}
             <p className="mt-3 text-xs leading-relaxed text-[#b7ab9c]">
               {styleIdentity.narrative ?? "Aethoria is still learning how you fight. Keep training, and your record will reveal the class you are earning."}
             </p>
@@ -206,18 +219,26 @@ export default function Character() {
         <div className="grid gap-2 md:grid-cols-3">
           <div className="border border-[#3b3328] bg-[#0c0b09] p-3">
             <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Current Class</p>
-            <p className="mt-1 font-serif text-sm font-bold text-[#d9ad63]">{data.identity.class ?? "Unranked Adventurer"}</p>
+            <p className="mt-1 font-serif text-sm font-bold text-[#d9ad63]">{classPath?.current ?? data.identity.class ?? "Unranked Adventurer"}</p>
           </div>
           <div className="border border-[#3b3328] bg-[#0c0b09] p-3">
-            <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Dominant Style</p>
-            <p className="mt-1 font-serif text-sm font-bold text-[#49a3a0]">{styleLabel}</p>
+            <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Next Evolution</p>
+            <p className="mt-1 font-serif text-sm font-bold text-[#49a3a0]">{classPath?.next ?? styleLabel}</p>
           </div>
           <div className="border border-[#3b3328] bg-[#0c0b09] p-3">
-            <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Specialization</p>
-            <p className="mt-1 font-serif text-sm font-bold text-[#d8c4a5]">{specialization}</p>
+            <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Apex Hint</p>
+            <p className="mt-1 font-serif text-sm font-bold text-[#d8c4a5]">{classPath?.apex ?? specialization}</p>
           </div>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-[#8f887d]">
+          {classPath?.why ?? "The System does not ask you to pick a class. It watches what you actually do, then opens paths that fit your record."}
+        </p>
+        {classPath?.missingEvidence && (
+          <p className="mt-2 border-l-2 border-[#6b4d2f] pl-3 text-xs leading-relaxed text-[#b7ab9c]">
+            To move the path: {classPath.missingEvidence}.
+          </p>
+        )}
+        <p className="mt-2 text-xs leading-relaxed text-[#8f887d]">
           The System does not ask you to pick a class. It watches what you actually do, then opens paths that fit your record.
         </p>
       </Section>
