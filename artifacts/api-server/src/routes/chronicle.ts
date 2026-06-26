@@ -78,6 +78,52 @@ function addMilestone(list: ChronicleMilestone[], milestone: ChronicleMilestone 
   list.push(milestone);
 }
 
+function startOfWeek(value: Date) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  const day = date.getDay();
+  const diff = (day + 6) % 7;
+  date.setDate(date.getDate() - diff);
+  return date;
+}
+
+function buildWeeklyImpactMilestone(replays: Array<typeof combatReplaysTable.$inferSelect>): ChronicleMilestone | null {
+  if (replays.length < 2) return null;
+
+  const latest = replays[0]?.createdAt ?? new Date();
+  const weekStart = startOfWeek(latest);
+  const recent = replays.filter((replay) => replay.createdAt >= weekStart);
+  if (recent.length < 2) return null;
+
+  const styleCounts = new Map<string, number>();
+  for (const replay of recent) {
+    styleCounts.set(replay.dominantStyle, (styleCounts.get(replay.dominantStyle) ?? 0) + 1);
+  }
+  const dominantStyle = [...styleCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "discipline";
+  const dominantLabel = STYLE_LABELS[dominantStyle] ?? dominantStyle;
+  const xp = recent.reduce((sum, replay) => sum + (replay.xpEarned ?? 0), 0);
+  const gold = recent.reduce((sum, replay) => sum + (replay.goldEarned ?? 0), 0);
+  const prs = recent.reduce((sum, replay) => sum + (replay.prCount ?? 0), 0);
+  const bosses = recent.filter((replay) => replay.raidImpact).length;
+  const victories = recent.filter((replay) => String(replay.verdict).toLowerCase().includes("victory")).length;
+
+  return {
+    id: `weekly-impact-${weekStart.toISOString().slice(0, 10)}`,
+    kind: "weekly_training_impact",
+    title: "Weekly training changed the ledger",
+    summary: `${recent.length} recorded battle report${recent.length === 1 ? "" : "s"} this week gave Aethoria ${dominantLabel} pressure, ${xp} XP, and ${gold} gold of proof.`,
+    detail: [
+      victories ? `${victories} victory mark${victories === 1 ? "" : "s"}` : null,
+      prs ? `${prs} personal record${prs === 1 ? "" : "s"}` : null,
+      bosses ? `${bosses} boss pressure update${bosses === 1 ? "" : "s"}` : null,
+      `Dominant weekly style: ${dominantLabel}`,
+    ].filter(Boolean).join(". "),
+    source: "Weekly Chronicle",
+    importance: recent.length >= 4 || prs > 0 || bosses > 0 ? 5 : 4,
+    occurredAt: dateIso(latest),
+  };
+}
+
 function buildDerivedMilestones(input: {
   memories: Array<typeof guildMasterMemoriesTable.$inferSelect>;
   replays: Array<typeof combatReplaysTable.$inferSelect>;
@@ -90,6 +136,7 @@ function buildDerivedMilestones(input: {
 }) {
   const milestones: ChronicleMilestone[] = [];
   const identity = serializeStyleIdentity(input.styleIdentity);
+  addMilestone(milestones, buildWeeklyImpactMilestone(input.replays));
 
   if (identity?.dominantStyle) {
     const dominant = STYLE_LABELS[identity.dominantStyle] ?? identity.dominantStyle;

@@ -605,6 +605,9 @@ function getMilestoneTone(milestone: any) {
   if (kind.includes("raid_claimed") || kind.includes("raid_completed") || kind.includes("boss")) {
     return { label: "Victory", border: "border-[#d9ad63]", text: "text-[#d9ad63]", bg: "bg-[#17130d]" };
   }
+  if (kind.includes("weekly")) {
+    return { label: "Weekly Impact", border: "border-[#6b4d2f]", text: "text-[#e5c386]", bg: "bg-[#15110d]" };
+  }
   if (kind.includes("combat") || kind.includes("style")) {
     return { label: "Battle Proof", border: "border-[#49a3a0]", text: "text-[#49a3a0]", bg: "bg-[#071312]" };
   }

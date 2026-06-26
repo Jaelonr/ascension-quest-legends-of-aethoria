@@ -811,9 +811,10 @@ export default function ChronicleScreen() {
                   const kind = String(m?.kind ?? "").toLowerCase();
                   const isScar = kind.includes("raid_failed") || kind.includes("forced") || kind.includes("critical");
                   const isVictory = kind.includes("raid_claimed") || kind.includes("raid_completed") || kind.includes("boss");
+                  const isWeekly = kind.includes("weekly");
                   const isBattle = kind.includes("combat") || kind.includes("style");
-                  const tone = isScar ? "#d95f45" : isVictory ? "#d9ad63" : isBattle ? "#49a3a0" : "#d8c4a5";
-                  const label = isScar ? "Scar" : isVictory ? "Victory" : isBattle ? "Battle Proof" : (m?.source ?? "Recorded");
+                  const tone = isScar ? "#d95f45" : isVictory ? "#d9ad63" : isWeekly ? "#e5c386" : isBattle ? "#49a3a0" : "#d8c4a5";
+                  const label = isScar ? "Scar" : isVictory ? "Victory" : isWeekly ? "Weekly Impact" : isBattle ? "Battle Proof" : (m?.source ?? "Recorded");
                   return (
                     <View key={String(m.id)} style={[ch.milestoneCard, { borderColor: tone + "80" }]}>
                       <View style={ch.recordRow}>
