@@ -25,12 +25,12 @@ import { useLocalSearchParams } from "expo-router";
 const AETHORIA_MAP = require("../../assets/images/aethoria-map.jpg");
 
 const STYLE_META: Record<string, { label: string; color: string; bg: string }> = {
-  strength:     { label: "Strength",     color: "#ef4444", bg: "#ef444418" },
-  striking:     { label: "Striking",     color: "#f97316", bg: "#f9731618" },
-  conditioning: { label: "Conditioning", color: "#0dcef5", bg: "#0dcef518" },
-  grappling:    { label: "Grappling",    color: "#a855f7", bg: "#a855f718" },
-  recovery:     { label: "Recovery",     color: "#22c55e", bg: "#22c55e18" },
-  discipline:   { label: "Discipline",   color: "#eab308", bg: "#eab30818" },
+  strength:     { label: "Iron Vanguard",    color: "#ef4444", bg: "#ef444418" },
+  striking:     { label: "Storm Duelist",    color: "#f97316", bg: "#f9731618" },
+  conditioning: { label: "Wayfarer",         color: "#0dcef5", bg: "#0dcef518" },
+  grappling:    { label: "Chainwarden",      color: "#a855f7", bg: "#a855f718" },
+  recovery:     { label: "Verdant Guardian", color: "#22c55e", bg: "#22c55e18" },
+  discipline:   { label: "Runesage",         color: "#eab308", bg: "#eab30818" },
 };
 const STYLE_ORDER = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
 const MAP_FEATURES = [
@@ -936,7 +936,7 @@ export default function ChronicleScreen() {
                 <Text style={ch.sectionLabel}>YOUR COMBAT IDENTITY</Text>
                 {identity.dominantStyle && (
                   <Text style={[ch.dominantStyle, { color: STYLE_META[identity.dominantStyle]?.color ?? "#d9ad63" }]}>
-                    {STYLE_META[identity.dominantStyle]?.label ?? identity.dominantStyle} Fighter
+                    {STYLE_META[identity.dominantStyle]?.label ?? identity.dominantStyle}
                     {identity.hybridArchetype ? ` · ${identity.hybridArchetype}` : ""}
                   </Text>
                 )}

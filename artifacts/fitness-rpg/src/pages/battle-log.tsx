@@ -14,12 +14,12 @@ import {
 } from "lucide-react";
 
 const STYLE_META: Record<string, { label: string; text: string; bg: string; border: string }> = {
-  strength: { label: "Strength", text: "text-red-400", bg: "bg-red-400/10", border: "border-red-400/30" },
-  striking: { label: "Striking", text: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/30" },
-  conditioning: { label: "Conditioning", text: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/30" },
-  grappling: { label: "Grappling", text: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/30" },
-  recovery: { label: "Recovery", text: "text-green-400", bg: "bg-green-400/10", border: "border-green-400/30" },
-  discipline: { label: "Discipline", text: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/30" },
+  strength: { label: "Iron Vanguard", text: "text-red-400", bg: "bg-red-400/10", border: "border-red-400/30" },
+  striking: { label: "Storm Duelist", text: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/30" },
+  conditioning: { label: "Wayfarer", text: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/30" },
+  grappling: { label: "Chainwarden", text: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/30" },
+  recovery: { label: "Verdant Guardian", text: "text-green-400", bg: "bg-green-400/10", border: "border-green-400/30" },
+  discipline: { label: "Runesage", text: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/30" },
 };
 const STYLE_ORDER = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
 const MAP_FEATURES = [

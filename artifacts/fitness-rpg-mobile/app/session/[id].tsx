@@ -67,12 +67,12 @@ type ExerciseProgressionRecommendation = {
 };
 
 const STYLE_META: Record<string, { label: string; color: string }> = {
-  strength: { label: "Strength", color: "#ef4444" },
-  striking: { label: "Striking", color: "#f97316" },
-  conditioning: { label: "Conditioning", color: "#0dcef5" },
-  grappling: { label: "Grappling", color: "#c084fc" },
-  recovery: { label: "Recovery", color: "#22c55e" },
-  discipline: { label: "Discipline", color: "#eab308" },
+  strength: { label: "Iron Vanguard", color: "#ef4444" },
+  striking: { label: "Storm Duelist", color: "#f97316" },
+  conditioning: { label: "Wayfarer", color: "#0dcef5" },
+  grappling: { label: "Chainwarden", color: "#c084fc" },
+  recovery: { label: "Verdant Guardian", color: "#22c55e" },
+  discipline: { label: "Runesage", color: "#eab308" },
 };
 
 function convertWeight(value: number, from: string | null | undefined, to: WeightUnit) {
@@ -1031,7 +1031,7 @@ const s = StyleSheet.create({
     gap: 8,
   },
   styleLabel: {
-    width: 92,
+    width: 118,
     fontSize: 11,
     fontFamily: "Inter_700Bold",
   },

@@ -30,12 +30,12 @@ function formatTime(seconds: number) {
 }
 
 const STYLE_COLORS: Record<string, { text: string; border: string; bg: string; glow: string; label: string }> = {
-  strength:     { text: "text-red-400",    border: "border-red-400/40",    bg: "bg-red-400/10",    glow: "shadow-[0_0_24px_rgba(239,68,68,0.25)]",   label: "Strength" },
-  striking:     { text: "text-orange-400", border: "border-orange-400/40", bg: "bg-orange-400/10", glow: "shadow-[0_0_24px_rgba(249,115,22,0.25)]",  label: "Striking" },
-  conditioning: { text: "text-cyan-400",   border: "border-cyan-400/40",   bg: "bg-cyan-400/10",   glow: "shadow-[0_0_24px_rgba(6,182,212,0.25)]",   label: "Conditioning" },
-  grappling:    { text: "text-purple-400", border: "border-purple-400/40", bg: "bg-purple-400/10", glow: "shadow-[0_0_24px_rgba(168,85,247,0.25)]",  label: "Grappling" },
-  recovery:     { text: "text-green-400",  border: "border-green-400/40",  bg: "bg-green-400/10",  glow: "shadow-[0_0_24px_rgba(34,197,94,0.25)]",   label: "Recovery" },
-  discipline:   { text: "text-yellow-400", border: "border-yellow-400/40", bg: "bg-yellow-400/10", glow: "shadow-[0_0_24px_rgba(234,179,8,0.25)]",   label: "Discipline" },
+  strength:     { text: "text-red-400",    border: "border-red-400/40",    bg: "bg-red-400/10",    glow: "shadow-[0_0_24px_rgba(239,68,68,0.25)]",   label: "Iron Vanguard" },
+  striking:     { text: "text-orange-400", border: "border-orange-400/40", bg: "bg-orange-400/10", glow: "shadow-[0_0_24px_rgba(249,115,22,0.25)]",  label: "Storm Duelist" },
+  conditioning: { text: "text-cyan-400",   border: "border-cyan-400/40",   bg: "bg-cyan-400/10",   glow: "shadow-[0_0_24px_rgba(6,182,212,0.25)]",   label: "Wayfarer" },
+  grappling:    { text: "text-purple-400", border: "border-purple-400/40", bg: "bg-purple-400/10", glow: "shadow-[0_0_24px_rgba(168,85,247,0.25)]",  label: "Chainwarden" },
+  recovery:     { text: "text-green-400",  border: "border-green-400/40",  bg: "bg-green-400/10",  glow: "shadow-[0_0_24px_rgba(34,197,94,0.25)]",   label: "Verdant Guardian" },
+  discipline:   { text: "text-yellow-400", border: "border-yellow-400/40", bg: "bg-yellow-400/10", glow: "shadow-[0_0_24px_rgba(234,179,8,0.25)]",   label: "Runesage" },
 };
 
 const VERDICT_META: Record<string, { color: string; icon: string }> = {
@@ -129,7 +129,7 @@ function CombatReplayModal({
             theme.border, theme.bg, theme.glow
           )}>
             <span className={cn("text-xs font-bold font-mono uppercase tracking-widest", theme.text)}>
-              {theme.label} Style
+              {theme.label}
             </span>
             {replay?.hybridArchetype && (
               <span className="text-[10px] text-muted-foreground border-l border-white/10 pl-2">
@@ -292,7 +292,7 @@ function CombatReplayModal({
               className="w-full py-6 text-base font-bold bg-cyan-500/20 border border-cyan-400/50 text-cyan-400 hover:bg-cyan-500/30 font-mono tracking-widest"
               onClick={onReturn}
             >
-              Return to Base
+              Return to Guild Hall
             </Button>
           </div>
         )}

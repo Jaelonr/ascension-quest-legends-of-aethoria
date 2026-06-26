@@ -61,12 +61,12 @@ const RARITY_COLORS: Record<string, string> = {
 };
 
 const STYLE_META: Record<string, { label: string; color: string }> = {
-  strength:     { label: "Strength",     color: "#ef4444" },
-  striking:     { label: "Striking",     color: "#f97316" },
-  conditioning: { label: "Conditioning", color: "#0dcef5" },
-  grappling:    { label: "Grappling",    color: "#a855f7" },
-  recovery:     { label: "Recovery",     color: "#22c55e" },
-  discipline:   { label: "Discipline",   color: "#eab308" },
+  strength:     { label: "Iron Vanguard",    color: "#ef4444" },
+  striking:     { label: "Storm Duelist",    color: "#f97316" },
+  conditioning: { label: "Wayfarer",         color: "#0dcef5" },
+  grappling:    { label: "Chainwarden",      color: "#a855f7" },
+  recovery:     { label: "Verdant Guardian", color: "#22c55e" },
+  discipline:   { label: "Runesage",         color: "#eab308" },
 };
 
 function displayClassName(value?: string | null) {
@@ -914,7 +914,7 @@ export default function CharacterScreen() {
             <Text style={cs.sectionLabel}>COMBAT STYLE IDENTITY</Text>
             {identity?.dominantStyle && (
               <Text style={[cs.dominantStyle, { color: STYLE_META[identity.dominantStyle]?.color ?? "#d9ad63" }]}>
-                {STYLE_META[identity.dominantStyle]?.label} Fighter
+                {STYLE_META[identity.dominantStyle]?.label}
                 {identity.hybridArchetype ? ` - ${identity.hybridArchetype}` : ""}
               </Text>
             )}
