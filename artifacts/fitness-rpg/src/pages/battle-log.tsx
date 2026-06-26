@@ -477,6 +477,57 @@ function SystemDangerCard({ danger }: { danger: any }) {
   );
 }
 
+function formatChronicleDate(value?: string | null) {
+  if (!value) return "Date unrecorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date unrecorded";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function getWorldEventTone(event: any) {
+  const title = String(event?.title ?? "").toLowerCase();
+  const severity = String(event?.severity ?? "").toLowerCase();
+  const status = String(event?.status ?? "").toLowerCase();
+  const isRaidPressure = title.includes("raid pressure") || event?.metadata?.raidId;
+  const isResolved = status === "resolved" || status === "completed";
+  const isSevere = severity === "major" || severity === "critical" || title.includes("retreat") || title.includes("loss");
+
+  if (isResolved) return { label: "Resolved", border: "border-[#4f8f67]", text: "text-[#61c29b]", bg: "bg-[#0e1713]" };
+  if (isRaidPressure) return { label: "Raid Pressure", border: "border-[#9d3e2a]", text: "text-[#d95f45]", bg: "bg-[#1a100e]" };
+  if (isSevere) return { label: "Severe", border: "border-[#b45f2d]", text: "text-[#f0a15e]", bg: "bg-[#1a130d]" };
+  return { label: status ? status.replace(/_/g, " ") : "Recorded", border: "border-[#6b4d2f]", text: "text-[#d9ad63]", bg: "bg-[#11100e]" };
+}
+
+function WorldEventRow({ event }: { event: any }) {
+  const tone = getWorldEventTone(event);
+  const metadata = event?.metadata ?? {};
+  const completedTasks = Number(metadata.completedTasks ?? metadata.completed ?? 0);
+  const totalTasks = Number(metadata.totalTasks ?? metadata.total ?? 0);
+  const hasProgress = Number.isFinite(completedTasks) && Number.isFinite(totalTasks) && totalTasks > 0;
+  const styleBonus = metadata.styleMultiplier ? Number(metadata.styleMultiplier).toFixed(2) : null;
+
+  return (
+    <div className={cn("border px-3 py-3", tone.border, tone.bg)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={cn("text-[9px] uppercase tracking-[0.18em]", tone.text)}>{tone.label}</p>
+          <p className="mt-1 font-serif text-sm font-bold text-[#e5c386]">{event?.title ?? "Unrecorded world event"}</p>
+        </div>
+        <span className="shrink-0 text-[10px] uppercase tracking-wider text-[#8f887d]">{formatChronicleDate(event?.createdAt ?? event?.occurredAt)}</span>
+      </div>
+      {event?.description && <p className="mt-2 text-xs leading-relaxed text-[#cfc5b8]">{event.description}</p>}
+      {(hasProgress || metadata.difficulty || metadata.dominantStyle || styleBonus) && (
+        <div className="mt-3 grid gap-2 border-t border-[#3b3328] pt-3 text-[10px] uppercase tracking-wider text-[#8f887d] md:grid-cols-4">
+          {hasProgress && <span>Raid tasks <b className="font-mono text-[#d8c4a5]">{completedTasks}/{totalTasks}</b></span>}
+          {metadata.difficulty && <span>Difficulty <b className="text-[#d8c4a5]">{metadata.difficulty}</b></span>}
+          {metadata.dominantStyle && <span>Style <b className="text-[#d8c4a5]">{metadata.dominantStyle}</b></span>}
+          {styleBonus && <span>Pressure shift <b className="font-mono text-[#d8c4a5]">x{styleBonus}</b></span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BattleLog() {
   const [styleFilter, setStyleFilter] = useState<string>("all");
   const [mapZoom, setMapZoom] = useState(1);
@@ -617,6 +668,29 @@ export default function BattleLog() {
             <Card className="border-[#3b3328] bg-[#11100e]"><CardContent className="p-4"><p className="mb-3 flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Medal className="size-4" />Titles Earned</p>{chronicle?.titlesEarned?.length ? chronicle.titlesEarned.map((title) => <p key={title.id} className="mb-2 text-xs text-[#d8c4a5]">{title.name} <span className="text-[#8f887d]">({title.rarity})</span></p>) : <p className="text-xs text-[#8f887d]">No titles yet.</p>}</CardContent></Card>
             <Card className="border-[#3b3328] bg-[#11100e]"><CardContent className="p-4"><p className="mb-3 flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Sparkles className="size-4" />Major Milestones</p>{chronicle?.majorMilestones?.length ? chronicle.majorMilestones.map((m) => <p key={m.id} className="mb-2 text-xs text-[#d8c4a5]">{m.summary}</p>) : <p className="text-xs text-[#8f887d]">No milestones yet.</p>}</CardContent></Card>
           </div>
+          <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
+            <CardContent className="p-4">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Flag className="size-4" />Aethoria World State</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#8f887d]">
+                    The Chronicle records how raids, recoveries, retreats, and victories move the wider war. Other adventurers still hold the line, but your training gives the Guild its sharpest lever.
+                  </p>
+                </div>
+                <Badge variant="outline" className="shrink-0 rounded-none border-[#6b4d2f] text-[#d8c4a5]">{chronicle?.worldEvents?.length ?? 0} entries</Badge>
+              </div>
+              {chronicle?.worldEvents?.length ? (
+                <div className="space-y-2">
+                  {chronicle.worldEvents.map((event) => <WorldEventRow key={event.id ?? `${event.title}-${event.createdAt}`} event={event} />)}
+                </div>
+              ) : (
+                <div className="border border-dashed border-[#3b3328] bg-[#0c0b09] px-4 py-6 text-center">
+                  <p className="font-serif text-sm font-bold text-[#d8c4a5]">No world shifts recorded yet.</p>
+                  <p className="mt-1 text-xs text-[#8f887d]">Major victories, raid pressure, regional losses, and comeback moments will appear here as the campaign wakes.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           {chronicle?.personalRecords?.length ? chronicle.personalRecords.map((record) => <Card key={record.id} className="border-[#3b3328] bg-[#11100e]"><CardContent className="flex justify-between p-3 text-xs"><span className="text-[#d8c4a5]">{record.exerciseName}</span><span className="text-[#d7a54d]">{record.weight} {record.weightUnit} x {record.reps}</span></CardContent></Card>) : null}
         </TabsContent>
 

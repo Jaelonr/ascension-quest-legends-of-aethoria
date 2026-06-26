@@ -594,6 +594,27 @@ function EmptyRecord({ title, text }: { title: string; text: string }) {
   );
 }
 
+function formatChronicleDate(value?: string | null) {
+  if (!value) return "Date unrecorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date unrecorded";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function getWorldEventTone(event: any) {
+  const title = String(event?.title ?? "").toLowerCase();
+  const severity = String(event?.severity ?? "").toLowerCase();
+  const status = String(event?.status ?? "").toLowerCase();
+  const isRaidPressure = title.includes("raid pressure") || event?.metadata?.raidId;
+  const isResolved = status === "resolved" || status === "completed";
+  const isSevere = severity === "major" || severity === "critical" || title.includes("retreat") || title.includes("loss");
+
+  if (isResolved) return { label: "Resolved", border: "#4f8f67", text: "#61c29b", bg: "#0e1713" };
+  if (isRaidPressure) return { label: "Raid Pressure", border: "#9d3e2a", text: "#d95f45", bg: "#1a100e" };
+  if (isSevere) return { label: "Severe", border: "#b45f2d", text: "#f0a15e", bg: "#1a130d" };
+  return { label: status ? status.replace(/_/g, " ") : "Recorded", border: "#6b4d2f", text: "#d9ad63", bg: "#11100e" };
+}
+
 export default function ChronicleScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -681,6 +702,7 @@ export default function ChronicleScreen() {
       const titles = chronicle?.titlesEarned ?? [];
       const milestones = chronicle?.majorMilestones ?? [];
       const records = chronicle?.personalRecords ?? [];
+      const worldEvents = chronicle?.worldEvents ?? [];
       return (
         <View style={ch.panelStack}>
           <View style={ch.recordCard}>
@@ -690,6 +712,54 @@ export default function ChronicleScreen() {
           <View style={ch.recordCard}>
             <Text style={ch.recordTitle}>Major Milestones</Text>
             {milestones.length ? milestones.map((m) => <Text key={m.id} style={ch.recordText}>{m.summary}</Text>) : <Text style={ch.recordMeta}>No milestones yet.</Text>}
+          </View>
+          <View style={ch.recordCard}>
+            <View style={ch.recordRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={ch.recordTitle}>Aethoria World State</Text>
+                <Text style={ch.recordText}>
+                  Raids, recoveries, retreats, and victories become part of the wider war record. Other adventurers still hold the line, but your training gives the Guild its sharpest lever.
+                </Text>
+              </View>
+              <Text style={ch.statePill}>{worldEvents.length} entries</Text>
+            </View>
+            {worldEvents.length ? (
+              <View style={ch.worldEventList}>
+                {worldEvents.map((event: any) => {
+                  const tone = getWorldEventTone(event);
+                  const metadata = event?.metadata ?? {};
+                  const completedTasks = Number(metadata.completedTasks ?? metadata.completed ?? 0);
+                  const totalTasks = Number(metadata.totalTasks ?? metadata.total ?? 0);
+                  const hasProgress = Number.isFinite(completedTasks) && Number.isFinite(totalTasks) && totalTasks > 0;
+                  const styleBonus = metadata.styleMultiplier ? Number(metadata.styleMultiplier).toFixed(2) : null;
+                  return (
+                    <View key={String(event.id ?? `${event.title}-${event.createdAt}`)} style={[ch.worldEventItem, { borderColor: tone.border, backgroundColor: tone.bg }]}>
+                      <View style={ch.recordRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[ch.worldEventKicker, { color: tone.text }]}>{tone.label}</Text>
+                          <Text style={ch.recordTitle}>{event?.title ?? "Unrecorded world event"}</Text>
+                        </View>
+                        <Text style={ch.worldEventDate}>{formatChronicleDate(event?.createdAt ?? event?.occurredAt)}</Text>
+                      </View>
+                      {event?.description ? <Text style={ch.recordText}>{event.description}</Text> : null}
+                      {(hasProgress || metadata.difficulty || metadata.dominantStyle || styleBonus) && (
+                        <View style={ch.worldEventMetaGrid}>
+                          {hasProgress && <Text style={ch.worldEventMeta}>Raid tasks {completedTasks}/{totalTasks}</Text>}
+                          {metadata.difficulty && <Text style={ch.worldEventMeta}>Difficulty {metadata.difficulty}</Text>}
+                          {metadata.dominantStyle && <Text style={ch.worldEventMeta}>Style {metadata.dominantStyle}</Text>}
+                          {styleBonus && <Text style={ch.worldEventMeta}>Pressure x{styleBonus}</Text>}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={ch.worldEventEmpty}>
+                <Text style={ch.recordTitle}>No world shifts recorded yet.</Text>
+                <Text style={ch.recordText}>Major victories, raid pressure, regional losses, and comeback moments will appear here as the campaign wakes.</Text>
+              </View>
+            )}
           </View>
           {records.map((record) => (
             <View key={record.id} style={ch.recordCard}>
@@ -977,6 +1047,13 @@ const ch = StyleSheet.create({
   recordRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   recordGold: { color: "#d7a54d", fontSize: 12, fontFamily: "Inter_700Bold" },
   statePill: { borderWidth: 1, borderColor: "#6b4d2f", color: "#d8c4a5", paddingHorizontal: 8, paddingVertical: 3, fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  worldEventList: { gap: 8, marginTop: 12 },
+  worldEventItem: { borderWidth: 1, padding: 12 },
+  worldEventKicker: { fontSize: 9, textTransform: "uppercase", letterSpacing: 1.6, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  worldEventDate: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Inter_400Regular", marginTop: 2 },
+  worldEventMetaGrid: { borderTopWidth: 1, borderTopColor: "#3b3328", marginTop: 10, paddingTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  worldEventMeta: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.7, fontFamily: "Inter_700Bold" },
+  worldEventEmpty: { borderWidth: 1, borderStyle: "dashed", borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 14, alignItems: "center", marginTop: 12 },
   campaignPosition: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14 },
   campaignChapter: { borderWidth: 1, backgroundColor: "#11100e" },
   campaignChapterHeader: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
