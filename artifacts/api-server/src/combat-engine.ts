@@ -369,6 +369,97 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function kgToLb(value: number): number {
+  return value * 2.20462;
+}
+
+function summarizeSetGroup(sets: WorkoutSetData[]) {
+  const reps = sets.reduce((sum, set) => sum + Math.max(0, set.reps), 0);
+  const volumeKg = sets.reduce((sum, set) => sum + Math.max(0, set.weightKg) * Math.max(0, set.reps), 0);
+  const topWeightKg = sets.reduce((best, set) => Math.max(best, set.weightKg), 0);
+  const avgRpe = sets.length ? sets.reduce((sum, set) => sum + (set.rpe || 0), 0) / sets.length : 0;
+  const prs = sets.filter((set) => set.isPr).length;
+  return { reps, volumeKg, topWeightKg, avgRpe, prs };
+}
+
+function groupedExerciseEvidence(input: CombatInput) {
+  const grouped = new Map<string, WorkoutSetData[]>();
+  for (const set of input.sets) {
+    const key = set.exerciseName || "Recorded work";
+    grouped.set(key, [...(grouped.get(key) ?? []), set]);
+  }
+
+  return [...grouped.entries()]
+    .map(([exerciseName, sets]) => ({ exerciseName, sets, ...summarizeSetGroup(sets) }))
+    .sort((a, b) => {
+      const aScore = a.volumeKg || a.reps;
+      const bScore = b.volumeKg || b.reps;
+      return bScore - aScore;
+    });
+}
+
+function exerciseBattleVerb(style: CombatStyle) {
+  const verbs: Record<CombatStyle, string> = {
+    strength: "broke guard",
+    striking: "created openings",
+    conditioning: "kept pressure",
+    grappling: "stole position",
+    recovery: "restored defense",
+    discipline: "held formation",
+  };
+  return verbs[style];
+}
+
+function buildRealEffortBattleBeats(input: CombatInput, dominant: CombatStyle, secondary: CombatStyle | null): CombatEvent[] {
+  const evidence = groupedExerciseEvidence(input);
+  const events: CombatEvent[] = [];
+
+  if (evidence.length === 0) {
+    const text = dominant === "recovery"
+      ? "No heavy sets were needed. The session became restoration work: guard repaired, breath steadied, and tomorrow's blade kept sharp."
+      : "The Hall recorded the session as field work even without set data. Add exercises, reps, load, and RPE next time to sharpen the replay.";
+    return [{ type: "stat", text }];
+  }
+
+  const totalVolumeKg = evidence.reduce((sum, item) => sum + item.volumeKg, 0);
+  const totalReps = evidence.reduce((sum, item) => sum + item.reps, 0);
+  const avgRpe = input.sets.length
+    ? input.sets.reduce((sum, set) => sum + (set.rpe || 0), 0) / input.sets.length
+    : 0;
+
+  const volumePhrase = totalVolumeKg > 0
+    ? `${Math.round(kgToLb(totalVolumeKg)).toLocaleString()} lb of recorded volume`
+    : `${totalReps.toLocaleString()} recorded reps`;
+  events.push({
+    type: "stat",
+    text: `System conversion: ${volumePhrase} became ${styleTitle(dominant)} pressure over ${input.durationMinutes} minutes. Average effort registered at RPE ${round1(avgRpe)}.`,
+  });
+
+  for (const item of evidence.slice(0, 4)) {
+    const loadPhrase = item.topWeightKg > 0
+      ? `top load ${round1(kgToLb(item.topWeightKg))} lb`
+      : "bodyweight or skill work";
+    const prPhrase = item.prs > 0 ? ` ${item.prs} PR seal${item.prs === 1 ? "" : "s"} flared during the exchange.` : "";
+    events.push({
+      type: item.prs > 0 ? "pr" : "strike",
+      text: `${item.exerciseName}: ${item.sets.length} set${item.sets.length === 1 ? "" : "s"}, ${item.reps} reps, ${loadPhrase}. The work ${exerciseBattleVerb(dominant)} against the enemy.${prPhrase}`,
+    });
+  }
+
+  if (secondary) {
+    events.push({
+      type: "special",
+      text: `Secondary pattern detected: ${styleTitle(secondary)}. The fight did not belong to one trait alone; your training is beginning to layer into a hybrid path.`,
+    });
+  }
+
+  return events;
+}
+
 function present(value?: string | null): string | null {
   const text = typeof value === "string" ? value.trim() : "";
   return text.length > 0 ? text : null;
@@ -638,6 +729,7 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
   const events: CombatEvent[] = [];
   const intensity = input.narrativeIntensity;
   events.push(...buildCommissionOpening(input, dominant));
+  events.push(...buildRealEffortBattleBeats(input, dominant, secondary));
 
   if (intensity === "technical") {
     events.push({ type: "strike", text: pick(STYLE_EVENTS[dominant][intensity]) });
