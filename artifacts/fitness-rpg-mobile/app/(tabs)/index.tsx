@@ -281,6 +281,43 @@ function WorldDangerPanel({ danger }: { danger: any }) {
   );
 }
 
+function GuildDirectivePanel({ threat, onOpenRaids }: { threat: any; onOpenRaids: () => void }) {
+  if (!threat) return null;
+  const urgent = threat.state === "guild_directive" || threat.state === "forced_retreat";
+  const progress = threat.progress ?? {};
+  const percent = Math.max(0, Math.min(100, Number(progress.percent ?? 0)));
+  return (
+    <View style={[s.directiveCard, { borderColor: urgent ? "#9d3e2a" : "#6b4d2f" }]}>
+      <View style={s.directiveTop}>
+        <View style={[s.directiveIcon, { borderColor: urgent ? "#9d3e2a" : "#6b4d2f" }]}>
+          <Feather name="flag" size={18} color={urgent ? "#d95f45" : "#d9ad63"} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.sectionLabel}>{threat.label ?? "GUILD DIRECTIVE"}</Text>
+          <Text style={s.directiveTitle}>{threat.title ?? "The Guild Holds the Line"}</Text>
+          {threat.difficulty ? <Text style={s.directiveMeta}>Threat grade {threat.difficulty}</Text> : null}
+        </View>
+        <TouchableOpacity style={s.directiveButton} onPress={onOpenRaids} activeOpacity={0.82}>
+          <Text style={s.directiveButtonText}>Raids</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={s.directiveBriefing}>{threat.briefing}</Text>
+      {Number(progress.totalTasks ?? 0) > 0 && (
+        <View style={s.directiveProgressWrap}>
+          <View style={s.directiveProgressLabelRow}>
+            <Text style={s.directiveProgressLabel}>Directive progress</Text>
+            <Text style={s.directiveProgressLabel}>{progress.completedTasks ?? 0}/{progress.totalTasks ?? 0}</Text>
+          </View>
+          <View style={s.directiveTrack}>
+            <View style={[s.directiveFill, { width: `${percent}%` }]} />
+          </View>
+        </View>
+      )}
+      <Text style={s.directiveNext}>{threat.nextAction}</Text>
+    </View>
+  );
+}
+
 function worldEventTone(event: any) {
   const severity = String(event?.severity ?? "").toLowerCase();
   const title = String(event?.title ?? "").toLowerCase();
@@ -694,6 +731,10 @@ export default function HallScreen() {
         ) : (
           <>
             <WorldDangerPanel danger={hallAny?.worldDanger} />
+            <GuildDirectivePanel
+              threat={hallAny?.activeThreat}
+              onOpenRaids={() => router.push("/(tabs)/raids" as any)}
+            />
             <AethoriaLedger
               events={hallAny?.worldEvents ?? []}
               onOpenChronicle={() => router.push("/(tabs)/battle-log?tab=records" as any)}
@@ -878,6 +919,20 @@ const s = StyleSheet.create({
   dangerStat: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 8 },
   dangerStatLabel: { color: "#80796f", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular" },
   dangerStatValue: { color: "#d8c4a5", fontSize: 11, fontFamily: "Inter_700Bold", marginTop: 2 },
+  directiveCard: { borderWidth: 1, backgroundColor: "#11100e", padding: 12, marginBottom: 14 },
+  directiveTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  directiveIcon: { width: 38, height: 38, borderWidth: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0c0b09" },
+  directiveTitle: { color: "#e5c386", fontSize: 17, lineHeight: 21, fontFamily: "PlayfairDisplay_700Bold" },
+  directiveMeta: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.2, marginTop: 3 },
+  directiveButton: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15130f", paddingHorizontal: 10, paddingVertical: 8 },
+  directiveButtonText: { color: "#d9ad63", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.2 },
+  directiveBriefing: { color: "#cbbfaf", fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular", marginTop: 10 },
+  directiveProgressWrap: { marginTop: 10 },
+  directiveProgressLabelRow: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
+  directiveProgressLabel: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1 },
+  directiveTrack: { height: 6, backgroundColor: "#070706", borderWidth: 1, borderColor: "#3b3328", marginTop: 6, overflow: "hidden" },
+  directiveFill: { height: 6, backgroundColor: "#d9ad63" },
+  directiveNext: { color: "#9dbdb8", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular", marginTop: 10, borderLeftWidth: 1, borderLeftColor: "#6b4d2f", paddingLeft: 9 },
   aldricPanel: { overflow: "hidden", borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", marginBottom: 14 },
   aldricImageFrame: { width: "100%", aspectRatio: 16 / 9, maxHeight: 218, overflow: "hidden", backgroundColor: "#0c0b09" },
   aldricImage: { position: "absolute", left: 0, right: 0, top: "-7%", width: "100%", height: "124%" },

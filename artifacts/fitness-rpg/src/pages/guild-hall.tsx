@@ -79,6 +79,51 @@ function WorldDangerBar({ danger }: { danger: any }) {
   );
 }
 
+function GuildDirectivePanel({ threat, onOpenRaids }: { threat: any; onOpenRaids: () => void }) {
+  if (!threat) return null;
+  const urgent = threat.state === "guild_directive" || threat.state === "forced_retreat";
+  const progress = threat.progress ?? {};
+  return (
+    <section className={cn(
+      "mt-4 border bg-[#11100e] p-4",
+      urgent ? "border-[#9d3e2a]" : "border-[#6b4d2f]",
+    )}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 gap-3">
+          <div className={cn("flex size-10 shrink-0 items-center justify-center border", urgent ? "border-[#9d3e2a] text-[#d95f45]" : "border-[#6b4d2f] text-[#d9ad63]")}>
+            <Swords className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-[#9d8f80]">{threat.label ?? "Guild Directive"}</p>
+            <h2 className="mt-1 font-serif text-lg font-bold text-[#e5c386]">{threat.title ?? "The Guild Holds the Line"}</h2>
+            {threat.difficulty ? <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#8f887d]">Threat grade {threat.difficulty}</p> : null}
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          className="shrink-0 border-[#6b4d2f] bg-[#15130f] text-[10px] uppercase tracking-[0.16em] text-[#d9ad63] hover:bg-[#1d1710]"
+          onClick={onOpenRaids}
+        >
+          Raid Board
+        </Button>
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-[#cbbfaf]">{threat.briefing}</p>
+      {Number(progress.totalTasks ?? 0) > 0 && (
+        <div className="mt-3">
+          <div className="flex justify-between text-[10px] uppercase tracking-[0.16em] text-[#8f887d]">
+            <span>Directive progress</span>
+            <span>{progress.completedTasks ?? 0}/{progress.totalTasks ?? 0}</span>
+          </div>
+          <div className="mt-2 h-2 border border-[#3b3328] bg-[#070706]">
+            <div className="h-full bg-[#d9ad63]" style={{ width: `${Math.max(0, Math.min(100, Number(progress.percent ?? 0)))}%` }} />
+          </div>
+        </div>
+      )}
+      <p className="mt-3 border-l border-[#6b4d2f] pl-3 text-xs leading-relaxed text-[#9dbdb8]">{threat.nextAction}</p>
+    </section>
+  );
+}
+
 function worldEventTone(event: any) {
   const severity = String(event?.severity ?? "").toLowerCase();
   const title = String(event?.title ?? "").toLowerCase();
@@ -737,6 +782,7 @@ export default function GuildHall() {
       </header>
 
       <WorldDangerBar danger={extended.worldDanger} />
+      <GuildDirectivePanel threat={extended.activeThreat} onOpenRaids={() => navigate("/raids")} />
       <AethoriaLedger events={data.worldEvents ?? []} />
 
       <section className="mt-4 overflow-hidden border border-[#6b4d2f] bg-[#11100e] md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(330px,0.85fr)]">

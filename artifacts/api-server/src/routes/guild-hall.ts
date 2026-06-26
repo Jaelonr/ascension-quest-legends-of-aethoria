@@ -292,6 +292,55 @@ function buildFirstRecordCounsel(input: { playerName: string; commission?: any }
   return `Welcome to the Adventurer's Guild, ${input.playerName || "adventurer"}. You were summoned into Aethoria by an undertaking large enough to shake kingdoms; the deeper mechanism is not something the Guild fully understands, but the effect is plain: effort changes you here. Training sharpens the body and spirit, food and rest keep the vessel from breaking, and honest records become power you can carry into the Gates. Aethoria is under pressure from incursions, missing patrols, and a greater enemy moving beyond the horizon. We begin with ${firstDuty} near ${place}, ${region}. Complete it cleanly, then return to the Hall and report what you did.`;
 }
 
+function buildActiveThreatSummary(raids: any[]) {
+  const candidates = raids
+    .filter((raid) => ["active", "failed", "completed"].includes(String(raid.status)))
+    .sort((a, b) => {
+      const statusRank: Record<string, number> = { active: 0, failed: 1, completed: 2 };
+      const difficultyRank: Record<string, number> = { S: 6, A: 5, B: 4, C: 3, D: 2, E: 1 };
+      const statusDelta = (statusRank[String(a.status)] ?? 9) - (statusRank[String(b.status)] ?? 9);
+      if (statusDelta !== 0) return statusDelta;
+      return (difficultyRank[String(b.difficulty ?? "E").toUpperCase()] ?? 1) - (difficultyRank[String(a.difficulty ?? "E").toUpperCase()] ?? 1);
+    });
+  const raid = candidates[0];
+  if (!raid) {
+    return {
+      state: "holding_line",
+      title: "The Guild Holds the Line",
+      difficulty: null,
+      label: "Severe",
+      progress: { completedTasks: 0, totalTasks: 0, percent: 0 },
+      briefing: "Aethoria remains in a severe state, but not a lost one. Other adventurers are buying time while the summoned adventurer trains into the answer the Guild needs.",
+      nextAction: "Build strength through daily commissions until a true Guild Directive appears.",
+    };
+  }
+  const tasks = Array.isArray(raid.tasks) ? raid.tasks : [];
+  const completedTasks = tasks.filter((task: any) => task?.completed).length;
+  const totalTasks = tasks.length;
+  const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const status = String(raid.status);
+  const failed = status === "failed";
+  const completed = status === "completed";
+  return {
+    id: raid.id,
+    state: failed ? "forced_retreat" : completed ? "victory_pending" : "guild_directive",
+    title: raid.title,
+    difficulty: raid.difficulty,
+    label: failed ? "Forced Retreat" : completed ? "Victory Pending" : "Guild Directive",
+    progress: { completedTasks, totalTasks, percent },
+    briefing: failed
+      ? "A stronger enemy forced the Guild to withdraw. That is not the end of the campaign; it is the wound that makes the rematch matter."
+      : completed
+        ? "The boss has been forced back. Claim the record so the Chronicle can mark the victory and Aethoria can breathe again."
+        : "A major threat is active. Aldric can call for urgency, but the System still protects the player with safer completion paths when recovery demands it.",
+    nextAction: failed
+      ? "Recover, train, and prepare for the rematch."
+      : completed
+        ? "Claim the victory and record the turning point."
+        : "Open the raid board when you are ready to answer the directive.",
+  };
+}
+
 async function getAethoriaLocations() {
   try {
     const rows = await db.select().from(aethoriaLocationsTable);
@@ -760,7 +809,7 @@ async function getGuildHallSnapshot(userId: string) {
       .orderBy(desc(worldEventsTable.occurredAt)).limit(5),
     db.select().from(rpgGearTable).where(and(eq(rpgGearTable.playerId, player.id), eq(rpgGearTable.equipped, true))),
     db.select().from(storeItemsTable).where(eq(storeItemsTable.available, true)).limit(3),
-    db.select({ status: bossRaidsTable.status, difficulty: bossRaidsTable.difficulty }).from(bossRaidsTable).where(eq(bossRaidsTable.playerId, player.id)),
+    db.select().from(bossRaidsTable).where(eq(bossRaidsTable.playerId, player.id)),
     getAethoriaLocations(),
     getTrainingIntelligence(player.id).catch((err) => {
       console.warn("training intelligence unavailable for guild hall", err);
@@ -848,6 +897,7 @@ async function getGuildHallSnapshot(userId: string) {
     date: today,
     player: { ...player, stats },
     worldDanger: buildWorldDanger(raids),
+    activeThreat: buildActiveThreatSummary(raids),
     commission: {
       id: commission?.id ?? 0,
       category: commission?.category ?? plan.category,
