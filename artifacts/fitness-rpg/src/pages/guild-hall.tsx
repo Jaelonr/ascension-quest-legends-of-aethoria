@@ -338,6 +338,7 @@ function ReadinessPanel({ readiness }: { readiness: any }) {
       </div>
       <p className="mt-3 text-sm font-semibold leading-relaxed text-[#e6c27b]">{readiness.activeRecommendation}</p>
       {readiness.aldricLine && <p className="mt-2 text-sm italic leading-relaxed text-[#9dbdb8]">{readiness.aldricLine}</p>}
+      {readiness.agencyNote && <p className="mt-2 border-l border-[#49a3a0]/50 pl-3 text-xs leading-relaxed text-[#b7ab9c]">{readiness.agencyNote}</p>}
     </section>
   );
 }

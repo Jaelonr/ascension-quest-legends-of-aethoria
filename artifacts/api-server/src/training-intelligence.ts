@@ -137,7 +137,7 @@ function progressionAction(rec: typeof exerciseProgressionsTable.$inferSelect) {
     return `Add one set only if recovery remains normal, targeting ${rec.recommendedNextSets} sets.`;
   }
   if (rec.recommendationType === "deload") return "Reduce volume or load for the next exposure.";
-  if (rec.recommendationType === "recovery") return "Do not progress this movement today; choose recovery or a safer variation.";
+  if (rec.recommendationType === "recovery") return "Progression is not recommended for this movement today; choose recovery, a safer variation, or a reduced dose if you still train.";
   if (rec.recommendationType === "hold") return "Hold the current target steady for another clean session.";
   if (rec.recommendationType === "increase_duration") return "Increase duration gradually without a sudden spike.";
   if (rec.recommendationType === "increase_complexity") return "Increase drill complexity slightly while keeping technique clean.";

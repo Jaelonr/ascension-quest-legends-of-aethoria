@@ -4,7 +4,8 @@ import {
   exercisesTable, workoutTemplatesTable, workoutSessionsTable,
   workoutSetsTable, personalRecordsTable, playerTable, nutritionLogsTable,
   nutritionTargetsTable, playerBiometricsTable, bossRaidsTable,
-  combatReplaysTable, playerStyleIdentityTable, rpgGearTable
+  combatReplaysTable, playerStyleIdentityTable, rpgGearTable,
+  guildMasterMemoriesTable, worldEventsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { autoClaimActiveMission } from "./campaign";
@@ -75,6 +76,97 @@ function calculateRegionalGearGoldBonus(
     gold: 0,
     tags: matched,
   };
+}
+
+function styleLabel(style: string | null | undefined) {
+  if (!style) return "Unknown";
+  return style.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+async function recordCombatChronicleMilestones(input: {
+  playerId: number;
+  replayId: number | null;
+  sessionId: number;
+  sessionName: string;
+  replay: NonNullable<ReturnType<typeof generateCombatReplay>>;
+  commissionContext: any | null;
+  xpEarned: number;
+  goldEarned: number;
+  prCount: number;
+  nutritionMet: boolean;
+}) {
+  const regionName = input.commissionContext?.regionName ?? null;
+  const locationName = input.commissionContext?.locationName ?? null;
+  const completionPath = input.commissionContext?.completionPath ?? null;
+  const style = styleLabel(input.replay.dominantStyle);
+  const regionPhrase = regionName ? ` in ${regionName}${locationName ? ` near ${locationName}` : ""}` : "";
+  const consequence = input.replay.narrativeConsequence ? ` ${input.replay.narrativeConsequence}` : "";
+
+  await db.insert(worldEventsTable).values({
+    playerId: input.playerId,
+    worldKey: `combat-replay:${input.sessionId}`,
+    title: `${input.replay.verdict}: ${input.replay.encounterName}`,
+    description: `${input.sessionName} became a ${style} encounter against ${input.replay.enemyName}${regionPhrase}.${consequence}`,
+    status: "recorded",
+    severity: input.prCount > 0 || input.replay.verdict === "Victory" ? "major" : "minor",
+    reversible: false,
+    metadata: {
+      replayId: input.replayId,
+      sessionId: input.sessionId,
+      dominantStyle: input.replay.dominantStyle,
+      secondaryStyle: input.replay.secondaryStyle,
+      hybridArchetype: input.replay.hybridArchetype,
+      xpEarned: input.xpEarned,
+      goldEarned: input.goldEarned,
+      prCount: input.prCount,
+      nutritionMet: input.nutritionMet,
+      regionName,
+      locationName,
+      completionPath,
+    },
+  }).onConflictDoNothing();
+
+  await db.insert(guildMasterMemoriesTable).values({
+    playerId: input.playerId,
+    kind: input.prCount > 0 ? "accomplishment" : "combat_replay",
+    sourceKey: `combat-replay:${input.sessionId}`,
+    summary: input.prCount > 0
+      ? `Set ${input.prCount} personal record${input.prCount === 1 ? "" : "s"} during ${input.sessionName}; the Chronicle recorded ${input.replay.verdict.toLowerCase()} against ${input.replay.enemyName}.`
+      : `Completed ${input.sessionName}; the Chronicle recorded a ${input.replay.dominantStyle} style encounter against ${input.replay.enemyName}.`,
+    importance: input.prCount > 0 ? 3 : 2,
+    occurredAt: new Date(),
+  }).onConflictDoNothing();
+
+  if (input.replay.hybridArchetype) {
+    await db.insert(guildMasterMemoriesTable).values({
+      playerId: input.playerId,
+      kind: "style_identity",
+      sourceKey: `style-identity:${input.replay.hybridArchetype}`,
+      summary: `Repeated training patterns have begun forming the ${input.replay.hybridArchetype} archetype.`,
+      importance: 3,
+      occurredAt: new Date(),
+    }).onConflictDoNothing();
+  }
+
+  if (regionName) {
+    await db.insert(worldEventsTable).values({
+      playerId: input.playerId,
+      worldKey: `region-visit:${normalizeRegionKey(regionName)}:${input.sessionId}`,
+      title: `Field Duty: ${regionName}`,
+      description: `A real training session advanced a commission route through ${regionName}${locationName ? ` at ${locationName}` : ""}. The Return Stone brought the adventurer back after the work was logged.`,
+      status: "recorded",
+      severity: "minor",
+      reversible: false,
+      metadata: {
+        replayId: input.replayId,
+        sessionId: input.sessionId,
+        regionName,
+        locationName,
+        travelMethod: input.commissionContext?.travelMethod ?? null,
+        completionPath,
+      },
+    }).onConflictDoNothing();
+  }
 }
 
 router.get("/training/exercises", async (req, res) => {
@@ -442,7 +534,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
         combatReplay = generateCombatReplay(combatInput);
 
         // Save combat replay
-        await db.insert(combatReplaysTable).values({
+        const [savedReplay] = await db.insert(combatReplaysTable).values({
           playerId: player.id,
           sessionId: id,
           encounterName: combatReplay.encounterName,
@@ -460,7 +552,15 @@ router.patch("/training/sessions/:id", async (req, res) => {
           narrativeModifiers: combatInput.narrativeModifiers,
           raidImpact: combatReplay.raidImpact,
           narrativeIntensity,
-        });
+        }).returning();
+
+        if (savedReplay) {
+          combatReplay = {
+            id: savedReplay.id,
+            createdAt: savedReplay.createdAt.toISOString(),
+            ...combatReplay,
+          };
+        }
 
         // Upsert player style identity
         const { scores } = classifyWorkoutStyle(combatInput);
@@ -493,6 +593,20 @@ router.patch("/training/sessions/:id", async (req, res) => {
             hybridArchetype: combatReplay.hybridArchetype,
           });
         }
+
+        await recordCombatChronicleMilestones({
+          playerId: player.id,
+          replayId: savedReplay?.id ?? null,
+          sessionId: session.id,
+          sessionName: session.name,
+          replay: combatReplay,
+          commissionContext,
+          xpEarned: totalXp,
+          goldEarned,
+          prCount,
+          nutritionMet,
+        });
+
         // Auto-claim any active campaign mission when workout is complete
         missionClaimed = await autoClaimActiveMission(player.id, today);
 

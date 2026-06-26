@@ -5,6 +5,7 @@ import {
   type SystemConfidenceLevel,
   type SystemRecommendation,
 } from "./system-recommendations";
+import { readinessAgencyNote } from "./product-constitution";
 
 export type WearableSource = "manual" | "apple_health" | "health_connect" | "fitbit" | "garmin" | "samsung_health";
 
@@ -120,7 +121,7 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
       commissionBias = "recovery";
       reasoning.push("Sleep is far below the recovery threshold used by Ascension Quest for harder training days.");
       recommendation = "Strongly prefer recovery, mobility, nutrition, or very low-intensity work today.";
-      activeRecommendation = "Do not progress load today. If training anyway, choose a reduced-intensity path.";
+      activeRecommendation = "Progression is not recommended today. If training anyway, choose a reduced-intensity path and keep the record honest.";
     } else if (sleepLastNight < 6) {
       readiness = "compromised";
       commissionBias = "recovery";
@@ -160,7 +161,7 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
       commissionBias = "recovery";
       reasoning.push("HRV is materially below the recent personal average, so intensity should be moderated.");
       recommendation = "Favor lower-intensity work until recovery data returns toward baseline.";
-      activeRecommendation = "Suppress aggressive progressive overload for today.";
+      activeRecommendation = "Delay aggressive progressive overload today. Lower-intensity training remains available.";
     }
   }
 
@@ -230,6 +231,7 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
         "Wearable values are treated as context signals, not diagnosis.",
         "Recovery concerns suppress aggressive training progression and favor lower-intensity duties without removing player agency.",
         "High step volume can satisfy travel/exploration progress without implying continent-scale movement.",
+        readinessAgencyNote(readiness),
       ],
       sourceDocuments: wearableSourceDocuments(source),
       safetyNote: readiness === "moderate" || readiness === "compromised" || readiness === "critical"

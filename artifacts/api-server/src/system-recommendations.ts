@@ -1,3 +1,5 @@
+import { PRODUCT_CONSTITUTION } from "./product-constitution";
+
 export const SKB_VERSION = "1.0.0";
 
 export type SystemRecommendationDomain =
@@ -245,6 +247,7 @@ export function getSystemKnowledgeBase() {
     version: SKB_VERSION,
     deterministic: true,
     openInternetSearchAllowed: false,
+    productConstitution: PRODUCT_CONSTITUTION,
     sourceDocuments: Object.values(SKB_SOURCE_DOCUMENTS).map(asCitation),
   };
 }

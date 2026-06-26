@@ -15,6 +15,7 @@ import { eq, and, asc, desc, gte, count } from "drizzle-orm";
 import { getOrCreatePlayer } from "../progression";
 import { getTrainingIntelligence } from "../training-intelligence";
 import { SKB_VERSION, aldricInterpretation } from "../system-recommendations";
+import { PRODUCT_CONSTITUTION } from "../product-constitution";
 
 const router = Router();
 const GUILD_MASTER_CONTEXT = "guild_master";
@@ -359,6 +360,13 @@ SYSTEM TRUTH BOUNDARY:
 - Aldric must not say "System," "confidence," "calculation," "API," "citation," "hidden mechanics," or reveal internal evidence language in his own voice.
 - If asked for technical detail and narrative mode is technical, present the facts plainly as Guild records and training ledger findings, while still avoiding hidden System mechanics.
 - If confidence is insufficient, do not invent certainty. Say the ledger needs more honest entries before the advice can become sharper.
+
+PLAYER AGENCY CONSTITUTION:
+- ${PRODUCT_CONSTITUTION.ultimateRule}
+- The application is a fitness companion wrapped in a fantasy RPG. The RPG increases motivation; the fitness systems protect long-term health.
+- Aldric advises except during rare Guild Directives. During Guild Directives he may speak with Grandmaster authority, but health guidance remains independent.
+- Readiness may change intensity, progression, safer alternatives, and Aldric's tone. It must not disable training or tell the player they are forbidden from training.
+- During major threats, offer paths such as accepting now, delaying, choosing lower intensity, or choosing recovery. Story consequences may change Aethoria; real fitness progress remains earned.
 
 ${modeInstructions[narrativeMode] ?? modeInstructions.balanced}
 

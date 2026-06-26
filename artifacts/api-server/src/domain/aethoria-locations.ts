@@ -410,12 +410,14 @@ function pathsFor(category: string, region: RegionTrainingIdentity): CommissionC
     story_linked: [
       { id: "boss_prep", label: "Prepare for the Gate", kind: "workout_builder", intendedStyle: region.trainingStyles[0] ?? "strength", completionPath: "boss_preparation", narrative: "The larger threat is moving. The Guild narrows the work because hesitation costs lives.", recommended: true },
       { id: "field_session", label: "Run the assigned field drill", kind: "template", intendedStyle: region.trainingStyles[1] ?? region.trainingStyles[0] ?? "conditioning", completionPath: "field_drill", narrative: "Aldric has chosen the drill that best fits the pressure around this Gate." },
+      { id: "reduced_directive", label: "Answer at reduced intensity", kind: "template", intendedStyle: "recovery", completionPath: "reduced_intensity_directive", narrative: "The Guild still accepts useful work when readiness is poor: mobility, recovery, nutrition, or a lighter drill that keeps you in the campaign without gambling with pain." },
     ],
   };
   return map[category] ?? map.training;
 }
 
 function choiceLimitFor(category: string, context: { injuryNotesPresent?: boolean; readiness?: string; neglectedStyle?: string | null }) {
+  if (category === "story_linked") return 3;
   if (category === "penalty_restoration") return 1;
   if (context.injuryNotesPresent || context.readiness === "critical" || context.readiness === "compromised") return 2;
   if (context.readiness === "moderate") return 2;

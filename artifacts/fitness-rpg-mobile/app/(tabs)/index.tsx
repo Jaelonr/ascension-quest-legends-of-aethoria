@@ -331,6 +331,7 @@ function ReadinessLedger({ readiness }: { readiness: any }) {
           <Text style={s.sectionLabel}>SYSTEM ANALYSIS</Text>
           <Text style={s.readinessAnalysis}>{readiness.activeRecommendation}</Text>
           {readiness.aldricLine ? <Text style={s.readinessAldric}>{readiness.aldricLine}</Text> : null}
+          {readiness.agencyNote ? <Text style={s.readinessAgency}>{readiness.agencyNote}</Text> : null}
           {readiness.systemAnalysis?.confidenceLevel ? (
             <Text style={s.readinessMeta}>
               Confidence: {readiness.systemAnalysis.confidenceLevel}
@@ -857,6 +858,7 @@ const s = StyleSheet.create({
   readinessAnalysisBox: { borderWidth: 1, borderColor: "#245755", backgroundColor: "#071111", padding: 10, marginTop: 10 },
   readinessAnalysis: { color: "#d8c4a5", fontSize: 11, lineHeight: 16, marginTop: 5, fontFamily: "Inter_700Bold" },
   readinessAldric: { color: "#9dbdb8", fontSize: 11, lineHeight: 16, marginTop: 6, fontStyle: "italic" },
+  readinessAgency: { color: "#b7ab9c", fontSize: 10, lineHeight: 15, marginTop: 7, borderLeftWidth: 1, borderLeftColor: "#245755", paddingLeft: 8 },
   readinessMeta: { color: "#49a3a0", fontSize: 10, marginTop: 7, textTransform: "uppercase", letterSpacing: 0.8 },
   commissionHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#3b3328", padding: 14, gap: 10 },
   commissionHeading: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },

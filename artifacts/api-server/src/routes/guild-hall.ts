@@ -35,6 +35,7 @@ import {
 import { getTrainingIntelligence } from "../training-intelligence";
 import { ensureHallOfferingCatalog } from "./inventory";
 import { buildWearableSystemAnalysis, type WearableSystemAnalysis } from "../wearable-interpretation";
+import { PRODUCT_CONSTITUTION, isReducedReadiness, readinessAgencyNote } from "../product-constitution";
 
 const router = Router();
 const RANK_ORDER = ["E", "D", "C", "B", "A", "S", "National-Level"];
@@ -165,7 +166,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
         : input.wearableAnalysis.source
           ? `${input.wearableAnalysis.aldricLine} The Guild recommends restoration, though a reduced training path remains yours to choose.`
           : "Your recovery is thin today, so the Guild recommends restoration, though the final call remains yours.",
-      counsel: "Restoration is still duty. If you train, move carefully, eat like you intend to heal, and do not confuse courage with ignoring pain.",
+      counsel: "Restoration is still duty. If you train, move carefully, eat like you intend to heal, and keep the dose honest. The Guild advises; you choose the road.",
       tasks: [
         { description: "Complete a recovery, mobility, or easy walk session", targetValue: 1, unit: "session", order: 1 },
         { description: "Reach today's protein target for repair", targetValue: input.proteinTarget || 1, unit: "g", order: 2 },
@@ -195,7 +196,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
       category: "recovery",
       readiness: dailyReadiness(input),
       rationale: `${input.wearableAnalysis.aldricLine} The Guild will count today's travel before demanding more road work.`,
-      counsel: "Do not confuse additional miles with wiser training. Keep the next duty controlled and useful.",
+      counsel: "Do not confuse additional miles with wiser training. Keep the next duty controlled and useful; if you choose harder work, earn it with restraint.",
       tasks: [
         { description: "Complete a mobility, recovery, or technical skill session", targetValue: 1, unit: "session", order: 1 },
         { description: "Reach today's protein target for repair", targetValue: input.proteinTarget || 1, unit: "g", order: 2 },
@@ -273,7 +274,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
 function buildCounsel(input: { sleepHours: number | null; equipment: string[]; incomplete: number; plan?: CommissionPlan }) {
   if (input.plan) return input.plan.counsel;
   if (input.sleepHours != null && input.sleepHours < 6) {
-    return "Your recovery is thin today. Complete the work, but choose restoration over bravado. A disciplined adventurer knows when resilience is the mission.";
+    return "Your recovery is thin today. I recommend restoration over bravado, though the decision remains yours. A disciplined adventurer knows when resilience is the mission.";
   }
   if (input.incomplete === 0) {
     return "The commission is complete. Report plainly, claim what you earned, and carry the lesson forward.";
@@ -327,7 +328,7 @@ function buildTrainingLedgerAdjustment(playerContext: GuildPlayerContext, traini
       category: "recovery",
       readiness: profile?.progressiveOverloadReadiness === "critical" || profile?.progressiveOverloadReadiness === "recovery_first" ? "critical" : "compromised",
       rationale: "The Hall's Training Ledger shows fatigue or pain signals, so Aldric recommends a restoration duty disguised as field support.",
-      counsel: "Strength can wait. If you train anyway, reduce the dose and record it honestly. A reckless adventurer does not become an old one.",
+      counsel: "Progression can wait. If you train anyway, reduce the dose and record it honestly. A reckless adventurer does not become an old one.",
       context: {
         reason: "training_ledger_recovery",
         trainingLedgerSummary: profile?.summary,
@@ -886,8 +887,10 @@ async function getGuildHallSnapshot(userId: string) {
       },
       guardrails: {
         injuryNotesPresent: !!playerContext.injuryNotes,
-        reducedReadiness: ["moderate", "compromised", "critical"].includes(plan.readiness),
-        playerAgency: "Recommendations guide the player; they do not disable training.",
+        reducedReadiness: isReducedReadiness(commission?.readiness ?? plan.readiness),
+        playerAgency: PRODUCT_CONSTITUTION.ultimateRule,
+        readinessAgency: readinessAgencyNote(commission?.readiness ?? plan.readiness),
+        guildDirectivePolicy: "Narrative urgency may raise stakes, but health recommendations remain independent and training choices remain available.",
       },
     },
     campaign: { chapter: 1, title: "The Awakening" },
@@ -921,9 +924,16 @@ async function getGuildHallSnapshot(userId: string) {
       interpretation: playerContext.wearableAnalysis.readiness,
       activeRecommendation: playerContext.wearableAnalysis.activeRecommendation,
       aldricLine: playerContext.wearableAnalysis.aldricLine,
+      agencyNote: readinessAgencyNote(playerContext.wearableAnalysis.readiness),
       systemAnalysis: playerContext.wearableAnalysis.systemRecommendation,
       metrics: playerContext.wearableAnalysis.metrics,
       injuryNotesPresent: !!playerContext.injuryNotes,
+    },
+    productConstitution: {
+      version: PRODUCT_CONSTITUTION.version,
+      ultimateRule: PRODUCT_CONSTITUTION.ultimateRule,
+      readiness: PRODUCT_CONSTITUTION.readiness,
+      guildDirectives: PRODUCT_CONSTITUTION.guildDirectives,
     },
     consequences,
     worldEvents,
