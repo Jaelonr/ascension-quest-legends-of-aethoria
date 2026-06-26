@@ -608,6 +608,9 @@ function getMilestoneTone(milestone: any) {
   if (kind.includes("weekly")) {
     return { label: "Weekly Impact", border: "border-[#6b4d2f]", text: "text-[#e5c386]", bg: "bg-[#15110d]" };
   }
+  if (kind.includes("commission_choice") || kind.includes("commission-path")) {
+    return { label: "Path Choice", border: "border-[#6b4d2f]", text: "text-[#9dbdb8]", bg: "bg-[#0d1514]" };
+  }
   if (kind.includes("combat") || kind.includes("style")) {
     return { label: "Battle Proof", border: "border-[#49a3a0]", text: "text-[#49a3a0]", bg: "bg-[#071312]" };
   }

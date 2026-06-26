@@ -91,6 +91,62 @@ function styleLabel(style: string | null | undefined) {
   return labels[style] ?? style.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function commissionPathConsequence(context: any, replay: NonNullable<ReturnType<typeof generateCombatReplay>>) {
+  if (!context) return null;
+  const path = String(context.completionPath ?? context.completionLabel ?? context.intendedStyle ?? "field_duty").toLowerCase();
+  const region = context.regionName ?? "Aethoria";
+  const location = context.locationName ? ` near ${context.locationName}` : "";
+  const threat = context.narrativeThreat ?? context.flavorObjective ?? replay.enemyName ?? "the field threat";
+  const label = context.completionLabel ?? context.flavorTitle ?? "Chosen path";
+
+  if (path.includes("subdue") || path.includes("control") || path.includes("mat")) {
+    return {
+      title: `Mercy Path: ${region}`,
+      description: `${label} resolved ${threat}${location} through control rather than slaughter. The Chronicle marks restraint as part of the victory, not a lesser outcome.`,
+      severity: "moderate",
+      kind: "subdue",
+    };
+  }
+  if (path.includes("recovery") || path.includes("mobility") || path.includes("reduced") || path.includes("nutrition") || path.includes("hydration")) {
+    return {
+      title: `Restoration Path: ${region}`,
+      description: `${label} answered ${threat}${location} without pretending exhaustion is courage. The Guild gained progress while preserving the adventurer for the next Gate.`,
+      severity: "minor",
+      kind: "restore",
+    };
+  }
+  if (path.includes("strength") || path.includes("lower") || path.includes("barricade") || path.includes("boss") || path.includes("forge")) {
+    return {
+      title: `Force Path: ${region}`,
+      description: `${label} turned real strength work into pressure against ${threat}${location}. The route changed because the body did the work.`,
+      severity: replay.verdict === "Victory" ? "major" : "moderate",
+      kind: "force",
+    };
+  }
+  if (path.includes("endurance") || path.includes("cardio") || path.includes("conditioning") || path.includes("walking") || path.includes("road") || path.includes("chase")) {
+    return {
+      title: `Road Path: ${region}`,
+      description: `${label} carried the expedition against ${threat}${location}. The Chronicle separates the caravan road from the part earned on foot, but both now belong to the journey.`,
+      severity: "moderate",
+      kind: "road",
+    };
+  }
+  if (path.includes("skill") || path.includes("footwork") || path.includes("strike")) {
+    return {
+      title: `Precision Path: ${region}`,
+      description: `${label} kept ${threat}${location} from becoming louder than it needed to be. Clean timing became the story's answer.`,
+      severity: "moderate",
+      kind: "precision",
+    };
+  }
+  return {
+    title: `Field Path: ${region}`,
+    description: `${label} advanced the commission against ${threat}${location}. The choice is now part of the Chronicle, tied to the training that made it real.`,
+    severity: "minor",
+    kind: "field",
+  };
+}
+
 const STYLE_KEYS = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
 type StyleKey = typeof STYLE_KEYS[number];
 type StyleScoreMap = Record<StyleKey, number>;
@@ -289,6 +345,38 @@ async function recordCombatChronicleMilestones(input: {
   }
 
   if (regionName) {
+    const pathConsequence = commissionPathConsequence(input.commissionContext, input.replay);
+    if (pathConsequence) {
+      await db.insert(worldEventsTable).values({
+        playerId: input.playerId,
+        worldKey: `commission-path:${input.sessionId}:${pathConsequence.kind}`,
+        title: pathConsequence.title,
+        description: pathConsequence.description,
+        status: "recorded",
+        severity: pathConsequence.severity,
+        reversible: false,
+        metadata: {
+          replayId: input.replayId,
+          sessionId: input.sessionId,
+          regionName,
+          locationName,
+          completionPath,
+          completionLabel: input.commissionContext?.completionLabel ?? null,
+          pathKind: pathConsequence.kind,
+          dominantStyle: input.replay.dominantStyle,
+        },
+      }).onConflictDoNothing();
+
+      await db.insert(guildMasterMemoriesTable).values({
+        playerId: input.playerId,
+        kind: "commission_choice",
+        sourceKey: `commission-path:${input.sessionId}:${pathConsequence.kind}`,
+        summary: `${input.sessionName} followed the ${pathConsequence.kind} path in ${regionName}${locationName ? ` near ${locationName}` : ""}.`,
+        importance: pathConsequence.severity === "major" ? 3 : 2,
+        occurredAt: new Date(),
+      }).onConflictDoNothing();
+    }
+
     await db.insert(worldEventsTable).values({
       playerId: input.playerId,
       worldKey: `region-visit:${normalizeRegionKey(regionName)}:${input.sessionId}`,
