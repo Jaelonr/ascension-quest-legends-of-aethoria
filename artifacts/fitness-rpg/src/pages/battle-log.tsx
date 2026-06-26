@@ -481,7 +481,7 @@ function EmptyRecord({ icon: Icon, title, text }: { icon: React.ElementType; tit
 
 function SystemDangerCard({ danger }: { danger: any }) {
   if (!danger) return null;
-  const value = Math.max(0, Math.min(100, Number(danger.value ?? 100)));
+  const value = Math.max(0, Math.min(100, Number(danger.value ?? 77)));
   const critical = danger.state === "critical" || value >= 90;
   return (
     <Card className={cn("rounded-none bg-[#11100e]", critical ? "border-[#9d3e2a]" : "border-[#6b4d2f]")}>
