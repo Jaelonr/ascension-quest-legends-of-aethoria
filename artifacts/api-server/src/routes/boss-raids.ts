@@ -149,6 +149,96 @@ function raidStakeLine(difficulty: string, title: string) {
   return `${title} is not the end of the war, but small Gates become disasters when ignored. The Guild records this as a proving threat.`;
 }
 
+function taskStyle(taskType?: string | null, description?: string | null) {
+  const text = `${taskType ?? ""} ${description ?? ""}`.toLowerCase();
+  if (text.includes("nutrition") || text.includes("macro") || text.includes("calorie")) return "recovery";
+  if (text.includes("streak") || text.includes("quest")) return "discipline";
+  if (text.includes("pr") || text.includes("lift") || text.includes("compound") || text.includes("strength")) return "strength";
+  if (text.includes("striking") || text.includes("bag") || text.includes("round")) return "striking";
+  if (text.includes("grappling")) return "grappling";
+  if (text.includes("conditioning") || text.includes("endurance")) return "conditioning";
+  return "training";
+}
+
+function bossPhaseLabel(status: string, progress: number, isExpired: boolean) {
+  if (status === "failed" || isExpired) return "Forced Retreat";
+  if (status === "claimed") return "Victory Sealed";
+  if (status === "completed") return "Finishing Blow Open";
+  if (progress >= 0.8) return "Final Exchange";
+  if (progress >= 0.45) return "Pressure Turning";
+  if (progress > 0) return "First Wound";
+  return "Threat Revealed";
+}
+
+function buildBossInteraction(raid: any) {
+  const tasks = (raid.tasks ?? []) as Array<{
+    completed?: boolean;
+    targetValue?: number;
+    currentValue?: number;
+    unit?: string;
+    taskType?: string;
+    description?: string;
+  }>;
+  const completedTasks = tasks.filter((task) => task.completed).length;
+  const totalTasks = tasks.length;
+  const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
+  const expiresAt = raid.expiresAt ? new Date(raid.expiresAt) : null;
+  const hoursRemaining = expiresAt ? Math.max(0, (expiresAt.getTime() - Date.now()) / 3600000) : null;
+  const isExpired = Boolean(expiresAt && expiresAt < new Date());
+  const status = String(raid.status ?? "available");
+  const phase = bossPhaseLabel(status, progress, isExpired);
+  const styles = [...new Set(tasks.map((task) => taskStyle(task.taskType, task.description)))];
+  const leadStyle = styles.find((style) => style !== "training") ?? "training";
+  const dangerPressure = status === "failed" || isExpired
+    ? "retreat"
+    : status === "completed" || status === "claimed"
+      ? "broken"
+      : hoursRemaining != null && hoursRemaining <= 12
+        ? "urgent"
+        : progress >= 0.8
+          ? "high"
+          : progress >= 0.45
+            ? "turning"
+            : "contained";
+  const strategyByStyle: Record<string, string> = {
+    strength: "Break its guard with controlled strength work. The Guild wants force applied cleanly, not recklessly.",
+    striking: "Use rounds, footwork, and precision to create openings before the boss can settle.",
+    grappling: "Control matters more than spectacle. Take away the boss's movement and the field changes.",
+    conditioning: "Outlast the threat. The boss weakens when your pace stays honest.",
+    recovery: "Win the preparation battle. Provisions, sleep, and recovery keep the second exchange from becoming a retreat.",
+    discipline: "Hold the line through repeated days. The raid bends when your record refuses to break.",
+    training: "Complete the listed work. Each real session becomes pressure in the raid ledger.",
+  };
+  const nextAction = status === "failed" || isExpired
+    ? "Recover, train, and wait for the rematch route to open."
+    : status === "completed"
+      ? "Claim the victory so the Chronicle can close the ledger and Aethoria can breathe."
+      : status === "claimed"
+        ? "Victory is sealed. The Guild will watch for the next disturbance."
+        : progress >= 0.8
+          ? "One more clean push may force the boss back."
+          : "Choose a valid training, nutrition, recovery, or manual task and add pressure to the ledger.";
+  const allyLine = raid.difficulty === "S" || raid.difficulty === "A"
+    ? "Regional captains, healers, and veteran adventurers are buying hours at the edges of the field."
+    : raid.difficulty === "B" || raid.difficulty === "C"
+      ? "Guild parties hold the outer routes while your record opens the cleanest path forward."
+      : "Local adventurers and scouts contain the surrounding Gate spillover while you answer the main pressure.";
+
+  return {
+    phase,
+    progressPercent: Math.round(progress * 100),
+    completedTasks,
+    totalTasks,
+    dangerPressure,
+    leadStyle,
+    supportingStyles: styles.filter((style) => style !== leadStyle).slice(0, 3),
+    strategy: strategyByStyle[leadStyle] ?? strategyByStyle.training,
+    allyLine,
+    nextAction,
+    pressureNote: raidStakeLine(String(raid.difficulty ?? "E"), String(raid.title ?? "This threat")),
+  };
+}
+
 async function recordRaidWorldEvent(input: {
   playerId: number;
   raidId: number;
@@ -409,6 +499,7 @@ function serializeRaid(raid: any) {
       ? Math.max(0, (new Date(raid.expiresAt).getTime() - Date.now()) / 3600000)
       : null,
     isExpired: raid.expiresAt ? new Date(raid.expiresAt) < new Date() : false,
+    bossInteraction: buildBossInteraction(raid),
   };
 }
 
@@ -469,6 +560,7 @@ router.get("/boss-raids/available", async (req, res) => {
     res.json(triggered.map(t => ({
       ...t,
       alreadyCompleted: completedTitles.has(t.title),
+      bossInteraction: buildBossInteraction({ ...t, status: "available", startedAt: null, expiresAt: null }),
     })));
   } catch (err) {
     req.log.error(err);

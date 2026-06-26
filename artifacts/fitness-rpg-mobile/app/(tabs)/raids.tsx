@@ -94,6 +94,34 @@ function raidStateCopy(raid: BossRaid) {
   };
 }
 
+function BossInteractionPanel({ interaction }: { interaction: any }) {
+  if (!interaction) return null;
+  return (
+    <View style={s.bossInteractionPanel}>
+      <View style={s.bossInteractionHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.bossInteractionKicker}>Boss phase</Text>
+          <Text style={s.bossInteractionTitle}>{interaction.phase ?? "Threat Revealed"}</Text>
+        </View>
+        <Text style={s.bossInteractionPercent}>{interaction.progressPercent ?? 0}%</Text>
+      </View>
+      <View style={s.bossInteractionGrid}>
+        <View style={s.bossInteractionTile}>
+          <Text style={s.bossInteractionLabel}>Pressure</Text>
+          <Text style={s.bossInteractionValue}>{String(interaction.dangerPressure ?? "contained").replace(/_/g, " ")}</Text>
+        </View>
+        <View style={s.bossInteractionTile}>
+          <Text style={s.bossInteractionLabel}>Best answer</Text>
+          <Text style={[s.bossInteractionValue, { color: "#49a3a0" }]}>{String(interaction.leadStyle ?? "training").replace(/_/g, " ")}</Text>
+        </View>
+      </View>
+      <Text style={s.bossInteractionStrategy}>{interaction.strategy}</Text>
+      <Text style={s.bossInteractionAlly}>{interaction.allyLine}</Text>
+      <Text style={s.bossInteractionNext}>{interaction.nextAction}</Text>
+    </View>
+  );
+}
+
 function availableRaidCopy(template: RaidTemplate) {
   if (template.alreadyCompleted && template.isRepeatable) {
     return {
@@ -256,6 +284,7 @@ function ActiveRaidCard({
   const isCompleted = raid.status === "completed";
   const isExpired = raid.isExpired ?? false;
   const stateCopy = raidStateCopy(raid);
+  const bossInteraction = (raid as any).bossInteraction;
 
   const accentColor =
     isFailed || isExpired
@@ -429,6 +458,7 @@ function ActiveRaidCard({
               <Text style={[s.raidStateTitle, { color: stateCopy.color }]}>{stateCopy.title}</Text>
               <Text style={s.raidStateText}>{stateCopy.text}</Text>
             </View>
+            <BossInteractionPanel interaction={bossInteraction} />
             {raid.lore ? (
               <View
                 style={[
@@ -656,6 +686,7 @@ function AvailableRaidCard({
   const [expanded, setExpanded] = useState(false);
   const diffColor = DIFF_COLOR[template.difficulty] ?? colors.primary;
   const directive = availableRaidCopy(template);
+  const bossInteraction = (template as any).bossInteraction;
 
   return (
     <View
@@ -729,6 +760,7 @@ function AvailableRaidCard({
               <Text style={[s.raidStateKicker, { color: "#d9ad63" }]}>{directive.label}</Text>
               <Text style={s.raidStateText}>{directive.text}</Text>
             </View>
+            <BossInteractionPanel interaction={bossInteraction} />
             {template.lore ? (
               <View
                 style={[
@@ -1118,6 +1150,18 @@ const s = StyleSheet.create({
   raidStateKicker: { fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
   raidStateTitle: { fontSize: 13, fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
   raidStateText: { color: "#cfc5b8", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
+  bossInteractionPanel: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#0c0b09", borderRadius: 8, padding: 10, marginBottom: 4 },
+  bossInteractionHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 },
+  bossInteractionKicker: { color: "#9d8f80", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+  bossInteractionTitle: { color: "#d9ad63", fontSize: 13, fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
+  bossInteractionPercent: { borderWidth: 1, borderColor: "#3b3328", color: "#d8c4a5", paddingHorizontal: 8, paddingVertical: 4, fontSize: 10, fontFamily: "Inter_700Bold" },
+  bossInteractionGrid: { flexDirection: "row", gap: 6, marginBottom: 8 },
+  bossInteractionTile: { flex: 1, borderWidth: 1, borderColor: "#2a2520", backgroundColor: "#080706", padding: 8 },
+  bossInteractionLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, fontFamily: "Inter_700Bold" },
+  bossInteractionValue: { color: "#d8c4a5", fontSize: 11, textTransform: "capitalize", marginTop: 2, fontFamily: "Inter_700Bold" },
+  bossInteractionStrategy: { color: "#cfc5b8", fontSize: 11, lineHeight: 16, fontFamily: "Inter_400Regular" },
+  bossInteractionAlly: { color: "#9dbdb8", fontSize: 10, lineHeight: 15, borderLeftWidth: 2, borderLeftColor: "#49a3a0", paddingLeft: 8, marginTop: 8, fontFamily: "Inter_400Regular" },
+  bossInteractionNext: { color: "#8f887d", fontSize: 10, lineHeight: 15, marginTop: 6, fontFamily: "Inter_400Regular" },
   loreBlock: { borderLeftWidth: 2, paddingLeft: 8, marginBottom: 2 },
   loreText: {
     fontSize: 11,

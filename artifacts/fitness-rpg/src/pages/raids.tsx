@@ -77,6 +77,40 @@ function raidStateCopy(raid: BossRaid) {
   };
 }
 
+function BossInteractionPanel({ interaction }: { interaction: any }) {
+  if (!interaction) return null;
+  return (
+    <div className="rounded border border-[#6b4d2f] bg-[#0c0b09] p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[9px] font-mono uppercase tracking-widest text-[#9d8f80]">Boss phase</p>
+          <p className="font-serif text-sm font-bold text-[#d9ad63]">{interaction.phase ?? "Threat Revealed"}</p>
+        </div>
+        <span className="border border-[#3b3328] bg-black/30 px-2 py-1 text-[10px] font-mono uppercase text-[#d8c4a5]">
+          {interaction.progressPercent ?? 0}%
+        </span>
+      </div>
+      <div className="grid gap-2 text-[10px] md:grid-cols-3">
+        <div className="border border-[#2a2520] bg-black/20 p-2">
+          <p className="font-mono uppercase tracking-wider text-[#8f887d]">Pressure</p>
+          <p className="mt-1 capitalize text-[#d8c4a5]">{String(interaction.dangerPressure ?? "contained").replace(/_/g, " ")}</p>
+        </div>
+        <div className="border border-[#2a2520] bg-black/20 p-2">
+          <p className="font-mono uppercase tracking-wider text-[#8f887d]">Best answer</p>
+          <p className="mt-1 capitalize text-[#49a3a0]">{String(interaction.leadStyle ?? "training").replace(/_/g, " ")}</p>
+        </div>
+        <div className="border border-[#2a2520] bg-black/20 p-2">
+          <p className="font-mono uppercase tracking-wider text-[#8f887d]">Ledger</p>
+          <p className="mt-1 text-[#d8c4a5]">{interaction.completedTasks ?? 0}/{interaction.totalTasks ?? 0} seals</p>
+        </div>
+      </div>
+      <p className="mt-3 text-[11px] leading-relaxed text-[#cfc5b8]">{interaction.strategy}</p>
+      <p className="mt-2 border-l border-[#49a3a0] pl-2 text-[10px] leading-relaxed text-[#9dbdb8]">{interaction.allyLine}</p>
+      <p className="mt-2 text-[10px] leading-relaxed text-[#8f887d]">{interaction.nextAction}</p>
+    </div>
+  );
+}
+
 function availableRaidCopy(template: RaidTemplate) {
   if (template.alreadyCompleted && template.isRepeatable) {
     return {
@@ -137,6 +171,7 @@ function ActiveRaidCard({ raid }: { raid: BossRaid }) {
   const isCompleted = raid.status === "completed";
   const isFailed = raid.status === "failed";
   const stateCopy = raidStateCopy(raid);
+  const bossInteraction = (raid as any).bossInteraction;
 
   return (
     <Card className={cn(
@@ -208,6 +243,7 @@ function ActiveRaidCard({ raid }: { raid: BossRaid }) {
               <p className="font-serif text-sm font-bold">{stateCopy.title}</p>
               <p className="mt-1 text-[11px] leading-relaxed opacity-85">{stateCopy.text}</p>
             </div>
+            <BossInteractionPanel interaction={bossInteraction} />
             {raid.lore && (
               <p className="text-[11px] text-muted-foreground italic mb-2 border-l-2 border-primary/20 pl-2">{raid.lore}</p>
             )}
@@ -291,6 +327,7 @@ function ActiveRaidCard({ raid }: { raid: BossRaid }) {
 function AvailableRaidCard({ template, onStart }: { template: RaidTemplate; onStart: (title: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const directive = availableRaidCopy(template);
+  const bossInteraction = (template as any).bossInteraction;
 
   return (
     <Card className={cn("border bg-card/50 overflow-hidden relative", DIFFICULTY_GLOWS[template.difficulty])}>
@@ -326,6 +363,7 @@ function AvailableRaidCard({ template, onStart }: { template: RaidTemplate; onSt
               <p className="text-[9px] font-mono uppercase tracking-widest text-[#d9ad63]">{directive.label}</p>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{directive.text}</p>
             </div>
+            <BossInteractionPanel interaction={bossInteraction} />
             {template.lore && (
               <p className="text-[11px] text-muted-foreground italic mb-2 border-l-2 border-primary/20 pl-2">{template.lore}</p>
             )}
