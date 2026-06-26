@@ -371,8 +371,39 @@ function AethoriaLedger({ events, onOpenChronicle }: { events: any[]; onOpenChro
   );
 }
 
-function LatestBattleProof({ proof, onOpenChronicle }: { proof: any; onOpenChronicle: () => void }) {
-  if (!proof) return null;
+function LatestBattleProof({
+  proof,
+  onOpenChronicle,
+  onOpenTraining,
+}: {
+  proof: any;
+  onOpenChronicle: () => void;
+  onOpenTraining: () => void;
+}) {
+  if (!proof) {
+    return (
+      <View style={[s.battleProofCard, { borderColor: "#345f5d", backgroundColor: "#071111" }]}>
+        <View style={s.ledgerHeaderRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.sectionLabel, { color: "#49a3a0" }]}>BATTLE PROOF PENDING</Text>
+            <Text style={s.battleProofTitle}>Your first replay has not been written.</Text>
+          </View>
+          <TouchableOpacity style={[s.ledgerChronicleBtn, { borderColor: "#345f5d" }]} onPress={onOpenTraining} activeOpacity={0.82}>
+            <Text style={[s.ledgerChronicleText, { color: "#49a3a0" }]}>Train</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={s.battleProofLine}>
+          Complete a commission or training session and the Chronicle will translate the real work into a battle: style, enemy, reward, region, and consequence.
+        </Text>
+        <View style={s.battleProofMeaning}>
+          <Text style={s.battleProofMeaningLabel}>WHAT WILL APPEAR HERE</Text>
+          <Text style={s.battleProofMeaningText}>
+            Heavy sets become crushing blows. Conditioning becomes pursuit. Grappling becomes control. Recovery becomes survival. The training decides the fight.
+          </Text>
+        </View>
+      </View>
+    );
+  }
   const gear = proof.gearDrop as { name?: string; rarity?: string; slot?: string } | null;
   return (
     <View style={s.battleProofCard}>
@@ -788,6 +819,7 @@ export default function HallScreen() {
             <LatestBattleProof
               proof={hallAny?.latestBattleProof}
               onOpenChronicle={() => router.push("/(tabs)/battle-log?tab=replays" as any)}
+              onOpenTraining={() => router.push("/(tabs)/training" as any)}
             />
             <AldricPanel hall={hallAny} onOpen={() => setAldricOpen(true)} />
 

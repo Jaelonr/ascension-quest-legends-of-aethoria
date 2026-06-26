@@ -181,7 +181,28 @@ function AethoriaLedger({ events }: { events: any[] }) {
 }
 
 function LatestBattleProof({ proof }: { proof: any }) {
-  if (!proof) return null;
+  if (!proof) {
+    return (
+      <section className="mt-4 border border-[#345f5d] bg-[#071111] p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-[#49a3a0]">Battle proof pending</p>
+            <h2 className="mt-1 font-serif text-lg font-bold text-[#e5c386]">Your first replay has not been written.</h2>
+          </div>
+          <a href="/training" className="shrink-0 border border-[#345f5d] px-3 py-2 text-[10px] font-bold uppercase text-[#49a3a0]">Train</a>
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-[#b7ab9c]">
+          Complete a commission or training session and the Chronicle will translate the real work into a battle: style, enemy, reward, region, and consequence.
+        </p>
+        <div className="mt-3 border border-[#3b3328] bg-[#0c0b09] p-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-[#9d8f80]">What will appear here</p>
+          <p className="mt-1 text-xs leading-relaxed text-[#d8c4a5]">
+            Heavy sets become crushing blows. Conditioning becomes pursuit. Grappling becomes control. Recovery becomes survival. The training decides the fight.
+          </p>
+        </div>
+      </section>
+    );
+  }
   const gear = proof.gearDrop as { name?: string; rarity?: string; slot?: string } | null;
   return (
     <section className="mt-4 border border-[#6b4d2f] bg-[#0e0d0b] p-4">
