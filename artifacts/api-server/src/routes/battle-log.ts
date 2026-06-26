@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { combatReplaysTable, playerStyleIdentityTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { getOrCreatePlayer } from "../progression";
+import { buildCombatReplayPayoff } from "../combat-engine";
 
 const router = Router();
 
@@ -24,6 +25,10 @@ router.get("/battle-log", async (req, res) => {
       events: r.events as any[],
       styleScores: r.styleScores as Record<string, number>,
       gearDrop: r.gearDrop as any,
+      payoff: buildCombatReplayPayoff({
+        ...r,
+        gearDrop: r.gearDrop as any,
+      }),
     })));
   } catch (err) {
     req.log.error(err);

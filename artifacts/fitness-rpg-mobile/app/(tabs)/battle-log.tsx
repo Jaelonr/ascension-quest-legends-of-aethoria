@@ -245,6 +245,7 @@ function ReplayModal({ replay, onClose }: { replay: any; onClose: () => void }) 
   const activeStyles = STYLE_ORDER.filter((s) => (styleScores[s] ?? 0) > 0)
     .sort((a, b) => (styleScores[b] ?? 0) - (styleScores[a] ?? 0));
   const verdictColor = VERDICT_COLORS[replay.verdict] ?? "#22c55e";
+  const payoff = replay.payoff;
 
   useEffect(() => {
     setRevealedCount(0);
@@ -289,6 +290,14 @@ function ReplayModal({ replay, onClose }: { replay: any; onClose: () => void }) 
           contentContainerStyle={{ padding: 16, gap: 10 }}
           showsVerticalScrollIndicator={false}
         >
+          {payoff && (
+            <View style={rm.payoffCard}>
+              <Text style={rm.payoffLabel}>REAL SESSION TRANSLATED</Text>
+              <Text style={rm.payoffTitle}>{payoff.headline}</Text>
+              <Text style={rm.payoffText}>{payoff.fitnessTranslation}</Text>
+            </View>
+          )}
+
           {/* Narrative events */}
           {events.length === 0 && (
             <Text style={rm.noEvents}>No battle record found for this session.</Text>
@@ -349,6 +358,14 @@ function ReplayModal({ replay, onClose }: { replay: any; onClose: () => void }) 
               )}
 
               {/* Narrative consequence */}
+              {payoff && (
+                <View style={rm.meaningCard}>
+                  <Text style={rm.meaningLabel}>CHRONICLE MEANING</Text>
+                  <Text style={rm.meaningText}>{payoff.worldEffect}</Text>
+                  <Text style={rm.meaningNext}>{payoff.nextHook}</Text>
+                </View>
+              )}
+
               {replay.narrativeConsequence && (
                 <View style={rm.consequenceCard}>
                   <Text style={rm.consequenceLabel}>↠ CONSEQUENCE</Text>
@@ -387,6 +404,10 @@ const rm = StyleSheet.create({
   archetypeText: { fontSize: 10, color: "#9d8f80" },
   closeBtn: { position: "absolute", right: 20, top: 20 },
   closeBtnText: { fontSize: 20, color: "#6b5d4f" },
+  payoffCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", borderRadius: 10, padding: 12 },
+  payoffLabel: { color: "#9d8f80", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 2 },
+  payoffTitle: { color: "#e5c386", fontSize: 16, fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
+  payoffText: { color: "#d8c4a5", fontSize: 12, lineHeight: 18, marginTop: 6, fontFamily: "Inter_400Regular" },
   noEvents: { textAlign: "center", color: "#6b5d4f", fontStyle: "italic", marginTop: 24, fontSize: 13 },
   eventCard: { backgroundColor: "#181612", borderWidth: 1, borderColor: "#2a2520", borderRadius: 8, padding: 14 },
   eventText: { color: "#d8c4a5", fontSize: 13, lineHeight: 20 },
@@ -408,6 +429,10 @@ const rm = StyleSheet.create({
   consequenceCard: { borderWidth: 1, borderColor: "#1a3535", backgroundColor: "#0a1a1a", borderRadius: 8, padding: 12 },
   consequenceLabel: { fontSize: 9, color: "#49a3a0", textTransform: "uppercase", letterSpacing: 3, marginBottom: 6, fontFamily: "Inter_400Regular" },
   consequenceText: { fontSize: 12, color: "#d8c4a5", lineHeight: 18, fontStyle: "italic" },
+  meaningCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15110d", borderRadius: 8, padding: 12 },
+  meaningLabel: { fontSize: 9, color: "#9d8f80", textTransform: "uppercase", letterSpacing: 2, marginBottom: 6, fontFamily: "Inter_700Bold" },
+  meaningText: { fontSize: 12, color: "#d8c4a5", lineHeight: 18, fontFamily: "Inter_400Regular" },
+  meaningNext: { fontSize: 11, color: "#9dbdb8", lineHeight: 16, marginTop: 8, fontFamily: "Inter_400Regular" },
   verdictBadge: { borderWidth: 1, borderRadius: 8, padding: 12, alignItems: "center" },
   verdictText: { fontWeight: "700", fontSize: 14, letterSpacing: 1, fontFamily: "Inter_700Bold" },
   returnBtn: { borderWidth: 1, borderColor: "#3b3328", padding: 14, alignItems: "center", borderRadius: 4 },
@@ -417,6 +442,7 @@ const rm = StyleSheet.create({
 function ReplayCard({ replay, onPress }: { replay: any; onPress: () => void }) {
   const meta = STYLE_META[replay.dominantStyle] ?? STYLE_META.strength;
   const verdictColor = VERDICT_COLORS[replay.verdict] ?? "#22c55e";
+  const payoff = replay.payoff;
   return (
     <TouchableOpacity
       style={[rc.card, { backgroundColor: "#11100e", borderColor: meta.color + "40" }]}
@@ -431,6 +457,9 @@ function ReplayCard({ replay, onPress }: { replay: any; onPress: () => void }) {
           </View>
           <Text style={rc.name} numberOfLines={1}>{replay.encounterName}</Text>
           <Text style={rc.enemy}>vs. {replay.enemyName}</Text>
+          {payoff?.fitnessTranslation && (
+            <Text style={rc.payoff} numberOfLines={2}>{payoff.fitnessTranslation}</Text>
+          )}
         </View>
         <Text style={rc.date}>
           {new Date(replay.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
@@ -455,6 +484,7 @@ const rc = StyleSheet.create({
   verdictTag: { fontSize: 10 },
   name: { fontSize: 14, fontWeight: "700", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold" },
   enemy: { fontSize: 11, color: "#9d8f80", marginTop: 2 },
+  payoff: { fontSize: 11, color: "#b7ab9c", lineHeight: 16, marginTop: 7, fontFamily: "Inter_400Regular" },
   date: { fontSize: 10, color: "#6b5d4f", flexShrink: 0 },
   footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
   xp: { fontSize: 11, fontWeight: "700", color: "#0dcef5", fontFamily: "Inter_700Bold" },

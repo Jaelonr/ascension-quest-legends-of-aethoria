@@ -72,6 +72,14 @@ export interface CombatReplayData {
   styleScores: StyleScores;
   raidImpact: string | null;
   narrativeConsequence: string | null;
+  payoff: CombatReplayPayoff;
+}
+
+export interface CombatReplayPayoff {
+  headline: string;
+  fitnessTranslation: string;
+  worldEffect: string;
+  nextHook: string;
 }
 
 const STRENGTH_KEYWORDS = [
@@ -527,6 +535,59 @@ function generateNarrativeConsequence(input: CombatInput, verdict: string): stri
   return parts.join(" ");
 }
 
+const STYLE_PAYOFFS: Record<CombatStyle, { action: string; trait: string }> = {
+  strength: { action: "devastating force", trait: "raw power" },
+  striking: { action: "clean combinations and sharp footwork", trait: "precision" },
+  conditioning: { action: "relentless pressure", trait: "endurance" },
+  grappling: { action: "control, leverage, and positional dominance", trait: "battlefield control" },
+  recovery: { action: "restoration and guarded resilience", trait: "durability" },
+  discipline: { action: "measured execution", trait: "discipline" },
+};
+
+export function buildCombatReplayPayoff(replay: {
+  verdict?: string | null;
+  dominantStyle?: string | null;
+  secondaryStyle?: string | null;
+  hybridArchetype?: string | null;
+  enemyName?: string | null;
+  xpEarned?: number | null;
+  goldEarned?: number | null;
+  prCount?: number | null;
+  gearDrop?: { name?: string; rarity?: string; slot?: string } | null;
+  raidImpact?: string | null;
+  narrativeConsequence?: string | null;
+}): CombatReplayPayoff {
+  const dominant = (replay.dominantStyle && replay.dominantStyle in STYLE_PAYOFFS
+    ? replay.dominantStyle
+    : "discipline") as CombatStyle;
+  const secondary = replay.secondaryStyle && replay.secondaryStyle in STYLE_PAYOFFS
+    ? replay.secondaryStyle as CombatStyle
+    : null;
+  const primary = STYLE_PAYOFFS[dominant];
+  const secondaryPhrase = secondary ? `, reinforced by ${STYLE_PAYOFFS[secondary].trait}` : "";
+  const enemy = replay.enemyName ?? "the enemy";
+  const verdict = replay.verdict ?? "Training Complete";
+  const prPhrase = replay.prCount && replay.prCount > 0
+    ? ` ${replay.prCount} personal record${replay.prCount === 1 ? "" : "s"} turned the fight in your favor.`
+    : "";
+  const gearPhrase = replay.gearDrop?.name
+    ? ` The Hall also recorded a recovered item: ${replay.gearDrop.name}.`
+    : "";
+
+  return {
+    headline: `${verdict} against ${enemy}`,
+    fitnessTranslation: `Your completed session became ${primary.action}${secondaryPhrase}.${prPhrase}`.replace(/\s+/g, " ").trim(),
+    worldEffect: replay.raidImpact
+      ? replay.raidImpact
+      : replay.narrativeConsequence
+        ? replay.narrativeConsequence
+        : `Aethoria changed by a small but real measure: XP and gold were earned because the work happened in the real world.${gearPhrase}`,
+    nextHook: replay.hybridArchetype
+      ? `Repeated sessions are shaping the ${replay.hybridArchetype} path.`
+      : "Repeat the pattern and the Chronicle will learn what kind of adventurer you are becoming.",
+  };
+}
+
 export function generateCombatReplay(input: CombatInput): CombatReplayData {
   const { dominant, secondary, scores } = classifyWorkoutStyle(input);
   const hybridArchetype = getHybridArchetype(scores);
@@ -624,7 +685,7 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
 
   const narrativeConsequence = generateNarrativeConsequence(input, verdict);
 
-  return {
+  const replay = {
     encounterName,
     enemyName,
     dominantStyle: dominant,
@@ -635,6 +696,17 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
     styleScores: scores,
     raidImpact,
     narrativeConsequence,
+  };
+
+  return {
+    ...replay,
+    payoff: buildCombatReplayPayoff({
+      ...replay,
+      xpEarned: input.xpEarned,
+      goldEarned: input.goldEarned,
+      prCount: input.prCount,
+      gearDrop: input.gearDrop,
+    }),
   };
 }
 

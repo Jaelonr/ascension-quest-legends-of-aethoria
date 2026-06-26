@@ -16,6 +16,7 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 import { getOrCreatePlayer } from "../progression";
 import { buildWorldDanger } from "../domain/world-danger";
+import { buildCombatReplayPayoff } from "../combat-engine";
 
 const router = Router();
 const STYLE_KEYS = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
@@ -83,6 +84,11 @@ router.get("/chronicle/summary", async (req, res) => {
         createdAt: replay.createdAt.toISOString(),
         events: replay.events as unknown[],
         styleScores: replay.styleScores as Record<string, number>,
+        gearDrop: replay.gearDrop as any,
+        payoff: buildCombatReplayPayoff({
+          ...replay,
+          gearDrop: replay.gearDrop as any,
+        }),
       })),
       guildReports: reports.map((report) => ({ ...report, generatedAt: report.generatedAt.toISOString() })),
       campaignProgress: campaign.map((quest) => ({

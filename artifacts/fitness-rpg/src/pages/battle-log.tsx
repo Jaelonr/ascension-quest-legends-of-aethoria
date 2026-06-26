@@ -123,6 +123,7 @@ function ReplayDialog({ replay, onClose }: { replay: any; onClose: () => void })
   const activeStyles = STYLE_ORDER.filter(s => (styleScores[s] ?? 0) > 0)
     .sort((a, b) => (styleScores[b] ?? 0) - (styleScores[a] ?? 0));
   const verdictColor = VERDICT_COLORS[replay.verdict] ?? "text-green-400";
+  const payoff = replay.payoff;
   const rarityColors: Record<string, string> = {
     common: "text-gray-300 border-gray-400/40",
     uncommon: "text-green-400 border-green-400/40",
@@ -176,6 +177,14 @@ function ReplayDialog({ replay, onClose }: { replay: any; onClose: () => void })
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        {payoff && (
+          <div className="border border-[#6b4d2f] bg-[#11100e] rounded-xl p-3">
+            <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-[#9d8f80]">Real session translated</p>
+            <h3 className="mt-1 font-serif text-base font-bold text-[#e5c386]">{payoff.headline}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[#d8c4a5]">{payoff.fitnessTranslation}</p>
+          </div>
+        )}
+
         {/* Narrative events — staggered reveal */}
         {events.length > 0 ? (
           <div className="space-y-2.5">
@@ -266,6 +275,14 @@ function ReplayDialog({ replay, onClose }: { replay: any; onClose: () => void })
               );
             })()}
 
+            {payoff && (
+              <div className="border border-[#6b4d2f] bg-[#15110d] rounded-xl p-3">
+                <p className="text-[9px] font-mono uppercase tracking-widest text-[#9d8f80] mb-1.5">Chronicle meaning</p>
+                <p className="text-xs text-[#d8c4a5] leading-relaxed">{payoff.worldEffect}</p>
+                <p className="mt-2 text-[11px] text-[#9dbdb8] leading-relaxed">{payoff.nextHook}</p>
+              </div>
+            )}
+
             {/* Narrative consequence */}
             {replay.narrativeConsequence && (
               <div className="border border-[#1a3535] bg-[#0a1a1a] rounded-xl p-3">
@@ -301,6 +318,7 @@ function ReplayCard({ replay }: { replay: any }) {
   const [open, setOpen] = useState(false);
   const meta = STYLE_META[replay.dominantStyle] ?? STYLE_META.strength;
   const verdictColor = VERDICT_COLORS[replay.verdict] ?? "text-green-400";
+  const payoff = replay.payoff;
 
   return (
     <>
@@ -319,6 +337,9 @@ function ReplayCard({ replay }: { replay: any }) {
               </div>
               <h3 className="truncate font-serif text-sm font-bold text-[#eee5d7]">{replay.encounterName}</h3>
               <p className="text-[11px] text-[#8f887d]">vs. {replay.enemyName}</p>
+              {payoff?.fitnessTranslation && (
+                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[#b7ab9c]">{payoff.fitnessTranslation}</p>
+              )}
             </div>
             <div className="shrink-0 text-right text-[10px] text-[#8f887d]">
               {new Date(replay.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
