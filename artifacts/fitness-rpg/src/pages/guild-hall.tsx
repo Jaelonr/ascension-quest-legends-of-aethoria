@@ -79,6 +79,61 @@ function WorldDangerBar({ danger }: { danger: any }) {
   );
 }
 
+function worldEventTone(event: any) {
+  const severity = String(event?.severity ?? "").toLowerCase();
+  const title = String(event?.title ?? "").toLowerCase();
+  if (severity === "critical" || title.includes("retreat") || title.includes("failed")) {
+    return { border: "border-[#9d3e2a]", text: "text-[#d95f45]", bg: "bg-[#1b1110]", label: "Crisis" };
+  }
+  if (severity === "major" || title.includes("defeated") || title.includes("archetype")) {
+    return { border: "border-[#8c6a36]", text: "text-[#d9ad63]", bg: "bg-[#16120d]", label: "Turning point" };
+  }
+  if (title.includes("raid pressure") || title.includes("directive")) {
+    return { border: "border-[#6a3028]", text: "text-[#d48b73]", bg: "bg-[#1b1110]", label: "Raid pressure" };
+  }
+  return { border: "border-[#3b3328]", text: "text-[#b7ab9c]", bg: "bg-[#0c0b09]", label: "Recorded" };
+}
+
+function AethoriaLedger({ events }: { events: any[] }) {
+  if (!events?.length) return null;
+  const latest = events.slice(0, 3);
+  return (
+    <section className="mt-4 border border-[#6b4d2f] bg-[#11100e] p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-[#9d8f80]">Aethoria ledger</p>
+          <h2 className="mt-1 font-serif text-lg font-bold text-[#d9ad63]">What changed because of you</h2>
+        </div>
+        <a href="/chronicle?tab=records" className="shrink-0 border border-[#6b4d2f] px-3 py-2 text-[10px] font-bold uppercase text-[#d9ad63]">Chronicle</a>
+      </div>
+      <div className="grid gap-2">
+        {latest.map((event) => {
+          const tone = worldEventTone(event);
+          const metadata = event?.metadata ?? {};
+          return (
+            <article key={event.id ?? event.worldKey ?? event.title} className={cn("border p-3", tone.border, tone.bg)}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className={cn("font-serif text-sm font-bold", tone.text)}>{event.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#baa9a2]">{event.description}</p>
+                </div>
+                <span className={cn("shrink-0 border px-2 py-1 text-[9px] font-bold uppercase", tone.border, tone.text)}>{tone.label}</span>
+              </div>
+              {(metadata.worldDangerRelief || metadata.gearDropName || metadata.hybridArchetype) && (
+                <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-[#8f887d]">
+                  {metadata.worldDangerRelief ? <span>Danger relief: {String(metadata.worldDangerRelief)} pts</span> : null}
+                  {metadata.gearDropName ? <span>Recovered: {String(metadata.gearDropName)}</span> : null}
+                  {metadata.hybridArchetype ? <span>Archetype: {String(metadata.hybridArchetype)}</span> : null}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function taskIcon(description: string) {
   const value = description.toLowerCase();
   if (value.includes("protein")) return Apple;
@@ -682,6 +737,7 @@ export default function GuildHall() {
       </header>
 
       <WorldDangerBar danger={extended.worldDanger} />
+      <AethoriaLedger events={data.worldEvents ?? []} />
 
       <section className="mt-4 overflow-hidden border border-[#6b4d2f] bg-[#11100e] md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(330px,0.85fr)]">
         <img src="/assets/grandmaster-aldric.jpg" alt="Grandmaster Aldric in the Guild Hall" className="aspect-[4/3] w-full object-cover object-[42%_30%] md:h-full md:aspect-auto" />
@@ -807,13 +863,6 @@ export default function GuildHall() {
               </div>
             ))}
           </div>
-        </section>
-      )}
-
-      {data.worldEvents.length > 0 && (
-        <section className="mt-4 border border-[#6a3028] bg-[#1b1110] p-3">
-          <p className="font-serif text-sm font-bold text-[#d48b73]">The world remembers</p>
-          <p className="mt-1 text-xs leading-relaxed text-[#baa9a2]">{data.worldEvents[0]?.description}</p>
         </section>
       )}
 

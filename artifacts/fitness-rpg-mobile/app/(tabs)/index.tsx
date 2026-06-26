@@ -281,6 +281,58 @@ function WorldDangerPanel({ danger }: { danger: any }) {
   );
 }
 
+function worldEventTone(event: any) {
+  const severity = String(event?.severity ?? "").toLowerCase();
+  const title = String(event?.title ?? "").toLowerCase();
+  if (severity === "critical" || title.includes("retreat") || title.includes("failed")) {
+    return { border: "#9d3e2a", text: "#d95f45", bg: "#1b1110", label: "Crisis" };
+  }
+  if (severity === "major" || title.includes("defeated") || title.includes("archetype")) {
+    return { border: "#8c6a36", text: "#d9ad63", bg: "#16120d", label: "Turning point" };
+  }
+  if (title.includes("raid pressure") || title.includes("directive")) {
+    return { border: "#6a3028", text: "#d48b73", bg: "#1b1110", label: "Raid pressure" };
+  }
+  return { border: "#3b3328", text: "#b7ab9c", bg: "#0c0b09", label: "Recorded" };
+}
+
+function AethoriaLedger({ events, onOpenChronicle }: { events: any[]; onOpenChronicle: () => void }) {
+  if (!events?.length) return null;
+  return (
+    <View style={s.aethoriaLedger}>
+      <View style={s.ledgerHeaderRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.sectionLabel}>AETHORIA LEDGER</Text>
+          <Text style={s.aethoriaLedgerTitle}>What changed because of you</Text>
+        </View>
+        <TouchableOpacity style={s.ledgerChronicleBtn} onPress={onOpenChronicle} activeOpacity={0.82}>
+          <Text style={s.ledgerChronicleText}>Chronicle</Text>
+        </TouchableOpacity>
+      </View>
+      {events.slice(0, 3).map((event: any) => {
+        const tone = worldEventTone(event);
+        const metadata = event?.metadata ?? {};
+        return (
+          <View key={event.id ?? event.worldKey ?? event.title} style={[s.worldEventCard, { borderColor: tone.border, backgroundColor: tone.bg }]}>
+            <View style={s.worldEventTop}>
+              <Text style={[s.worldEventTitle, { color: tone.text }]}>{event.title}</Text>
+              <Text style={[s.worldEventPill, { borderColor: tone.border, color: tone.text }]}>{tone.label}</Text>
+            </View>
+            <Text style={s.worldEventText}>{event.description}</Text>
+            {(metadata.worldDangerRelief || metadata.gearDropName || metadata.hybridArchetype) && (
+              <View style={s.worldEventMetaRow}>
+                {metadata.worldDangerRelief ? <Text style={s.worldEventMeta}>Danger relief: {String(metadata.worldDangerRelief)} pts</Text> : null}
+                {metadata.gearDropName ? <Text style={s.worldEventMeta}>Recovered: {String(metadata.gearDropName)}</Text> : null}
+                {metadata.hybridArchetype ? <Text style={s.worldEventMeta}>Archetype: {String(metadata.hybridArchetype)}</Text> : null}
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function formatReadinessSource(source?: string | null) {
   if (source === "health_connect") return "Health Connect";
   if (source === "samsung_health") return "Samsung Health";
@@ -642,6 +694,10 @@ export default function HallScreen() {
         ) : (
           <>
             <WorldDangerPanel danger={hallAny?.worldDanger} />
+            <AethoriaLedger
+              events={hallAny?.worldEvents ?? []}
+              onOpenChronicle={() => router.push("/(tabs)/battle-log?tab=records" as any)}
+            />
             <AldricPanel hall={hallAny} onOpen={() => setAldricOpen(true)} />
 
             <TouchableOpacity
@@ -781,13 +837,6 @@ export default function HallScreen() {
               </View>
             )}
 
-            {(hallAny?.worldEvents?.length ?? 0) > 0 && (
-              <View style={s.worldMemoryPanel}>
-                <Text style={s.worldMemoryTitle}>The world remembers</Text>
-                <Text style={s.worldMemoryText}>{hallAny.worldEvents[0]?.description}</Text>
-              </View>
-            )}
-
             <Text style={[s.footerMotto, { color: allDone ? "#69a97b" : "#7e776d" }]}>
               {allDone ? "The Guild is ready to receive your report." : "Consistency is the weapon. The next action is enough."}
             </Text>
@@ -897,6 +946,18 @@ const s = StyleSheet.create({
   affinityPanel: { flexDirection: "row", alignItems: "center", gap: 10, borderLeftWidth: 2, borderLeftColor: "#428f91", backgroundColor: "#10191a", paddingHorizontal: 12, paddingVertical: 12, marginTop: 14 },
   affinityLabel: { color: "#73999a", fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.4 },
   affinityText: { color: "#d8e4e3", fontSize: 12, lineHeight: 17, fontFamily: "Inter_400Regular", marginTop: 2 },
+  aethoriaLedger: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 12, marginBottom: 14 },
+  ledgerHeaderRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 10 },
+  aethoriaLedgerTitle: { color: "#d9ad63", fontSize: 17, fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
+  ledgerChronicleBtn: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15130f", paddingHorizontal: 10, paddingVertical: 8 },
+  ledgerChronicleText: { color: "#d9ad63", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.2 },
+  worldEventCard: { borderWidth: 1, padding: 10, marginTop: 7 },
+  worldEventTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
+  worldEventTitle: { flex: 1, fontSize: 13, fontFamily: "PlayfairDisplay_700Bold", lineHeight: 17 },
+  worldEventPill: { borderWidth: 1, paddingHorizontal: 6, paddingVertical: 3, fontSize: 8, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  worldEventText: { color: "#baa9a2", fontSize: 11, lineHeight: 17, fontFamily: "Inter_400Regular", marginTop: 5 },
+  worldEventMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 7 },
+  worldEventMeta: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_400Regular" },
   worldMemoryPanel: { borderWidth: 1, borderColor: "#6a3028", backgroundColor: "#1b1110", padding: 12, marginTop: 14 },
   worldMemoryTitle: { color: "#d48b73", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold" },
   worldMemoryText: { color: "#baa9a2", fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular", marginTop: 4 },
