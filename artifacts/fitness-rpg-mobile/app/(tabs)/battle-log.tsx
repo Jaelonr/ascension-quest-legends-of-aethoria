@@ -118,6 +118,7 @@ type ChronicleSummary = {
   titlesEarned?: any[];
   personalRecords?: any[];
   map?: { title?: string; description?: string; status?: string };
+  regionProgress?: any[];
   majorMilestones?: any[];
   worldEvents?: any[];
 };
@@ -195,6 +196,7 @@ function SystemDangerCard({ danger }: { danger: any }) {
         <View style={[ch.dangerFill, { width: `${value}%`, backgroundColor: critical ? "#9d3e2a" : "#b48432" }]} />
       </View>
       <Text style={ch.dangerNote}>{danger.systemNote ?? "Only the summoned adventurer can read this System-level danger index."}</Text>
+      {danger.nextRelief ? <Text style={ch.dangerSecondaryNote}>{danger.nextRelief}</Text> : null}
     </View>
   );
 }
@@ -719,6 +721,7 @@ export default function ChronicleScreen() {
     ? chronicle.map.description
     : "The Hall's records have begun charting your passage through Aethoria. Regions, Gates, roads, and battle sites will appear here as your Chronicle grows.";
   const mapStatus = !chronicle?.map?.status || chronicle.map.status === "placeholder" ? "Known Routes" : chronicle.map.status;
+  const regionProgress = (chronicle?.regionProgress ?? []).filter((region: any) => region.known || region.discovered || region.visited || (region.commissionsCompleted ?? 0) > 0);
 
   const renderPanel = () => {
     if (activeTab === "replays") return null;
@@ -1023,6 +1026,48 @@ export default function ChronicleScreen() {
           <Text style={ch.recordTitle}>Route Ledger</Text>
           <Text style={ch.recordText}>Gold marks on-foot effort earned from real steps. Teal routes are assisted travel handled by roads, caravans, mounts, and guides. Every expedition endpoint returns to the Guild Hall by stone, not by walking back across Aethoria.</Text>
         </View>
+        <View style={ch.recordCard}>
+          <View style={ch.recordRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={ch.recordMeta}>Regional Footprints</Text>
+              <Text style={ch.recordText}>
+                Regions become clearer through commissions, battles, recovery duties, and story reports. The Hall tracks what has been earned, not what the map artist drew.
+              </Text>
+            </View>
+            <Text style={ch.statePill}>{regionProgress.length} known</Text>
+          </View>
+          {regionProgress.length ? (
+            <View style={ch.regionGrid}>
+              {regionProgress.map((region: any) => {
+                const styleKey = region.dominantStyleUsed as string | undefined;
+                const style = styleKey ? STYLE_META[styleKey] : null;
+                const state = region.visited ? "Visited" : region.discovered ? "Discovered" : "Known";
+                return (
+                  <View key={String(region.regionId ?? region.regionName)} style={[ch.regionCard, { borderColor: region.visited ? "#6b4d2f" : "#3b3328" }]}>
+                    <View style={ch.recordRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={ch.recordTitle}>{region.regionName}</Text>
+                        <Text style={ch.recordMeta}>{state}</Text>
+                      </View>
+                      <Text style={ch.statePill}>{region.explorationPercent ?? 0}%</Text>
+                    </View>
+                    <View style={ch.worldEventMetaGrid}>
+                      <Text style={ch.worldEventMeta}>Commissions {region.commissionsCompleted ?? 0}</Text>
+                      <Text style={ch.worldEventMeta}>Bosses {region.bossesDefeated ?? 0}</Text>
+                    </View>
+                    {style ? <Text style={[ch.regionStyle, { color: style.color }]}>Dominant style: {style.label}</Text> : null}
+                    <Text style={ch.recordMeta}>Last visited: {formatChronicleDate(region.lastVisitedAt)}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={ch.worldEventEmpty}>
+              <Text style={ch.recordTitle}>No regional records yet.</Text>
+              <Text style={ch.recordText}>Accept a commission and the first known route will be written here.</Text>
+            </View>
+          )}
+        </View>
         <View style={ch.featureGrid}>
           {MAP_FEATURES.map((feature) => (
             <View key={feature} style={ch.featureTile}>
@@ -1164,6 +1209,7 @@ const ch = StyleSheet.create({
   dangerTrack: { height: 8, backgroundColor: "#2a1815", overflow: "hidden", marginTop: 12 },
   dangerFill: { height: 8 },
   dangerNote: { color: "#b7ab9c", fontSize: 11, lineHeight: 17, marginTop: 10, fontFamily: "Inter_400Regular" },
+  dangerSecondaryNote: { color: "#8f887d", fontSize: 10, lineHeight: 16, marginTop: 8, fontFamily: "Inter_400Regular" },
   statsGrid: { flexDirection: "row", gap: 8, marginBottom: 14 },
   statTile: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#11100e", padding: 12, alignItems: "center" },
   statValue: { fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
@@ -1202,6 +1248,9 @@ const ch = StyleSheet.create({
   worldEventMetaGrid: { borderTopWidth: 1, borderTopColor: "#3b3328", marginTop: 10, paddingTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 8 },
   worldEventMeta: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.7, fontFamily: "Inter_700Bold" },
   worldEventEmpty: { borderWidth: 1, borderStyle: "dashed", borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 14, alignItems: "center", marginTop: 12 },
+  regionGrid: { gap: 8, marginTop: 12 },
+  regionCard: { borderWidth: 1, backgroundColor: "#0c0b09", padding: 12 },
+  regionStyle: { marginTop: 10, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
   legendMarkList: { gap: 8, marginTop: 12 },
   legendMarkCard: { borderWidth: 1, backgroundColor: "#0c0b09", padding: 12 },
   legendMarkKicker: { color: "#9d8f80", fontSize: 9, textTransform: "uppercase", letterSpacing: 1.6, fontFamily: "Inter_700Bold", marginBottom: 4 },

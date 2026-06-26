@@ -70,6 +70,7 @@ function WorldDangerBar({ danger }: { danger: any }) {
         />
       </div>
       <p className="mt-2 text-xs leading-relaxed text-[#b7ab9c]">{danger.systemNote}</p>
+      {danger.nextRelief && <p className="mt-2 text-[11px] leading-relaxed text-[#8f887d]">{danger.nextRelief}</p>}
       <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px]">
         <div className="border border-[#3b3328] bg-[#0c0b09] p-2"><p className="text-[#8f887d]">Bosses defeated</p><p className="text-[#d9ad63]">{danger.defeatedBosses ?? 0}</p></div>
         <div className="border border-[#3b3328] bg-[#0c0b09] p-2"><p className="text-[#8f887d]">Active threats</p><p className="text-[#d95f45]">{danger.activeThreats ?? 0}</p></div>

@@ -10,6 +10,7 @@ import {
   playerStyleIdentityTable,
   playerTitlesTable,
   questsTable,
+  regionProgressTable,
   titlesTable,
   worldEventsTable,
 } from "@workspace/db";
@@ -306,7 +307,7 @@ function buildDerivedMilestones(input: {
 router.get("/chronicle/summary", async (req, res) => {
   try {
     const { player } = await getOrCreatePlayer(req.userId);
-    const [replays, reports, discoveries, raids, titles, records, milestones, worldEvents, campaign, styleIdentity] = await Promise.all([
+    const [replays, reports, discoveries, raids, titles, records, milestones, worldEvents, campaign, styleIdentity, regionProgress] = await Promise.all([
       db.select().from(combatReplaysTable).where(eq(combatReplaysTable.playerId, player.id)).orderBy(desc(combatReplaysTable.createdAt)).limit(20),
       db.select().from(guildReportsTable).where(eq(guildReportsTable.playerId, player.id)).orderBy(desc(guildReportsTable.generatedAt)).limit(12),
       db.select().from(itemDiscoveriesTable).where(eq(itemDiscoveriesTable.playerId, player.id)).orderBy(desc(itemDiscoveriesTable.discoveredAt)).limit(50),
@@ -328,6 +329,7 @@ router.get("/chronicle/summary", async (req, res) => {
       db.select().from(worldEventsTable).where(eq(worldEventsTable.playerId, player.id)).orderBy(desc(worldEventsTable.occurredAt)).limit(20),
       db.select().from(questsTable).where(and(eq(questsTable.playerId, player.id), eq(questsTable.type, "main"))).orderBy(desc(questsTable.createdAt)).limit(10),
       db.select().from(playerStyleIdentityTable).where(eq(playerStyleIdentityTable.playerId, player.id)).limit(1),
+      db.select().from(regionProgressTable).where(eq(regionProgressTable.playerId, player.id)).orderBy(desc(regionProgressTable.visited), desc(regionProgressTable.lastVisitedAt)),
     ]);
 
     res.json({
@@ -374,6 +376,12 @@ router.get("/chronicle/summary", async (req, res) => {
         title: "Map of Aethoria",
         description: "The Hall's records have begun charting your passage through Aethoria. Regions, Gates, roads, and battle sites will appear here as your Chronicle grows. For now, only the routes most often spoken of in the Guild's ledgers are clear.",
       },
+      regionProgress: regionProgress.map((region) => ({
+        ...region,
+        lastVisitedAt: region.lastVisitedAt?.toISOString() ?? null,
+        createdAt: region.createdAt.toISOString(),
+        updatedAt: region.updatedAt.toISOString(),
+      })),
       majorMilestones: buildDerivedMilestones({
         memories: milestones,
         replays,

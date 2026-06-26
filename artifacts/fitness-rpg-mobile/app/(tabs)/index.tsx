@@ -272,6 +272,7 @@ function WorldDangerPanel({ danger }: { danger: any }) {
         <View style={[s.dangerFill, { width: `${value}%`, backgroundColor: critical ? "#9d3e2a" : value >= 65 ? "#b45f2d" : value >= 40 ? "#b48432" : "#4f8f67" }]} />
       </View>
       <Text style={s.dangerNote}>{danger.systemNote}</Text>
+      {danger.nextRelief ? <Text style={s.dangerSecondaryNote}>{danger.nextRelief}</Text> : null}
       <View style={s.dangerStats}>
         <View style={s.dangerStat}><Text style={s.dangerStatLabel}>Bosses</Text><Text style={s.dangerStatValue}>{danger.defeatedBosses ?? 0}</Text></View>
         <View style={s.dangerStat}><Text style={s.dangerStatLabel}>Threats</Text><Text style={[s.dangerStatValue, { color: "#d95f45" }]}>{danger.activeThreats ?? 0}</Text></View>
@@ -963,6 +964,7 @@ const s = StyleSheet.create({
   dangerTrack: { height: 8, backgroundColor: "#2a1815", overflow: "hidden", marginTop: 12 },
   dangerFill: { height: 8 },
   dangerNote: { color: "#b7ab9c", fontSize: 11, lineHeight: 17, marginTop: 10, fontFamily: "Inter_400Regular" },
+  dangerSecondaryNote: { color: "#8f887d", fontSize: 10, lineHeight: 16, marginTop: 8, fontFamily: "Inter_400Regular" },
   dangerStats: { flexDirection: "row", gap: 8, marginTop: 12 },
   dangerStat: { flex: 1, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 8 },
   dangerStatLabel: { color: "#80796f", fontSize: 9, textTransform: "uppercase", fontFamily: "Inter_400Regular" },

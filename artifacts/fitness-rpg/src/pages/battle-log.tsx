@@ -77,6 +77,7 @@ type ChronicleSummary = {
   titlesEarned: any[];
   personalRecords: any[];
   map: { title: string; description: string; status: string };
+  regionProgress?: any[];
   majorMilestones: any[];
   worldEvents: any[];
 };
@@ -682,6 +683,7 @@ export default function BattleLog() {
     ? chronicle.map.description
     : "The Hall's records have begun charting your passage through Aethoria. Regions, Gates, roads, and battle sites will appear here as your Chronicle grows. For now, only the routes most often spoken of in the Guild's ledgers are clear.";
   const mapStatus = !chronicle?.map?.status || chronicle.map.status === "placeholder" ? "Known Routes" : chronicle.map.status;
+  const regionProgress = (chronicle?.regionProgress ?? []).filter((region) => region.known || region.discovered || region.visited || (region.commissionsCompleted ?? 0) > 0);
   const identityMilestones = (chronicle?.worldEvents ?? []).filter(isIdentityMilestoneEvent);
 
   return (
@@ -1021,6 +1023,54 @@ export default function BattleLog() {
               </div>
 
               <div className="border-b border-[#3b3328] p-4">
+                <div className="mb-6">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-[#9d8f80]">Regional Footprints</p>
+                      <p className="mt-1 text-xs leading-relaxed text-[#8f887d]">
+                        Regions become clearer through commissions, battles, recovery duties, and story reports. The Hall tracks what has been earned, not what the map artist drew.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 rounded-none border-[#6b4d2f] text-[#d8c4a5]">{regionProgress.length} known</Badge>
+                  </div>
+                  {regionProgress.length ? (
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {regionProgress.map((region) => {
+                        const styleKey = region.dominantStyleUsed as string | undefined;
+                        const style = styleKey ? STYLE_META[styleKey] : null;
+                        const state = region.visited ? "Visited" : region.discovered ? "Discovered" : "Known";
+                        return (
+                          <div key={region.regionId ?? region.regionName} className={cn("border bg-[#0c0b09] p-3", region.visited ? "border-[#6b4d2f]" : "border-[#3b3328]")}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-serif text-sm font-bold text-[#d9ad63]">{region.regionName}</p>
+                                <p className="mt-0.5 text-[9px] uppercase tracking-widest text-[#8f887d]">{state}</p>
+                              </div>
+                              <Badge variant="outline" className="rounded-none border-[#3b3328] text-[10px] text-[#d8c4a5]">{region.explorationPercent ?? 0}%</Badge>
+                            </div>
+                            <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+                              <div className="border border-[#25231f] bg-[#11100e] p-2">
+                                <p className="uppercase tracking-widest text-[#6f685e]">Commissions</p>
+                                <p className="mt-1 font-mono text-[#d8c4a5]">{region.commissionsCompleted ?? 0}</p>
+                              </div>
+                              <div className="border border-[#25231f] bg-[#11100e] p-2">
+                                <p className="uppercase tracking-widest text-[#6f685e]">Bosses</p>
+                                <p className="mt-1 font-mono text-[#d8c4a5]">{region.bossesDefeated ?? 0}</p>
+                              </div>
+                            </div>
+                            {style && <p className={cn("mt-3 text-[10px] font-bold uppercase tracking-widest", style.text)}>Dominant style: {style.label}</p>}
+                            <p className="mt-2 text-[10px] text-[#8f887d]">Last visited: {formatChronicleDate(region.lastVisitedAt)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-[#3b3328] bg-[#0c0b09] p-4 text-sm text-[#8f887d]">
+                      No regional records yet. Accept a commission and the first known route will be written here.
+                    </div>
+                  )}
+                </div>
+
                 <p className="mb-3 text-[10px] uppercase tracking-[0.22em] text-[#9d8f80]">Cartography records</p>
                 <div className="grid gap-2 md:grid-cols-3">
                   {MAP_FEATURES.map((feature) => (
