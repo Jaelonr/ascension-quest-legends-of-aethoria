@@ -52,10 +52,65 @@ const TRAINING_TYPES: Array<{ goal: string; title: string; text: string; icon: k
   { goal: "skill_practice", title: "Skill Practice", text: "Technique-first combat practice.", icon: "crosshair", color: "#49a3a0" },
 ];
 
+const STYLE_LABELS: Record<string, string> = {
+  strength: "Iron Vanguard",
+  striking: "Storm Duelist",
+  conditioning: "Wayfarer",
+  grappling: "Chainwarden",
+  recovery: "Verdant Guardian",
+  discipline: "Runesage",
+};
+
+const STYLE_LINES: Record<string, string> = {
+  strength: "Heavy work is teaching Aethoria to read you as force: carries, presses, pulls, and the stubborn refusal to yield.",
+  striking: "Rounds, footwork, and timing are shaping you into the adventurer who ends danger before it settles.",
+  conditioning: "Distance and sustained effort are becoming your weapon. The road is starting to recognize your pace.",
+  grappling: "Control is becoming your signature. The record favors leverage, restraint, and pressure over spectacle.",
+  recovery: "Recovery work is not absence from battle. It is how the body stays useful long enough to matter.",
+  discipline: "Repeated honest work is becoming its own class of strength. The Hall is watching the pattern form.",
+};
+
+function styleLabel(style?: string | null) {
+  if (!style) return "Still forming";
+  return STYLE_LABELS[style] ?? style.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function IconBox({ name, color = "#d9ad63" }: { name: keyof typeof Feather.glyphMap; color?: string }) {
   return (
     <View style={s.iconBox}>
       <Feather name={name} size={18} color={color} />
+    </View>
+  );
+}
+
+function CombatFormPanel({ hall }: { hall: any }) {
+  const trend = hall?.counsel?.trendSummary ?? {};
+  const proof = hall?.latestBattleProof ?? null;
+  const styleKey = trend.dominantStyle ?? proof?.dominantStyle ?? null;
+  const ledger = trend.trainingLedger ?? null;
+  const evidence = [
+    `${trend.recentWorkouts ?? 0} recent work`,
+    `${trend.recentPrs ?? 0} PRs`,
+    proof?.encounterName ? `Last battle: ${proof.encounterName}` : null,
+  ].filter(Boolean);
+  return (
+    <View style={s.combatFormCard}>
+      <View style={s.combatFormTop}>
+        <IconBox name="activity" color="#49a3a0" />
+        <View style={{ flex: 1 }}>
+          <Text style={s.sectionLabel}>COMBAT FORM</Text>
+          <Text style={s.combatFormTitle}>{styleLabel(styleKey)}</Text>
+        </View>
+      </View>
+      <Text style={s.combatFormText}>
+        {styleKey ? STYLE_LINES[String(styleKey)] ?? `Your recent work is shaping ${styleLabel(styleKey)}.` : "The Chronicle is still watching. Complete enough sessions and your real behavior will reveal the class you are earning."}
+      </Text>
+      {ledger?.topRecommendation?.reason ? <Text style={s.combatFormNote}>{ledger.topRecommendation.reason}</Text> : null}
+      <View style={s.combatFormTags}>
+        {evidence.map((item) => (
+          <Text key={String(item)} style={s.combatFormTag}>{String(item)}</Text>
+        ))}
+      </View>
     </View>
   );
 }
@@ -124,6 +179,8 @@ export default function TrainingScreen() {
               </Text>
             </View>
           </View>
+
+          <CombatFormPanel hall={hall as any} />
 
           {/* Active commission hint */}
           {commission && (
@@ -394,6 +451,13 @@ const s = StyleSheet.create({
   iconBox: { width: 38, height: 38, borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#15130f", alignItems: "center", justifyContent: "center" },
   prepTitle: { color: "#d9ad63", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
   prepText: { color: "#cfc5b8", fontSize: 13, lineHeight: 20, marginTop: 4, fontFamily: "Inter_400Regular" },
+  combatFormCard: { borderWidth: 1, borderColor: "#2f6862", backgroundColor: "#071513", padding: 14, marginBottom: 14 },
+  combatFormTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  combatFormTitle: { color: "#8be2df", fontSize: 18, fontWeight: "900", fontFamily: "PlayfairDisplay_700Bold" },
+  combatFormText: { color: "#d8cfc0", fontSize: 12, lineHeight: 18, marginTop: 10, fontFamily: "Inter_400Regular" },
+  combatFormNote: { color: "#d9ad63", fontSize: 11, lineHeight: 16, marginTop: 10, fontFamily: "Inter_700Bold" },
+  combatFormTags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
+  combatFormTag: { borderWidth: 1, borderColor: "#2f6862", backgroundColor: "#0c0b09", color: "#8be2df", paddingHorizontal: 8, paddingVertical: 4, fontSize: 9, textTransform: "uppercase", letterSpacing: 1, fontFamily: "Inter_700Bold" },
   commissionCard: { borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#11100e", padding: 14, marginBottom: 14 },
   commissionHeader: { flexDirection: "row", gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 },

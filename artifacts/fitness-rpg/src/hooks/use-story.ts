@@ -26,8 +26,8 @@ export const STORY_ARCS: StoryArc[] = [
     name: "The Summoning",
     region: "The Crossroads",
     levelRange: [1, 4],
-    lore: "You have just arrived in Aethoria. The System has chosen you. The world watches in quiet desperation — a new Awakened has appeared. But you are weak, untested. Train. The darkness waits for no one.",
-    danger: 92,
+    lore: "You have just arrived in Aethoria. The world is in severe danger, but it has not fallen. Other adventurers hold the line while the summoned hero trains into the weapon this war still needs.",
+    danger: 77,
     color: "text-gray-400",
   },
   {
@@ -35,8 +35,8 @@ export const STORY_ARCS: StoryArc[] = [
     name: "The Verdant Valley",
     region: "Verdant Valley",
     levelRange: [5, 9],
-    lore: "The outskirts of Aethoria — once green and peaceful, now overrun with Malachar's scouting beasts. Wolves, goblins, and corrupted creatures stalk the farmlands. The villagers whisper of an adventurer who might drive them back.",
-    danger: 80,
+    lore: "The outskirts of Aethoria are strained but still fighting. Wolves, goblins, and corrupted creatures stalk the farmlands while Guild patrols buy time for your first true victories.",
+    danger: 75,
     color: "text-green-400",
   },
   {
@@ -193,8 +193,8 @@ export function getCurrentBossChallenge(level: number): StoryBoss | null {
 }
 
 export function getWorldDanger(level: number): number {
-  if (level < 5) return 92;
-  if (level < 10) return 80;
+  if (level < 5) return 77;
+  if (level < 10) return 75;
   if (level < 20) return 68;
   if (level < 35) return 52;
   if (level < 50) return 30;

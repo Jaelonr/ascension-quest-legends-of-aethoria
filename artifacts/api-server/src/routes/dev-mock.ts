@@ -734,7 +734,7 @@ const buildMockGuildHall = () => ({
     activeThreats: 1,
     failedIncursions: 0,
     systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
-    nextRelief: "The summoning happened before the enemy could fully win. Other adventurers still hold the line, but the protagonist's recorded victories can shift the war.",
+    nextRelief: "Aethoria is in severe danger, not final defeat. Other adventurers still hold the line while the summoned adventurer trains, grows, and turns recorded victories into the Guild's comeback. A forced retreat against a major threat can drive the index near collapse, but a rematch victory can pull the world back from the brink.",
   },
   commission: {
     id: 1,
@@ -936,7 +936,7 @@ router.get("/chronicle/summary", (_req, res) => {
       activeThreats: 1,
       failedIncursions: 0,
       systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
-      nextRelief: "The summoning happened before the enemy could fully win. Other adventurers still hold the line, but the protagonist's recorded victories can shift the war.",
+      nextRelief: "Aethoria is in severe danger, not final defeat. Other adventurers still hold the line while the summoned adventurer trains, grows, and turns recorded victories into the Guild's comeback. A forced retreat against a major threat can drive the index near collapse, but a rematch victory can pull the world back from the brink.",
     },
     battleReplays: battleLog,
     guildReports: [

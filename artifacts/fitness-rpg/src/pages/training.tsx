@@ -6,6 +6,72 @@ import { CalendarDays, Dumbbell, Flag, Flame, MapPin, Play, ScrollText, Shield, 
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
+const STYLE_LABELS: Record<string, string> = {
+  strength: "Iron Vanguard",
+  striking: "Storm Duelist",
+  conditioning: "Wayfarer",
+  grappling: "Chainwarden",
+  recovery: "Verdant Guardian",
+  discipline: "Runesage",
+};
+
+const STYLE_LINES: Record<string, string> = {
+  strength: "Heavy work is teaching Aethoria to read you as force: carries, presses, pulls, and the stubborn refusal to yield.",
+  striking: "Rounds, footwork, and timing are shaping you into the adventurer who ends danger before it settles.",
+  conditioning: "Distance and sustained effort are becoming your weapon. The road is starting to recognize your pace.",
+  grappling: "Control is becoming your signature. The record favors leverage, restraint, and pressure over spectacle.",
+  recovery: "Recovery work is not absence from battle. It is how the body stays useful long enough to matter.",
+  discipline: "Repeated honest work is becoming its own class of strength. The Hall is watching the pattern form.",
+};
+
+function styleLabel(style?: string | null) {
+  if (!style) return "Still forming";
+  return STYLE_LABELS[style] ?? style.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function CombatFormPanel({ hall }: { hall: any }) {
+  const trend = hall?.counsel?.trendSummary ?? {};
+  const proof = hall?.latestBattleProof ?? null;
+  const styleKey = trend.dominantStyle ?? proof?.dominantStyle ?? null;
+  const ledger = trend.trainingLedger ?? null;
+  const title = styleLabel(styleKey);
+  const line = styleKey
+    ? STYLE_LINES[styleKey] ?? `Your recent work is shaping ${title}.`
+    : "The Chronicle is still watching. Complete enough sessions and your real behavior will reveal the class you are earning.";
+  const evidence = [
+    `${trend.recentWorkouts ?? 0} recent work`,
+    `${trend.recentPrs ?? 0} PRs`,
+    proof?.encounterName ? `Last battle: ${proof.encounterName}` : null,
+  ].filter(Boolean);
+
+  return (
+    <section className="mt-4 border border-[#345f5d] bg-[#071111] p-4 md:p-5">
+      <div className="flex items-start gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center border border-[#345f5d] bg-[#0b1717] text-[#49a3a0]">
+          <Flame className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#49a3a0]">Combat form</p>
+          <h2 className="mt-1 font-serif text-lg font-bold text-[#e5c386]">{title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-[#cfc5b8]">{line}</p>
+          {ledger?.topRecommendation?.reason ? (
+            <p className="mt-3 border-l border-[#6b4d2f] pl-3 text-xs leading-relaxed text-[#9dbdb8]">
+              {ledger.topRecommendation.reason}
+            </p>
+          ) : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {evidence.map((item) => (
+              <span key={String(item)} className="border border-[#245755] bg-[#0c0b09] px-2 py-1 text-[10px] uppercase tracking-wide text-[#9dbdb8]">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Training() {
   const { data: templates, isLoading: isLoadingTemplates } = useGetWorkoutTemplates();
   const { data: sessions, isLoading: isLoadingSessions } = useGetWorkoutSessions();
@@ -13,6 +79,7 @@ export default function Training() {
   const createSession = useCreateWorkoutSession();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const hallAny = hall as any;
 
   const handleStart = (templateId: number, templateName: string) => {
     createSession.mutate(
@@ -68,6 +135,8 @@ export default function Training() {
           </div>
         </div>
       </section>
+
+      <CombatFormPanel hall={hallAny} />
 
       {commission && (
         <section className="mt-4 border border-[#8c6a36] bg-[#11100e] p-4 md:p-5">
