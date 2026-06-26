@@ -386,6 +386,15 @@ function LatestBattleProof({ proof, onOpenChronicle }: { proof: any; onOpenChron
         </TouchableOpacity>
       </View>
       <Text style={s.battleProofLine}>{proof.hallLine}</Text>
+      {proof.payoff ? (
+        <View style={s.battleProofMeaning}>
+          <Text style={s.battleProofMeaningLabel}>REAL SESSION TRANSLATED</Text>
+          <Text style={s.battleProofMeaningText}>{proof.payoff.fitnessTranslation}</Text>
+          {proof.payoff.pathEffect ? <Text style={s.battleProofMeaningPath}>{proof.payoff.pathEffect}</Text> : null}
+          <Text style={s.battleProofMeaningSub}>{proof.payoff.worldEffect}</Text>
+          <Text style={s.battleProofMeaningNext}>{proof.payoff.nextHook}</Text>
+        </View>
+      ) : null}
       <View style={s.battleProofTags}>
         <Text style={[s.battleProofTag, { color: "#49a3a0", borderColor: "#345f5d" }]}>+{proof.xpEarned} XP</Text>
         <Text style={[s.battleProofTag, { color: "#d9ad63", borderColor: "#6b4d2f" }]}>+{proof.goldEarned} Gold</Text>
@@ -1056,6 +1065,12 @@ const s = StyleSheet.create({
   battleProofTitle: { color: "#e5c386", fontSize: 17, fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
   battleProofMeta: { color: "#8f887d", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
   battleProofLine: { color: "#b7ab9c", fontSize: 12, lineHeight: 18, marginTop: 3, fontFamily: "Inter_400Regular" },
+  battleProofMeaning: { borderWidth: 1, borderColor: "#245755", backgroundColor: "#071111", padding: 10, marginTop: 10 },
+  battleProofMeaningLabel: { color: "#49a3a0", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.5 },
+  battleProofMeaningText: { color: "#d8c4a5", fontSize: 11, lineHeight: 16, marginTop: 5, fontFamily: "Inter_400Regular" },
+  battleProofMeaningPath: { color: "#9dbdb8", fontSize: 10, lineHeight: 15, marginTop: 7, borderLeftWidth: 1, borderLeftColor: "#6b4d2f", paddingLeft: 8, fontFamily: "Inter_400Regular" },
+  battleProofMeaningSub: { color: "#b7ab9c", fontSize: 10, lineHeight: 15, marginTop: 7, fontFamily: "Inter_400Regular" },
+  battleProofMeaningNext: { color: "#9dbdb8", fontSize: 10, lineHeight: 15, marginTop: 6, fontFamily: "Inter_400Regular" },
   battleProofTags: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 10 },
   battleProofTag: { borderWidth: 1, backgroundColor: "#11100e", paddingHorizontal: 8, paddingVertical: 5, fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
   battleProofRelic: { borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#171109", padding: 10, marginTop: 10 },

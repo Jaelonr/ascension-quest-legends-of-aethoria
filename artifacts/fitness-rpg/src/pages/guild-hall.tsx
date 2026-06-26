@@ -193,6 +193,15 @@ function LatestBattleProof({ proof }: { proof: any }) {
         <a href="/chronicle?tab=replays" className="shrink-0 border border-[#6b4d2f] px-3 py-2 text-[10px] font-bold uppercase text-[#d9ad63]">Replay</a>
       </div>
       <p className="mt-3 text-xs leading-relaxed text-[#b7ab9c]">{proof.hallLine}</p>
+      {proof.payoff && (
+        <div className="mt-3 border border-[#345f5d] bg-[#071111] p-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-[#49a3a0]">Real session translated</p>
+          <p className="mt-1 text-xs leading-relaxed text-[#d8c4a5]">{proof.payoff.fitnessTranslation}</p>
+          {proof.payoff.pathEffect ? <p className="mt-2 border-l border-[#6b4d2f] pl-3 text-[11px] leading-relaxed text-[#9dbdb8]">{proof.payoff.pathEffect}</p> : null}
+          <p className="mt-2 text-[11px] leading-relaxed text-[#b7ab9c]">{proof.payoff.worldEffect}</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-[#9dbdb8]">{proof.payoff.nextHook}</p>
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wide">
         <span className="border border-[#345f5d] bg-[#071111] px-2 py-1 text-[#49a3a0]">+{proof.xpEarned} XP</span>
         <span className="border border-[#6b4d2f] bg-[#171109] px-2 py-1 text-[#d9ad63]">+{proof.goldEarned} Gold</span>

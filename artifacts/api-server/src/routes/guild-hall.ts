@@ -37,6 +37,7 @@ import { getTrainingIntelligence } from "../training-intelligence";
 import { ensureHallOfferingCatalog } from "./inventory";
 import { buildWearableSystemAnalysis, type WearableSystemAnalysis } from "../wearable-interpretation";
 import { PRODUCT_CONSTITUTION, isReducedReadiness, readinessAgencyNote } from "../product-constitution";
+import { buildCombatReplayPayoff } from "../combat-engine";
 
 const router = Router();
 const RANK_ORDER = ["E", "D", "C", "B", "A", "S", "National-Level"];
@@ -896,28 +897,35 @@ async function getGuildHallSnapshot(userId: string) {
 
   const [freshQuest] = await db.select().from(questsTable).where(eq(questsTable.id, quest.id)).limit(1);
   const regionProgress = await ensureRegionProgress(player.id, commissionContext);
+  const latestBattleProof = latestReplay[0] ? {
+    id: latestReplay[0].id,
+    encounterName: latestReplay[0].encounterName,
+    enemyName: latestReplay[0].enemyName,
+    verdict: latestReplay[0].verdict,
+    dominantStyle: latestReplay[0].dominantStyle,
+    hybridArchetype: latestReplay[0].hybridArchetype,
+    xpEarned: latestReplay[0].xpEarned,
+    goldEarned: latestReplay[0].goldEarned,
+    prCount: latestReplay[0].prCount,
+    gearDrop: latestReplay[0].gearDrop as any,
+    raidImpact: latestReplay[0].raidImpact,
+    payoff: buildCombatReplayPayoff({
+      ...latestReplay[0],
+      gearDrop: latestReplay[0].gearDrop as any,
+      events: latestReplay[0].events as any[],
+    }),
+    createdAt: latestReplay[0].createdAt.toISOString(),
+    hallLine: latestReplay[0].gearDrop
+      ? `The latest battle report returned with proof from the field: ${(latestReplay[0].gearDrop as any)?.name ?? "an uncatalogued relic"}.`
+      : `The latest battle report shows ${latestReplay[0].dominantStyle} pressure against ${latestReplay[0].enemyName}.`,
+  } : null;
+
   return {
     date: today,
     player: { ...player, stats },
     worldDanger: buildWorldDanger(raids),
     activeThreat: buildActiveThreatSummary(raids),
-    latestBattleProof: latestReplay[0] ? {
-      id: latestReplay[0].id,
-      encounterName: latestReplay[0].encounterName,
-      enemyName: latestReplay[0].enemyName,
-      verdict: latestReplay[0].verdict,
-      dominantStyle: latestReplay[0].dominantStyle,
-      hybridArchetype: latestReplay[0].hybridArchetype,
-      xpEarned: latestReplay[0].xpEarned,
-      goldEarned: latestReplay[0].goldEarned,
-      prCount: latestReplay[0].prCount,
-      gearDrop: latestReplay[0].gearDrop as any,
-      raidImpact: latestReplay[0].raidImpact,
-      createdAt: latestReplay[0].createdAt.toISOString(),
-      hallLine: latestReplay[0].gearDrop
-        ? `The latest battle report returned with proof from the field: ${(latestReplay[0].gearDrop as any)?.name ?? "an uncatalogued relic"}.`
-        : `The latest battle report shows ${latestReplay[0].dominantStyle} pressure against ${latestReplay[0].enemyName}.`,
-    } : null,
+    latestBattleProof,
     commission: {
       id: commission?.id ?? 0,
       category: commission?.category ?? plan.category,
