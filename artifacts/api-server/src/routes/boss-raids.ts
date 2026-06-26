@@ -1,6 +1,15 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { bossRaidsTable, playerTable, titlesTable, playerTitlesTable, rpgGearTable } from "@workspace/db";
+import {
+  bossRaidsTable,
+  guildMasterMemoriesTable,
+  itemDiscoveriesTable,
+  playerTable,
+  playerTitlesTable,
+  rpgGearTable,
+  titlesTable,
+  worldEventsTable,
+} from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { getOrCreatePlayer, buildPlayerResponse, applyXpEvent } from "../progression";
 
@@ -119,6 +128,90 @@ function generateGearDrop(difficulty: string, source: string) {
   return { name, slot, rarity, statBonuses: generateStatBonuses(rarity), flavorText: FLAVOR_TEXTS[rarity], source };
 }
 
+function raidSeverity(difficulty: string) {
+  if (difficulty === "S" || difficulty === "A") return "critical";
+  if (difficulty === "B" || difficulty === "C") return "major";
+  return "moderate";
+}
+
+function raidRelief(difficulty: string) {
+  const relief: Record<string, number> = { E: 4, D: 6, C: 8, B: 10, A: 12, S: 16 };
+  return relief[difficulty] ?? 4;
+}
+
+function raidStakeLine(difficulty: string, title: string) {
+  if (difficulty === "S" || difficulty === "A") {
+    return `${title} is a campaign-level threat. Other adventurers hold the line, but the summoned adventurer's recorded work gives the Guild its sharpest opening.`;
+  }
+  if (difficulty === "B" || difficulty === "C") {
+    return `${title} is strong enough to bend a region if left unanswered. The Guild can contain it, but victory requires repeated, real effort.`;
+  }
+  return `${title} is not the end of the war, but small Gates become disasters when ignored. The Guild records this as a proving threat.`;
+}
+
+async function recordRaidWorldEvent(input: {
+  playerId: number;
+  raidId: number;
+  title: string;
+  difficulty: string;
+  phase: "started" | "completed" | "claimed" | "failed";
+  description?: string | null;
+  gearDropName?: string | null;
+}) {
+  const severity = raidSeverity(input.difficulty);
+  const relief = raidRelief(input.difficulty);
+  const titleByPhase = {
+    started: `Guild Directive Accepted: ${input.title}`,
+    completed: `Boss Forced Back: ${input.title}`,
+    claimed: `Boss Defeated: ${input.title}`,
+    failed: `Forced Retreat: ${input.title}`,
+  } as const;
+  const statusByPhase = {
+    started: "active",
+    completed: "resolved",
+    claimed: "resolved",
+    failed: "unresolved",
+  } as const;
+  const descriptionByPhase = {
+    started: `${raidStakeLine(input.difficulty, input.title)} The Hall has opened a raid ledger; every qualifying session now presses against this threat.`,
+    completed: `${input.title} has been driven to its knees. The Guild still needs the reward claim recorded before the Chronicle closes the victory.`,
+    claimed: `${input.title} has fallen. World danger recedes by roughly ${relief} points in the System's reading, while the Guild only sees the pressure ease across scout reports and Gate behavior.${input.gearDropName ? ` Loot recovered: ${input.gearDropName}.` : ""}`,
+    failed: `${input.title} forced a retreat. This does not erase training progress, but the world remembers the loss and the pressure rises.`,
+  } as const;
+
+  await db.insert(worldEventsTable).values({
+    playerId: input.playerId,
+    worldKey: `raid-${input.phase}:${input.raidId}`,
+    title: titleByPhase[input.phase],
+    description: input.description ?? descriptionByPhase[input.phase],
+    status: statusByPhase[input.phase],
+    severity,
+    reversible: input.phase === "failed",
+    metadata: {
+      raidId: input.raidId,
+      difficulty: input.difficulty,
+      phase: input.phase,
+      worldDangerRelief: input.phase === "claimed" ? relief : 0,
+      gearDropName: input.gearDropName ?? null,
+      otherAdventurersPresent: true,
+    },
+    resolvedAt: input.phase === "completed" || input.phase === "claimed" ? new Date() : null,
+  }).onConflictDoNothing();
+
+  await db.insert(guildMasterMemoriesTable).values({
+    playerId: input.playerId,
+    kind: input.phase === "failed" ? "failure" : "raid",
+    sourceKey: `raid-${input.phase}:${input.raidId}`,
+    summary: input.phase === "claimed"
+      ? `The adventurer helped defeat ${input.title}; the Guild felt pressure ease after the raid.`
+      : input.phase === "failed"
+        ? `${input.title} forced a retreat. The adventurer's earned progress remains, but Aethoria remembers the loss.`
+        : `${input.title} entered the Guild's raid ledger at phase ${input.phase}.`,
+    importance: input.phase === "claimed" || severity === "critical" ? 3 : 2,
+    occurredAt: new Date(),
+  }).onConflictDoNothing();
+}
+
 // ── Raid Task Auto-Progression ────────────────────────────────────────────────
 
 export async function progressRaidTasks(playerId: number, taskType: string, amount: number): Promise<void> {
@@ -144,6 +237,15 @@ export async function progressRaidTasks(playerId: number, taskType: string, amou
         status: allDone ? "completed" : "active",
         completedAt: allDone ? new Date() : undefined,
       }).where(eq(bossRaidsTable.id, raid.id));
+      if (allDone) {
+        await recordRaidWorldEvent({
+          playerId,
+          raidId: raid.id,
+          title: raid.title,
+          difficulty: raid.difficulty,
+          phase: "completed",
+        });
+      }
     }
   }
 }
@@ -177,7 +279,7 @@ const RAID_TEMPLATES: RaidTemplate[] = [
   {
     title: "The First Gate",
     description: "Prove yourself worthy of ascending beyond Wood Grade. Complete the entry-level challenge.",
-    lore: "A pulsing gate has appeared in your training ground. The system demands proof before it grants passage. Complete the trial within 72 hours or face penalty.",
+    lore: "A pulsing Gate has appeared near the training grounds. The Hall records this as a proving threat: answer it within 72 hours, or the Guild will be forced to contain the breach without you.",
     difficulty: "E",
     timeLimitHours: 72,
     xpReward: 600,
@@ -195,7 +297,7 @@ const RAID_TEMPLATES: RaidTemplate[] = [
   {
     title: "Shadow Boxing Championship",
     description: "The striking arena opens. Dominate 10 rounds of intense bag work to claim your place.",
-    lore: "A challenger emerges from the darkness. The System records your fight in a language only you can read. Win or be forgotten.",
+    lore: "A challenger emerges from the darkness beyond the arena lamps. The crowd sees a duel; you see your real training translated into violence Aethoria can understand.",
     difficulty: "D",
     timeLimitHours: 48,
     xpReward: 1000,
@@ -213,7 +315,7 @@ const RAID_TEMPLATES: RaidTemplate[] = [
   {
     title: "Iron Dungeon: The Proving Chamber",
     description: "A hidden dungeon has manifested. Break through it with raw power — or be crushed.",
-    lore: "The dungeon gates seal behind you. Iron mechanisms test your resolve. The system watches every rep.",
+    lore: "The dungeon gates seal behind you. Iron mechanisms test your resolve while the Guild holds the outer passage and waits for your signal.",
     difficulty: "C",
     timeLimitHours: 96,
     xpReward: 2000,
@@ -252,7 +354,7 @@ const RAID_TEMPLATES: RaidTemplate[] = [
   {
     title: "The Monthly Reckoning",
     description: "Prove you belong at the top — a monthly mega-challenge for consistent warriors.",
-    lore: "Once per month the System generates the Reckoning. Only those who complete it earn the right to call themselves proven adventurers.",
+    lore: "Once per month the Hall opens the Reckoning ledger. Only adventurers with enough consistency are trusted to carry so much pressure at once.",
     difficulty: "A",
     timeLimitHours: 168,
     xpReward: 8000,
@@ -271,8 +373,8 @@ const RAID_TEMPLATES: RaidTemplate[] = [
   },
   {
     title: "Mythril Grade Sovereign Trial",
-    description: "The System's ultimate test before Diamond Grade. Only the elite complete this.",
-    lore: "The gates of heaven open. A trial born from the system's core intelligence. 7 days. 7 trials. Become Sovereign.",
+    description: "The Guild's highest pre-Diamond trial. Only the elite complete this.",
+    lore: "Seven sealed routes open beneath the Hall. Aldric does not call this glorious. He calls it necessary: seven days, seven trials, and no room for false pride.",
     difficulty: "S",
     timeLimitHours: 168,
     xpReward: 20000,
@@ -323,6 +425,13 @@ router.get("/boss-raids", async (req, res) => {
       if (raid.status === "active" && raid.expiresAt && raid.expiresAt < now) {
         await db.update(bossRaidsTable).set({ status: "failed" }).where(eq(bossRaidsTable.id, raid.id));
         raid.status = "failed";
+        await recordRaidWorldEvent({
+          playerId: player.id,
+          raidId: raid.id,
+          title: raid.title,
+          difficulty: raid.difficulty,
+          phase: "failed",
+        });
       }
     }
 
@@ -403,6 +512,14 @@ router.post("/boss-raids/start", async (req, res) => {
       tasks,
     }).returning();
 
+    await recordRaidWorldEvent({
+      playerId: player.id,
+      raidId: raid.id,
+      title: raid.title,
+      difficulty: raid.difficulty,
+      phase: "started",
+    });
+
     res.status(201).json(serializeRaid(raid));
   } catch (err) {
     req.log.error(err);
@@ -413,7 +530,9 @@ router.post("/boss-raids/start", async (req, res) => {
 router.get("/boss-raids/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const [raid] = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.id, id));
+    const { player } = await getOrCreatePlayer(req.userId);
+    const [raid] = await db.select().from(bossRaidsTable)
+      .where(and(eq(bossRaidsTable.id, id), eq(bossRaidsTable.playerId, player.id)));
     if (!raid) return void res.status(404).json({ error: "Raid not found" });
     res.json(serializeRaid(raid));
   } catch (err) {
@@ -426,8 +545,10 @@ router.patch("/boss-raids/:id/task", async (req, res) => {
   try {
     const raidId = parseInt(req.params.id);
     const { taskId, currentValue, completed } = req.body;
+    const { player } = await getOrCreatePlayer(req.userId);
 
-    const [raid] = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.id, raidId));
+    const [raid] = await db.select().from(bossRaidsTable)
+      .where(and(eq(bossRaidsTable.id, raidId), eq(bossRaidsTable.playerId, player.id)));
     if (!raid) return void res.status(404).json({ error: "Raid not found" });
     if (raid.status !== "active") return void res.status(400).json({ error: "Raid is not active" });
 
@@ -450,6 +571,16 @@ router.patch("/boss-raids/:id/task", async (req, res) => {
       completedAt: allDone ? new Date() : undefined,
     }).where(eq(bossRaidsTable.id, raidId)).returning();
 
+    if (allDone) {
+      await recordRaidWorldEvent({
+        playerId: player.id,
+        raidId: raid.id,
+        title: raid.title,
+        difficulty: raid.difficulty,
+        phase: "completed",
+      });
+    }
+
     res.json(serializeRaid(updated));
   } catch (err) {
     req.log.error(err);
@@ -462,7 +593,8 @@ router.post("/boss-raids/:id/claim", async (req, res) => {
     const raidId = parseInt(req.params.id);
     const { player, stats } = await getOrCreatePlayer(req.userId);
 
-    const [raid] = await db.select().from(bossRaidsTable).where(eq(bossRaidsTable.id, raidId));
+    const [raid] = await db.select().from(bossRaidsTable)
+      .where(and(eq(bossRaidsTable.id, raidId), eq(bossRaidsTable.playerId, player.id)));
     if (!raid) return void res.status(404).json({ error: "Raid not found" });
     if (raid.status !== "completed") return void res.status(400).json({ error: "Raid not completed" });
     if (raid.claimedAt) return void res.status(400).json({ error: "Already claimed" });
@@ -501,6 +633,30 @@ router.post("/boss-raids/:id/claim", async (req, res) => {
       playerId: player.id,
       ...drop,
     }).returning();
+
+    await db.insert(itemDiscoveriesTable).values({
+      playerId: player.id,
+      itemId: null,
+      itemName: gearDrop.name,
+      rarity: gearDrop.rarity,
+      category: gearDrop.slot,
+      sourceType: "raid_drop",
+      sourceLabel: `Raid: ${raid.title}`,
+      loreText: gearDrop.loreText ?? gearDrop.flavorText,
+      currentState: "owned",
+    }).onConflictDoUpdate({
+      target: [itemDiscoveriesTable.playerId, itemDiscoveriesTable.itemName, itemDiscoveriesTable.sourceType],
+      set: { currentState: "owned", updatedAt: new Date() },
+    });
+
+    await recordRaidWorldEvent({
+      playerId: player.id,
+      raidId: raid.id,
+      title: raid.title,
+      difficulty: raid.difficulty,
+      phase: "claimed",
+      gearDropName: gearDrop.name,
+    });
 
     const { player: freshPlayer, stats: freshStats } = await getOrCreatePlayer(req.userId);
 
