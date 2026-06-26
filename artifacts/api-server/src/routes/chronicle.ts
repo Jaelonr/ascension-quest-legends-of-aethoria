@@ -158,16 +158,30 @@ function buildDerivedMilestones(input: {
   }
 
   for (const replay of input.replays.slice(0, 4)) {
+    const gearDrop = replay.gearDrop as { name?: string; rarity?: string; slot?: string } | null;
     addMilestone(milestones, {
       id: `replay-${replay.id}`,
       kind: "combat_replay",
       title: `Battle recorded: ${replay.encounterName}`,
-      summary: `${replay.verdict} against ${replay.enemyName}. ${replay.xpEarned} XP and ${replay.goldEarned} gold became part of the Guild ledger.`,
+      summary: `${replay.verdict} against ${replay.enemyName}. ${replay.xpEarned} XP and ${replay.goldEarned} gold became part of the Guild ledger.${gearDrop?.name ? ` Recovered: ${gearDrop.name}.` : ""}`,
       detail: replay.raidImpact ?? `Dominant style: ${STYLE_LABELS[replay.dominantStyle] ?? replay.dominantStyle}.`,
       source: "Combat replay",
-      importance: replay.prCount > 0 ? 4 : 2,
+      importance: replay.prCount > 0 || gearDrop?.name ? 4 : 2,
       occurredAt: dateIso(replay.createdAt),
     });
+
+    if (gearDrop?.name) {
+      addMilestone(milestones, {
+        id: `replay-gear-${replay.id}`,
+        kind: "earned_relic",
+        title: `Relic recovered: ${gearDrop.name}`,
+        summary: `The Hall recorded ${gearDrop.name} as proof recovered from ${replay.encounterName}, not purchased power.`,
+        detail: `${gearDrop.rarity ?? "common"} ${String(gearDrop.slot ?? "relic").replace(/_/g, " ")}. It changes the story around the adventurer while real strength remains earned through training.`,
+        source: "Combat spoils",
+        importance: ["epic", "legendary", "rare"].includes(String(gearDrop.rarity)) ? 5 : 3,
+        occurredAt: dateIso(replay.createdAt),
+      });
+    }
   }
 
   const prReplay = input.replays.find((replay) => replay.prCount > 0);

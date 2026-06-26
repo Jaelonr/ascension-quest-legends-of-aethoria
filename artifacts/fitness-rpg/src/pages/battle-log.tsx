@@ -345,6 +345,11 @@ function ReplayCard({ replay }: { replay: any }) {
               {payoff?.pathEffect && (
                 <p className="mt-1 line-clamp-1 text-[11px] leading-relaxed text-[#9dbdb8]">{payoff.pathEffect}</p>
               )}
+              {replay.gearDrop && (
+                <p className="mt-2 line-clamp-1 text-[11px] font-bold text-[#d9ad63]">
+                  Recovered: {(replay.gearDrop as { name?: string }).name ?? "Uncatalogued relic"}
+                </p>
+              )}
             </div>
             <div className="shrink-0 text-right text-[10px] text-[#8f887d]">
               {new Date(replay.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}

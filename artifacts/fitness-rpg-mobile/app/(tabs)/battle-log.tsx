@@ -338,6 +338,16 @@ function ReplayModal({ replay, onClose }: { replay: any; onClose: () => void }) 
                 </View>
               )}
 
+              {replay.gearDrop && (
+                <View style={rm.gearCard}>
+                  <Text style={rm.gearLabel}>RECOVERED RELIC</Text>
+                  <Text style={rm.gearName}>{replay.gearDrop.name ?? "Uncatalogued Relic"}</Text>
+                  <Text style={rm.gearMeta}>
+                    {String(replay.gearDrop.rarity ?? "common").toUpperCase()} · {String(replay.gearDrop.slot ?? "relic").replace(/_/g, " ")}
+                  </Text>
+                </View>
+              )}
+
               {/* Style breakdown */}
               {activeStyles.length > 0 && (
                 <View style={rm.breakdownCard}>
@@ -422,6 +432,10 @@ const rm = StyleSheet.create({
   statLabel: { fontSize: 10, color: "#9d8f80", marginTop: 2 },
   prBanner: { borderWidth: 1, borderColor: "#eab30840", backgroundColor: "#eab30810", padding: 10, borderRadius: 6, alignItems: "center" },
   prText: { color: "#eab308", fontWeight: "700", fontSize: 13, fontFamily: "Inter_700Bold" },
+  gearCard: { borderWidth: 1, borderColor: "#d9ad6350", backgroundColor: "#171109", borderRadius: 8, padding: 12 },
+  gearLabel: { color: "#9d8f80", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 2 },
+  gearName: { color: "#d9ad63", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
+  gearMeta: { color: "#8f887d", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 3, textTransform: "capitalize" },
   breakdownCard: { backgroundColor: "#0e0d0b", borderWidth: 1, borderColor: "#2a2520", borderRadius: 10, padding: 14, gap: 8 },
   breakdownLabel: { fontSize: 9, color: "#6b5d4f", textTransform: "uppercase", letterSpacing: 3, fontFamily: "Inter_400Regular", marginBottom: 2 },
   barRow: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -466,6 +480,11 @@ function ReplayCard({ replay, onPress }: { replay: any; onPress: () => void }) {
           {payoff?.pathEffect && (
             <Text style={rc.pathEffect} numberOfLines={1}>{payoff.pathEffect}</Text>
           )}
+          {replay.gearDrop && (
+            <Text style={rc.recovered} numberOfLines={1}>
+              Recovered: {replay.gearDrop.name ?? "Uncatalogued relic"}
+            </Text>
+          )}
         </View>
         <Text style={rc.date}>
           {new Date(replay.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
@@ -492,6 +511,7 @@ const rc = StyleSheet.create({
   enemy: { fontSize: 11, color: "#9d8f80", marginTop: 2 },
   payoff: { fontSize: 11, color: "#b7ab9c", lineHeight: 16, marginTop: 7, fontFamily: "Inter_400Regular" },
   pathEffect: { fontSize: 10, color: "#9dbdb8", lineHeight: 14, marginTop: 4, fontFamily: "Inter_400Regular" },
+  recovered: { fontSize: 10, color: "#d9ad63", lineHeight: 14, marginTop: 6, fontFamily: "Inter_700Bold" },
   date: { fontSize: 10, color: "#6b5d4f", flexShrink: 0 },
   footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
   xp: { fontSize: 11, fontWeight: "700", color: "#0dcef5", fontFamily: "Inter_700Bold" },
