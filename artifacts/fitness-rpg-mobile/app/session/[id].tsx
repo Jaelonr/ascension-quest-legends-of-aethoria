@@ -139,6 +139,7 @@ function CombatReplayModal({
   const VERDICT_COLOR: Record<string, string> = {
     "Victory": "#ffbf00",
     "Narrow Victory": "#0dcef5",
+    "Recovery Secured": "#22c55e",
     "Strategic Retreat": "#f97316",
     "Training Complete": "#22c55e",
   };

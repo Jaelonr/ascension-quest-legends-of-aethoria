@@ -622,6 +622,10 @@ function generateNarrativeConsequence(input: CombatInput, verdict: string): stri
     parts.push(intensity === "immersive"
       ? "A close fight leaves marks on both sides. Rest well. The next Gate will not expect an adventurer who recovers this fast."
       : "Hard-fought win. Take what you need to recover and come back sharper.");
+  } else if (verdict === "Recovery Secured") {
+    parts.push(intensity === "immersive"
+      ? "The Guild does not call this retreat. You restored the weapon before it broke, and that decision keeps tomorrow's Gate within reach."
+      : "Recovery secured. You protected readiness instead of spending it recklessly.");
   } else if (verdict === "Strategic Retreat") {
     parts.push(intensity === "immersive"
       ? "You withdrew when others would have broken. That choice is a form of mastery. Your body enters the next session with elevated recovery — full MP restored."
@@ -811,7 +815,9 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
     verdict = "Victory";
   } else if (input.sets.length === 0 || input.durationMinutes < 10) {
     verdict = "Training Complete";
-  } else if (input.durationMinutes < 20 || dominant === "recovery") {
+  } else if (dominant === "recovery" && input.durationMinutes >= 10) {
+    verdict = "Recovery Secured";
+  } else if (input.durationMinutes < 20) {
     verdict = "Strategic Retreat";
   } else {
     verdict = input.prCount > 0 ? "Victory" : "Narrow Victory";

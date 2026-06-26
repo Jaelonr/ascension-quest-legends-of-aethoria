@@ -41,6 +41,7 @@ const STYLE_COLORS: Record<string, { text: string; border: string; bg: string; g
 const VERDICT_META: Record<string, { color: string; icon: string }> = {
   "Victory":           { color: "text-yellow-400", icon: "🏆" },
   "Narrow Victory":    { color: "text-cyan-400",   icon: "⚔️" },
+  "Recovery Secured":  { color: "text-green-400",  icon: "✦" },
   "Strategic Retreat": { color: "text-orange-400", icon: "🛡️" },
   "Training Complete": { color: "text-green-400",  icon: "✅" },
 };

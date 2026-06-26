@@ -108,6 +108,7 @@ const VERDICT_COLORS: Record<string, string> = {
   "Crushing Victory": "text-yellow-400",
   "Victory":          "text-green-400",
   "Close Victory":    "text-cyan-400",
+  "Recovery Secured": "text-green-400",
   "Strategic Retreat":"text-orange-400",
   "Training Complete":"text-green-400",
 };
