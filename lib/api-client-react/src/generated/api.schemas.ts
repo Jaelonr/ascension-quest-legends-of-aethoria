@@ -987,6 +987,9 @@ export const PlannerRequestGoal = {
   striking: 'striking',
   grappling: 'grappling',
   recovery: 'recovery',
+  mobility: 'mobility',
+  skill_practice: 'skill_practice',
+  commission: 'commission',
   back_friendly_lower: 'back_friendly_lower',
 } as const;
 

@@ -731,6 +731,7 @@ export default function HallScreen() {
           goal: path?.intendedStyle ?? commission?.category ?? "strength",
           commissionTitle: path?.label ?? commission?.expedition?.commissionTitle ?? "Commission Session",
           commissionNote: buildCommissionNote(commission, path),
+          autoGenerate: "true",
         },
       } as any);
       return;

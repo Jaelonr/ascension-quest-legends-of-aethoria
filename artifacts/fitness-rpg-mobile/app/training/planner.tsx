@@ -227,6 +227,7 @@ export default function TrainingPlannerScreen() {
   const { data: equipment } = useGetEquipment();
   const commissionNote = typeof params.commissionNote === "string" ? params.commissionNote : null;
   const commissionTitle = typeof params.commissionTitle === "string" ? params.commissionTitle : null;
+  const autoGenerate = params.autoGenerate === "true";
   const groupedExercises = PHASE_GROUPS.map((phase) => ({
     ...phase,
     exercises: plan?.exercises.filter((exercise) => exercise.phase === phase.key) ?? [],
@@ -313,6 +314,13 @@ export default function TrainingPlannerScreen() {
       },
     );
   };
+
+  useEffect(() => {
+    if (autoGenerate && !plan && !generatePlan.isPending) {
+      generate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerate]);
 
   const equipmentCount = Array.isArray(equipment) ? equipment.length : Object.values(equipment ?? {}).filter(Boolean).length;
 

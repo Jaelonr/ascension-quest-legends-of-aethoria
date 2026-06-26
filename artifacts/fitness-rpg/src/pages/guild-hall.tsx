@@ -783,11 +783,19 @@ export default function GuildHall() {
   const completed = quest.tasks.filter((task) => task.completed).length;
   const allDone = completed === quest.tasks.length;
   const startCommissionPath = (path: any) => {
+    if (path?.kind === "workout_builder") {
+      const params = new URLSearchParams({
+        goal: path?.intendedStyle ?? extended.commission?.category ?? "commission",
+        commissionTitle: path?.label ?? extended.commission?.expedition?.commissionTitle ?? "Commission Session",
+        commissionNote: buildCommissionNote(extended.commission, path),
+        autoGenerate: "true",
+      });
+      navigate(`/training/planner?${params.toString()}`);
+      return;
+    }
     const target = path?.kind === "program"
       ? "/training/program"
-      : path?.kind === "workout_builder"
-        ? "/training/planner"
-        : null;
+      : null;
     if (target) {
       navigate(target);
       return;

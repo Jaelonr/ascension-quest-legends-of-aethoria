@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  useCreateWorkoutSession,
   useGenerateWorkoutPlan,
   useSavePlanAsTemplate,
   useGetEquipment,
@@ -27,22 +28,43 @@ import {
   User,
   Weight,
   Search,
+  Footprints,
+  Shield,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
-type Goal = "strength" | "hypertrophy" | "conditioning" | "striking" | "recovery" | "back_friendly_lower";
+type Goal = "strength" | "hypertrophy" | "conditioning" | "striking" | "grappling" | "recovery" | "mobility" | "skill_practice" | "commission" | "back_friendly_lower";
 
 const GOALS: { value: Goal; label: string; icon: React.ElementType; description: string; color: string }[] = [
   { value: "strength", label: "Strength", icon: Dumbbell, description: "Heavy compounds, 3-5 reps", color: "text-red-400" },
   { value: "hypertrophy", label: "Hypertrophy", icon: Target, description: "Mass building, 8-12 reps", color: "text-orange-400" },
   { value: "conditioning", label: "Conditioning", icon: Wind, description: "Endurance & cardio", color: "text-blue-400" },
   { value: "striking", label: "Striking", icon: Swords, description: "Bag work & combat", color: "text-purple-400" },
+  { value: "grappling", label: "Grappling", icon: Shield, description: "Control, carries, and mat work", color: "text-violet-400" },
   { value: "recovery", label: "Recovery", icon: Zap, description: "Low intensity, sub-maximal", color: "text-green-400" },
+  { value: "mobility", label: "Mobility", icon: Footprints, description: "Range, breath, and joint care", color: "text-emerald-300" },
+  { value: "skill_practice", label: "Skill Practice", icon: Swords, description: "Technique-first field work", color: "text-teal-300" },
+  { value: "commission", label: "Commission Duty", icon: Shield, description: "Balanced field-ready work", color: "text-amber-300" },
   { value: "back_friendly_lower", label: "Back-Safe", icon: AlertTriangle, description: "No spinal loading", color: "text-yellow-400" },
 ];
+
+function normalizeGoal(value?: string | null): Goal {
+  const key = String(value ?? "").toLowerCase();
+  if (key.includes("grappl") || key.includes("control") || key.includes("subdue")) return "grappling";
+  if (key.includes("commission") || key.includes("duty")) return "commission";
+  if (key.includes("skill") || key.includes("practice")) return "skill_practice";
+  if (key.includes("mobility") || key.includes("stretch")) return "mobility";
+  if (key.includes("recover") || key.includes("nutrition") || key.includes("discipline")) return "recovery";
+  if (key.includes("condition") || key.includes("cardio") || key.includes("walk") || key.includes("endurance")) return "conditioning";
+  if (key.includes("strik") || key.includes("footwork")) return "striking";
+  if (key.includes("hypertrophy")) return "hypertrophy";
+  if (key.includes("back")) return "back_friendly_lower";
+  if (key.includes("strength") || key.includes("lower") || key.includes("force")) return "strength";
+  return "strength";
+}
 
 const PHASE_COLORS: Record<string, string> = {
   warmup: "border-blue-500/40 bg-blue-500/5",
@@ -117,11 +139,16 @@ function ExerciseCard({ exercise }: { exercise: PlanExercise }) {
 }
 
 export default function Planner() {
-  const [selectedGoal, setSelectedGoal] = useState<Goal>("strength");
+  const routeParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const commissionNote = routeParams.get("commissionNote");
+  const commissionTitle = routeParams.get("commissionTitle");
+  const autoGenerate = routeParams.get("autoGenerate") === "true";
+  const [selectedGoal, setSelectedGoal] = useState<Goal>(() => normalizeGoal(routeParams.get("goal")));
   const [rpeLimit, setRpeLimit] = useState<number | null>(null);
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
   const generatePlan = useGenerateWorkoutPlan();
   const savePlan = useSavePlanAsTemplate();
+  const createSession = useCreateWorkoutSession();
   const { data: equipment } = useGetEquipment();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -140,6 +167,13 @@ export default function Planner() {
       }
     );
   };
+
+  useEffect(() => {
+    if (autoGenerate && !plan && !generatePlan.isPending) {
+      handleGenerate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerate]);
 
   const handleSave = () => {
     if (!plan) return;
@@ -162,6 +196,28 @@ export default function Planner() {
     );
   };
 
+  const handleStartSession = () => {
+    if (!plan) return;
+    createSession.mutate(
+      {
+        data: {
+          name: commissionTitle ? `${commissionTitle} - ${plan.planName}` : plan.planName,
+          templateId: undefined as any,
+          notes: [commissionNote, `Generated plan: ${plan.planName}. Focus: ${plan.goal}.`].filter(Boolean).join("\n"),
+        },
+      },
+      {
+        onSuccess: (session: { id: number }) => {
+          queryClient.invalidateQueries({ queryKey: ["/api/training/sessions"] });
+          navigate(`/training/session/${session.id}`);
+        },
+        onError: () => {
+          toast({ title: "Session failed", description: "The Training Yard could not open this generated route.", variant: "destructive" });
+        },
+      },
+    );
+  };
+
   const mainExercises = plan?.exercises.filter(e => e.phase === "main") ?? [];
   const warmupExercises = plan?.exercises.filter(e => e.phase === "warmup") ?? [];
   const accessoryExercises = plan?.exercises.filter(e => e.phase === "accessory") ?? [];
@@ -169,7 +225,19 @@ export default function Planner() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      <PageHeader title="Workout Planner" subtitle="Equipment-aware plan generation" />
+      <PageHeader title="Workout Planner" subtitle={commissionTitle ? `Commission route: ${commissionTitle}` : "Equipment-aware plan generation"} />
+
+      {commissionNote && (
+        <Card className="rounded-none border-[#6b4d2f] bg-[#11100e]">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-[#9d8f80]">Guild Commission Context</p>
+            <h2 className="mt-1 font-serif text-lg font-bold text-[#d9ad63]">{commissionTitle ?? "Commission route"}</h2>
+            <p className="mt-2 text-xs leading-relaxed text-[#b7ab9c]">
+              This generated session will keep the selected route, region, threat, and completion path attached. Completing it lets the combat replay and Chronicle know what kind of field duty you actually answered.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Goal Selection */}
       <Card className="border-border/50 bg-card/50">
@@ -306,6 +374,15 @@ export default function Planner() {
                 >
                   <Save className="w-3 h-3 mr-1" />
                   Save Template
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={handleStartSession}
+                  disabled={createSession.isPending}
+                >
+                  {createSession.isPending ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Swords className="w-3 h-3 mr-1" />}
+                  {commissionNote ? "Start Commission Session" : "Start Session"}
                 </Button>
               </div>
             </CardContent>
