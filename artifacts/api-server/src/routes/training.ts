@@ -566,10 +566,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
           xpEarned: totalXp,
           goldEarned,
           nutritionMet,
-          activeRaidTitles: [
-            ...activeRaids.map(r => r.title),
-            commissionContext?.narrativeThreat ? `${commissionContext.regionName ?? "Aethoria"} Commission: ${commissionContext.narrativeThreat}` : null,
-          ].filter(Boolean) as string[],
+          activeRaidTitles: activeRaids.map(r => r.title),
           gearDrop: null,
           playerRank: xpResult?.newRank ?? freshPlayer.rank ?? "E",
           baseClass: freshPlayer.baseClass ?? "Iron Knight",
@@ -582,6 +579,23 @@ router.patch("/training/sessions/:id", async (req, res) => {
               ? [`Local gear helped in ${commissionContext.regionName}; +${regionalGoldBonus} gold from regional credibility.`]
               : []),
           ],
+          commission: commissionContext ? {
+            commissionId: commissionContext.commissionId,
+            regionId: commissionContext.regionId,
+            regionName: commissionContext.regionName,
+            locationId: commissionContext.locationId,
+            locationName: commissionContext.locationName,
+            completionPath: commissionContext.completionPath,
+            completionLabel: commissionContext.completionLabel,
+            completionNarrative: commissionContext.completionNarrative,
+            intendedStyle: commissionContext.intendedStyle,
+            narrativeThreat: commissionContext.narrativeThreat,
+            travelMethod: commissionContext.travelMethod,
+            flavorKind: commissionContext.flavorKind,
+            flavorTitle: commissionContext.flavorTitle,
+            flavorObjective: commissionContext.flavorObjective,
+            flavorStakes: commissionContext.flavorStakes,
+          } : null,
         };
 
         combatReplay = generateCombatReplay(combatInput);

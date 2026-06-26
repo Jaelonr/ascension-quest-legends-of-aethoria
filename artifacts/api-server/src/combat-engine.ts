@@ -35,6 +35,25 @@ export interface CombatInput {
   narrativeIntensity: NarrativeIntensity;
   elementalAffinity?: string;
   narrativeModifiers?: string[];
+  commission?: CommissionCombatContext | null;
+}
+
+export interface CommissionCombatContext {
+  commissionId?: number | string | null;
+  regionId?: string | null;
+  regionName?: string | null;
+  locationId?: string | null;
+  locationName?: string | null;
+  completionPath?: string | null;
+  completionLabel?: string | null;
+  completionNarrative?: string | null;
+  intendedStyle?: string | null;
+  narrativeThreat?: string | null;
+  travelMethod?: string | null;
+  flavorKind?: string | null;
+  flavorTitle?: string | null;
+  flavorObjective?: string | null;
+  flavorStakes?: string | null;
 }
 
 export interface CombatEvent {
@@ -341,6 +360,106 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
+function present(value?: string | null): string | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text.length > 0 ? text : null;
+}
+
+function styleTitle(style: CombatStyle): string {
+  const labels: Record<CombatStyle, string> = {
+    strength: "Iron Vanguard",
+    striking: "Storm Duelist",
+    conditioning: "Wayfarer",
+    grappling: "Chainwarden",
+    recovery: "Verdant Guardian",
+    discipline: "Runesage",
+  };
+  return labels[style];
+}
+
+function commissionEnemyName(context: CommissionCombatContext): string {
+  const threat = present(context.narrativeThreat);
+  if (threat) return threat;
+
+  const objective = present(context.flavorObjective);
+  if (objective) return objective;
+
+  const kind = present(context.flavorKind);
+  if (kind === "bounty") return "Wanted bandit company";
+  if (kind === "hunt") return "Corrupted wild beast";
+  if (kind === "escort") return "Roadside ambush";
+  if (kind === "relief") return "Gate-scarred relief route";
+  if (kind === "errand") return "Unfinished village duty";
+  if (kind === "main_quest") return "Major Gate threat";
+
+  return `${present(context.regionName) ?? "Aethoria"} field threat`;
+}
+
+function pickCommissionEncounter(input: CombatInput, dominant: CombatStyle): [string, string] | null {
+  const context = input.commission;
+  if (!context) return null;
+
+  const title = present(context.flavorTitle);
+  const regionName = present(context.regionName);
+  const locationName = present(context.locationName);
+  const pathLabel = present(context.completionLabel) ?? present(context.completionPath);
+  const encounterName = title
+    ? locationName ? `${locationName}: ${title}` : title
+    : locationName && regionName ? `${locationName} ${styleTitle(dominant)} Duty`
+      : regionName ? `${regionName} ${styleTitle(dominant)} Commission`
+        : pathLabel ? `${pathLabel} Commission`
+          : `${styleTitle(dominant)} Field Duty`;
+
+  return [encounterName, commissionEnemyName(context)];
+}
+
+function buildCommissionOpening(input: CombatInput, dominant: CombatStyle): CombatEvent[] {
+  const context = input.commission;
+  if (!context) return [];
+
+  const intensity = input.narrativeIntensity;
+  const regionName = present(context.regionName) ?? "Aethoria";
+  const locationName = present(context.locationName);
+  const place = locationName ? `${locationName}, ${regionName}` : regionName;
+  const travel = present(context.travelMethod) ?? "Guild route";
+  const threat = commissionEnemyName(context);
+  const pathLabel = present(context.completionLabel) ?? present(context.completionPath) ?? present(context.intendedStyle);
+  const pathNarrative = present(context.completionNarrative);
+  const stakes = present(context.flavorStakes);
+  const archetype = styleTitle(dominant);
+
+  if (intensity === "technical") {
+    return [{
+      type: "special",
+      text: `Commission context: ${place}. Travel: ${travel}. Completion path: ${pathLabel ?? "recorded training"}. Threat: ${threat}.`,
+    }];
+  }
+
+  const opening = intensity === "immersive"
+    ? `The Guild carried you by ${travel} to ${place}. Your Return Stone waited cold at your belt while ${threat} stood between you and the commission seal. The day's ${archetype} work decided what happened next.`
+    : `The commission route led by ${travel} to ${place}. Your real training became the answer to ${threat}.`;
+
+  const events: CombatEvent[] = [{ type: "special", text: opening }];
+
+  if (pathLabel || pathNarrative) {
+    events.push({
+      type: "special",
+      text: pathNarrative
+        ? `${pathLabel ?? "Chosen path"}: ${pathNarrative}`
+        : `Chosen path: ${pathLabel}.`,
+    });
+  }
+
+  if (stakes) {
+    events.push({
+      type: "special",
+      text: intensity === "immersive" ? `Stakes recorded in the Hall ledger: ${stakes}` : stakes,
+    });
+  }
+
+  return events;
+}
+
 function generateNarrativeConsequence(input: CombatInput, verdict: string): string {
   const { narrativeIntensity: intensity, prCount, nutritionMet, activeRaidTitles, gearDrop } = input;
 
@@ -352,6 +471,7 @@ function generateNarrativeConsequence(input: CombatInput, verdict: string): stri
     else parts.push("Session logged.");
     if (activeRaidTitles.length > 0) parts.push(`"${activeRaidTitles[0]}" raid updated.`);
     if (gearDrop) parts.push(`${gearDrop.name} (${gearDrop.rarity}) added to inventory.`);
+    if (input.commission) parts.push(`Commission advanced in ${present(input.commission.regionName) ?? "Aethoria"}.`);
     return parts.join(" ");
   }
 
@@ -389,6 +509,15 @@ function generateNarrativeConsequence(input: CombatInput, verdict: string): stri
       : `Raid "${activeRaidTitles[0]}" damage dealt. Return to maintain pressure.`);
   }
 
+  if (input.commission) {
+    const regionName = present(input.commission.regionName) ?? "Aethoria";
+    const locationName = present(input.commission.locationName);
+    const place = locationName ? `${locationName} in ${regionName}` : regionName;
+    parts.push(intensity === "immersive"
+      ? `The Return Stone drew you back to the Hall from ${place}. The commission is no longer an item on a board; it is a mark in Aethoria's record.`
+      : `Commission route advanced in ${place}. The Return Stone brought you back to the Hall.`);
+  }
+
   if (gearDrop) {
     parts.push(intensity === "immersive"
       ? `The ${gearDrop.name} bound itself to you as the dungeon fell. Equip it — and let the next Gate feel the difference.`
@@ -402,10 +531,11 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
   const { dominant, secondary, scores } = classifyWorkoutStyle(input);
   const hybridArchetype = getHybridArchetype(scores);
 
-  const [encounterName, enemyName] = pickEnemy(input.playerRank, dominant);
+  const [encounterName, enemyName] = pickCommissionEncounter(input, dominant) ?? pickEnemy(input.playerRank, dominant);
 
   const events: CombatEvent[] = [];
   const intensity = input.narrativeIntensity;
+  events.push(...buildCommissionOpening(input, dominant));
 
   if (intensity === "technical") {
     events.push({ type: "strike", text: pick(STYLE_EVENTS[dominant][intensity]) });

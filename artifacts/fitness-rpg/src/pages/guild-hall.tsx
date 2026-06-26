@@ -164,9 +164,15 @@ function buildCommissionNote(commission: any, path: any) {
     locationId: commission?.location?.key,
     locationName: commission?.location?.name,
     completionPath: path?.completionPath,
+    completionLabel: path?.label,
+    completionNarrative: path?.narrative,
     intendedStyle: path?.intendedStyle,
     narrativeThreat: commission?.expedition?.threat,
     travelMethod: commission?.expedition?.travelMethod ?? commission?.travel?.travelMethod,
+    flavorKind: commission?.expedition?.narrativeFlavor?.kind,
+    flavorTitle: commission?.expedition?.narrativeFlavor?.title,
+    flavorObjective: commission?.expedition?.narrativeFlavor?.objective,
+    flavorStakes: commission?.expedition?.narrativeFlavor?.stakes,
   })}`;
 }
 
