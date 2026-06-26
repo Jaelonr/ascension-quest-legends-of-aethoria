@@ -295,6 +295,7 @@ function ReplayModal({ replay, onClose }: { replay: any; onClose: () => void }) 
               <Text style={rm.payoffLabel}>REAL SESSION TRANSLATED</Text>
               <Text style={rm.payoffTitle}>{payoff.headline}</Text>
               <Text style={rm.payoffText}>{payoff.fitnessTranslation}</Text>
+              {payoff.pathEffect ? <Text style={rm.pathEffect}>{payoff.pathEffect}</Text> : null}
             </View>
           )}
 
@@ -361,6 +362,7 @@ function ReplayModal({ replay, onClose }: { replay: any; onClose: () => void }) 
               {payoff && (
                 <View style={rm.meaningCard}>
                   <Text style={rm.meaningLabel}>CHRONICLE MEANING</Text>
+                  {payoff.pathEffect ? <Text style={rm.pathEffect}>{payoff.pathEffect}</Text> : null}
                   <Text style={rm.meaningText}>{payoff.worldEffect}</Text>
                   <Text style={rm.meaningNext}>{payoff.nextHook}</Text>
                 </View>
@@ -408,6 +410,7 @@ const rm = StyleSheet.create({
   payoffLabel: { color: "#9d8f80", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 2 },
   payoffTitle: { color: "#e5c386", fontSize: 16, fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
   payoffText: { color: "#d8c4a5", fontSize: 12, lineHeight: 18, marginTop: 6, fontFamily: "Inter_400Regular" },
+  pathEffect: { color: "#9dbdb8", fontSize: 11, lineHeight: 16, marginTop: 8, borderLeftWidth: 1, borderLeftColor: "#6b4d2f", paddingLeft: 8, fontFamily: "Inter_400Regular" },
   noEvents: { textAlign: "center", color: "#6b5d4f", fontStyle: "italic", marginTop: 24, fontSize: 13 },
   eventCard: { backgroundColor: "#181612", borderWidth: 1, borderColor: "#2a2520", borderRadius: 8, padding: 14 },
   eventText: { color: "#d8c4a5", fontSize: 13, lineHeight: 20 },
@@ -460,6 +463,9 @@ function ReplayCard({ replay, onPress }: { replay: any; onPress: () => void }) {
           {payoff?.fitnessTranslation && (
             <Text style={rc.payoff} numberOfLines={2}>{payoff.fitnessTranslation}</Text>
           )}
+          {payoff?.pathEffect && (
+            <Text style={rc.pathEffect} numberOfLines={1}>{payoff.pathEffect}</Text>
+          )}
         </View>
         <Text style={rc.date}>
           {new Date(replay.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
@@ -485,6 +491,7 @@ const rc = StyleSheet.create({
   name: { fontSize: 14, fontWeight: "700", color: "#eee5d7", fontFamily: "PlayfairDisplay_700Bold" },
   enemy: { fontSize: 11, color: "#9d8f80", marginTop: 2 },
   payoff: { fontSize: 11, color: "#b7ab9c", lineHeight: 16, marginTop: 7, fontFamily: "Inter_400Regular" },
+  pathEffect: { fontSize: 10, color: "#9dbdb8", lineHeight: 14, marginTop: 4, fontFamily: "Inter_400Regular" },
   date: { fontSize: 10, color: "#6b5d4f", flexShrink: 0 },
   footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
   xp: { fontSize: 11, fontWeight: "700", color: "#0dcef5", fontFamily: "Inter_700Bold" },

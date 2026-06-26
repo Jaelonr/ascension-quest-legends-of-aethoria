@@ -80,6 +80,7 @@ export interface CombatReplayPayoff {
   fitnessTranslation: string;
   worldEffect: string;
   nextHook: string;
+  pathEffect: string | null;
 }
 
 const STRENGTH_KEYWORDS = [
@@ -421,6 +422,35 @@ function pickCommissionEncounter(input: CombatInput, dominant: CombatStyle): [st
   return [encounterName, commissionEnemyName(context)];
 }
 
+function completionPathOutcome(context: CommissionCombatContext | null | undefined, dominant?: CombatStyle | null): string | null {
+  if (!context) return null;
+  const path = `${present(context.completionPath) ?? ""} ${present(context.completionLabel) ?? ""} ${present(context.completionNarrative) ?? ""} ${present(context.flavorKind) ?? ""}`.toLowerCase();
+  const region = present(context.regionName) ?? "Aethoria";
+  const threat = commissionEnemyName(context);
+  if (path.includes("subdue") || path.includes("control") || path.includes("mat") || path.includes("binding") || path.includes("grappl")) {
+    return `Tactical outcome: you chose control over slaughter. The ${threat} was contained through leverage, patience, and disciplined restraint in ${region}.`;
+  }
+  if (path.includes("strength") || path.includes("barricade") || path.includes("forge") || path.includes("lower") || path.includes("boss")) {
+    return `Tactical outcome: you chose direct force. The ${threat} yielded because your real strength work became pressure the field could understand.`;
+  }
+  if (path.includes("endurance") || path.includes("cardio") || path.includes("conditioning") || path.includes("walk") || path.includes("road") || path.includes("chase")) {
+    return `Tactical outcome: you chose movement as the weapon. The route through ${region} advanced because your real steps and conditioning carried the expedition past the danger.`;
+  }
+  if (path.includes("recovery") || path.includes("mobility") || path.includes("low_impact") || path.includes("nutrition") || path.includes("hydration") || path.includes("reduced") || path.includes("restoration")) {
+    return `Tactical outcome: you chose preservation. The Guild gained useful progress without gambling your body against the ${threat}.`;
+  }
+  if (path.includes("skill") || path.includes("footwork") || path.includes("strike") || path.includes("dock")) {
+    return `Tactical outcome: you chose precision. Clean timing and careful footwork kept the commission from becoming louder than it needed to be.`;
+  }
+  if (path.includes("field_drill")) {
+    return `Tactical outcome: you accepted Aldric's narrowed field drill. The work was not glamorous, but it answered the pressure around ${threat}.`;
+  }
+  if (dominant) {
+    return `Tactical outcome: you answered the commission through ${styleTitle(dominant)} work. The path mattered because the training was real.`;
+  }
+  return null;
+}
+
 function buildCommissionOpening(input: CombatInput, dominant: CombatStyle): CombatEvent[] {
   const context = input.commission;
   if (!context) return [];
@@ -435,12 +465,13 @@ function buildCommissionOpening(input: CombatInput, dominant: CombatStyle): Comb
   const pathNarrative = present(context.completionNarrative);
   const stakes = present(context.flavorStakes);
   const archetype = styleTitle(dominant);
+  const pathOutcome = completionPathOutcome(context, dominant);
 
   if (intensity === "technical") {
     return [{
       type: "special",
       text: `Commission context: ${place}. Travel: ${travel}. Completion path: ${pathLabel ?? "recorded training"}. Threat: ${threat}.`,
-    }];
+    }, ...(pathOutcome ? [{ type: "special" as const, text: pathOutcome }] : [])];
   }
 
   const opening = intensity === "immersive"
@@ -456,6 +487,10 @@ function buildCommissionOpening(input: CombatInput, dominant: CombatStyle): Comb
         ? `${pathLabel ?? "Chosen path"}: ${pathNarrative}`
         : `Chosen path: ${pathLabel}.`,
     });
+  }
+
+  if (pathOutcome) {
+    events.push({ type: "special", text: pathOutcome });
   }
 
   if (stakes) {
@@ -556,6 +591,8 @@ export function buildCombatReplayPayoff(replay: {
   gearDrop?: { name?: string; rarity?: string; slot?: string } | null;
   raidImpact?: string | null;
   narrativeConsequence?: string | null;
+  events?: Array<{ text?: string | null }> | null;
+  commission?: CommissionCombatContext | null;
 }): CombatReplayPayoff {
   const dominant = (replay.dominantStyle && replay.dominantStyle in STYLE_PAYOFFS
     ? replay.dominantStyle
@@ -573,6 +610,9 @@ export function buildCombatReplayPayoff(replay: {
   const gearPhrase = replay.gearDrop?.name
     ? ` The Hall also recorded a recovered item: ${replay.gearDrop.name}.`
     : "";
+  const pathEffect = completionPathOutcome(replay.commission, dominant)
+    ?? replay.events?.find((event) => typeof event?.text === "string" && event.text.startsWith("Tactical outcome:"))?.text
+    ?? null;
 
   return {
     headline: `${verdict} against ${enemy}`,
@@ -585,6 +625,7 @@ export function buildCombatReplayPayoff(replay: {
     nextHook: replay.hybridArchetype
       ? `Repeated sessions are shaping the ${replay.hybridArchetype} path.`
       : "Repeat the pattern and the Chronicle will learn what kind of adventurer you are becoming.",
+    pathEffect,
   };
 }
 
@@ -706,6 +747,8 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
       goldEarned: input.goldEarned,
       prCount: input.prCount,
       gearDrop: input.gearDrop,
+      commission: input.commission,
+      events: replay.events,
     }),
   };
 }

@@ -28,6 +28,7 @@ router.get("/battle-log", async (req, res) => {
       payoff: buildCombatReplayPayoff({
         ...r,
         gearDrop: r.gearDrop as any,
+        events: r.events as any[],
       }),
     })));
   } catch (err) {

@@ -182,6 +182,7 @@ function ReplayDialog({ replay, onClose }: { replay: any; onClose: () => void })
             <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-[#9d8f80]">Real session translated</p>
             <h3 className="mt-1 font-serif text-base font-bold text-[#e5c386]">{payoff.headline}</h3>
             <p className="mt-2 text-sm leading-relaxed text-[#d8c4a5]">{payoff.fitnessTranslation}</p>
+            {payoff.pathEffect && <p className="mt-2 border-l border-[#6b4d2f] pl-3 text-xs leading-relaxed text-[#9dbdb8]">{payoff.pathEffect}</p>}
           </div>
         )}
 
@@ -278,6 +279,7 @@ function ReplayDialog({ replay, onClose }: { replay: any; onClose: () => void })
             {payoff && (
               <div className="border border-[#6b4d2f] bg-[#15110d] rounded-xl p-3">
                 <p className="text-[9px] font-mono uppercase tracking-widest text-[#9d8f80] mb-1.5">Chronicle meaning</p>
+                {payoff.pathEffect && <p className="mb-2 text-xs text-[#e5c386] leading-relaxed">{payoff.pathEffect}</p>}
                 <p className="text-xs text-[#d8c4a5] leading-relaxed">{payoff.worldEffect}</p>
                 <p className="mt-2 text-[11px] text-[#9dbdb8] leading-relaxed">{payoff.nextHook}</p>
               </div>
@@ -339,6 +341,9 @@ function ReplayCard({ replay }: { replay: any }) {
               <p className="text-[11px] text-[#8f887d]">vs. {replay.enemyName}</p>
               {payoff?.fitnessTranslation && (
                 <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[#b7ab9c]">{payoff.fitnessTranslation}</p>
+              )}
+              {payoff?.pathEffect && (
+                <p className="mt-1 line-clamp-1 text-[11px] leading-relaxed text-[#9dbdb8]">{payoff.pathEffect}</p>
               )}
             </div>
             <div className="shrink-0 text-right text-[10px] text-[#8f887d]">

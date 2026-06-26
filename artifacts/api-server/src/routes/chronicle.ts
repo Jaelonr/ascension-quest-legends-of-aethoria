@@ -88,6 +88,7 @@ router.get("/chronicle/summary", async (req, res) => {
         payoff: buildCombatReplayPayoff({
           ...replay,
           gearDrop: replay.gearDrop as any,
+          events: replay.events as any[],
         }),
       })),
       guildReports: reports.map((report) => ({ ...report, generatedAt: report.generatedAt.toISOString() })),

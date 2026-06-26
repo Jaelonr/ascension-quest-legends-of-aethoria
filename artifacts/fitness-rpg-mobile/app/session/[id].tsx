@@ -166,6 +166,7 @@ function CombatReplayModal({
             <Text style={s.translationText}>
               {payoff?.fitnessTranslation ?? `${data.durationMinutes} minutes, ${data.totalSets} logged set${data.totalSets === 1 ? "" : "s"}, and ${data.prCount} personal record${data.prCount === 1 ? "" : "s"} became a ${dominantStyleLabel} field record.`}
             </Text>
+            {payoff?.pathEffect ? <Text style={s.translationPath}>{payoff.pathEffect}</Text> : null}
             <Text style={s.translationSub}>
               The Chronicle records the fight; your body keeps the earned progress.
             </Text>
@@ -264,6 +265,7 @@ function CombatReplayModal({
               {payoff && (
                 <View style={s.replayInfoCard}>
                   <Text style={s.panelKicker}>CHRONICLE MEANING</Text>
+                  {payoff.pathEffect ? <Text style={s.replayInfoText}>{payoff.pathEffect}</Text> : null}
                   <Text style={s.replayInfoTitle}>{payoff.worldEffect}</Text>
                   <Text style={s.replayInfoText}>{payoff.nextHook}</Text>
                 </View>
@@ -1012,6 +1014,15 @@ const s = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontFamily: "Inter_700Bold",
+  },
+  translationPath: {
+    color: "#9dbdb8",
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: "Inter_400Regular",
+    borderLeftWidth: 1,
+    borderLeftColor: "#1f6f73",
+    paddingLeft: 9,
   },
   translationSub: {
     color: "#9dbdb8",
