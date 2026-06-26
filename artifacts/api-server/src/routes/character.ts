@@ -35,6 +35,26 @@ const LAUNCH_SLOTS = [
   "aura_cosmetic",
 ] as const;
 
+const STYLE_KEYS = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
+
+const STYLE_LABELS: Record<typeof STYLE_KEYS[number], string> = {
+  strength: "Iron Vanguard",
+  striking: "Storm Duelist",
+  conditioning: "Wayfarer",
+  grappling: "Chainwarden",
+  recovery: "Verdant Guardian",
+  discipline: "Runesage",
+};
+
+const STYLE_NARRATIVES: Record<typeof STYLE_KEYS[number], string> = {
+  strength: "Your record leans toward force, armor-breaking pressure, and direct confrontation. Aethoria reads you as the adventurer who moves what refuses to move.",
+  striking: "Your record leans toward timing, footwork, and clean openings. Aethoria reads you as the adventurer who ends danger before it can settle.",
+  conditioning: "Your record leans toward endurance, travel, and attrition. Aethoria reads you as the adventurer who keeps moving when the road turns hostile.",
+  grappling: "Your record leans toward control, subdual, and battlefield restraint. Aethoria reads you as the adventurer who can end a fight without wasting motion.",
+  recovery: "Your record leans toward restoration, resilience, and wise restraint. Aethoria reads you as the adventurer who survives long enough to matter.",
+  discipline: "Your record leans toward consistency, preparation, and deliberate execution. Aethoria reads you as the adventurer whose legend is built one kept promise at a time.",
+};
+
 function displaySlot(slot: string) {
   if (slot === "armor") return "chest";
   if (slot === "helmet") return "head";
@@ -62,6 +82,54 @@ function displayClassName(value?: string | null) {
     pathfinder: "Pathfinder",
   };
   return labels[key] ?? value ?? null;
+}
+
+function serializeStyleIdentity(identity?: typeof playerStyleIdentityTable.$inferSelect | null) {
+  if (!identity) {
+    return {
+      totalSessions: 0,
+      dominantStyle: null,
+      dominantStyleLabel: "Still forming",
+      secondaryStyle: null,
+      secondaryStyleLabel: null,
+      hybridArchetype: null,
+      scores: { strength: 0, striking: 0, conditioning: 0, grappling: 0, recovery: 0, discipline: 0 },
+      percentages: { strength: 0, striking: 0, conditioning: 0, grappling: 0, recovery: 0, discipline: 0 },
+      narrative: "Complete training sessions to let Aethoria discover how you fight. Your class is earned through behavior, not chosen from a menu.",
+    };
+  }
+
+  const scores = {
+    strength: identity.strengthScore,
+    striking: identity.strikingScore,
+    conditioning: identity.conditioningScore,
+    grappling: identity.grapplingScore,
+    recovery: identity.recoveryScore,
+    discipline: identity.disciplineScore,
+  };
+  const total = STYLE_KEYS.reduce((sum, key) => sum + scores[key], 0);
+  const ranked = STYLE_KEYS.map((key) => ({ key, score: scores[key] })).sort((a, b) => b.score - a.score);
+  const dominantStyle = ranked[0]?.score ? ranked[0].key : null;
+  const secondaryStyle = ranked[1]?.score ? ranked[1].key : null;
+  const percentages = Object.fromEntries(STYLE_KEYS.map((key) => [
+    key,
+    total > 0 ? Math.round((scores[key] / total) * 100) : 0,
+  ])) as Record<typeof STYLE_KEYS[number], number>;
+
+  return {
+    totalSessions: identity.totalSessions,
+    dominantStyle,
+    dominantStyleLabel: dominantStyle ? STYLE_LABELS[dominantStyle] : "Still forming",
+    secondaryStyle,
+    secondaryStyleLabel: secondaryStyle ? STYLE_LABELS[secondaryStyle] : null,
+    hybridArchetype: identity.hybridArchetype,
+    scores,
+    percentages,
+    narrative: dominantStyle
+      ? STYLE_NARRATIVES[dominantStyle]
+      : "Complete training sessions to let Aethoria discover how you fight. Your class is earned through behavior, not chosen from a menu.",
+    updatedAt: identity.updatedAt.toISOString(),
+  };
 }
 
 router.get("/character/summary", async (req, res) => {
@@ -102,23 +170,26 @@ router.get("/character/summary", async (req, res) => {
     }
 
     const playerSummary = buildPlayerResponse(player, stats);
+    const styleIdentity = serializeStyleIdentity(identity[0]);
 
     res.json({
       player: playerSummary,
       identity: {
-        class: displayClassName(player.baseClass) ?? identity[0]?.hybridArchetype ?? "Unclassed Adventurer",
+        class: displayClassName(player.baseClass) ?? styleIdentity.hybridArchetype ?? "Unclassed Adventurer",
         rank: playerSummary.rank,
         activeTitle: player.activeTitle,
-        dominantStyle: identity[0] ? {
-          strength: identity[0].strengthScore,
-          striking: identity[0].strikingScore,
-          conditioning: identity[0].conditioningScore,
-          grappling: identity[0].grapplingScore,
-          recovery: identity[0].recoveryScore,
-          discipline: identity[0].disciplineScore,
-          totalSessions: identity[0].totalSessions,
-          hybridArchetype: identity[0].hybridArchetype,
-        } : null,
+        styleIdentity,
+        dominantStyle: {
+          ...styleIdentity.scores,
+          totalSessions: styleIdentity.totalSessions,
+          hybridArchetype: styleIdentity.hybridArchetype,
+          style: styleIdentity.dominantStyle,
+          label: styleIdentity.dominantStyleLabel,
+          secondaryStyle: styleIdentity.secondaryStyle,
+          secondaryStyleLabel: styleIdentity.secondaryStyleLabel,
+          percentages: styleIdentity.percentages,
+          narrative: styleIdentity.narrative,
+        },
       },
       gearSlots: LAUNCH_SLOTS.map((slot) => {
         const item = equippedBySlot.get(slot);

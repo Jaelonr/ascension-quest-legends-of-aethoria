@@ -22,6 +22,17 @@ type CharacterSummary = {
   settingsShortcuts: Array<{ key: string; label: string; href: string }>;
 };
 
+const STYLE_KEYS = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
+
+const STYLE_META: Record<typeof STYLE_KEYS[number], { label: string; color: string }> = {
+  strength: { label: "Iron Vanguard", color: "#ef4444" },
+  striking: { label: "Storm Duelist", color: "#f97316" },
+  conditioning: { label: "Wayfarer", color: "#0dcef5" },
+  grappling: { label: "Chainwarden", color: "#a855f7" },
+  recovery: { label: "Verdant Guardian", color: "#22c55e" },
+  discipline: { label: "Runesage", color: "#eab308" },
+};
+
 function useCharacterSummary() {
   const [data, setData] = useState<CharacterSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,8 +92,12 @@ export default function Character() {
   const equippedCount = data.gearSlots.filter((slot) => slot.item).length;
   const title = data.identity.activeTitle ?? "No title equipped";
   const className = data.identity.class ?? "Unranked Adventurer";
-  const styleLabel = data.identity.dominantStyle?.label ?? data.identity.dominantStyle?.style ?? "Still forming";
-  const specialization = data.identity.dominantStyle?.hybridArchetype ?? "Earned through behavior";
+  const styleIdentity = data.identity.styleIdentity ?? data.identity.dominantStyle ?? {};
+  const styleLabel = styleIdentity.dominantStyleLabel ?? styleIdentity.label ?? "Still forming";
+  const secondaryStyleLabel = styleIdentity.secondaryStyleLabel ?? null;
+  const specialization = styleIdentity.hybridArchetype ?? "Earned through behavior";
+  const stylePercentages = styleIdentity.percentages ?? {};
+  const totalStyleSessions = styleIdentity.totalSessions ?? 0;
 
   return (
     <AethoriaPage>
@@ -129,6 +144,52 @@ export default function Character() {
         className="shadow-[0_0_36px_rgba(217,165,77,0.08)]"
       />
 
+      <Section title="Combat Identity" icon={Sparkles}>
+        <div className="grid gap-3 md:grid-cols-[0.95fr_1.35fr]">
+          <div className="border border-[#3b3328] bg-[#0c0b09] p-4">
+            <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Earned Fighting Style</p>
+            <p className="mt-2 font-serif text-2xl font-bold text-[#d9ad63]">{styleLabel}</p>
+            <p className="mt-1 text-xs text-[#8f887d]">
+              {secondaryStyleLabel ? `Secondary tendency: ${secondaryStyleLabel}` : "Secondary tendency still forming"}
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="border border-[#2a2520] bg-[#080706] p-2">
+                <p className="text-[#8f887d]">Field Records</p>
+                <p className="font-serif text-lg font-bold text-[#f1dfc6]">{totalStyleSessions}</p>
+              </div>
+              <div className="border border-[#2a2520] bg-[#080706] p-2">
+                <p className="text-[#8f887d]">Class Path</p>
+                <p className="truncate font-serif text-lg font-bold text-[#f1dfc6]">{specialization}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-[#b7ab9c]">
+              {styleIdentity.narrative ?? "Aethoria is still learning how you fight. Keep training, and your record will reveal the class you are earning."}
+            </p>
+          </div>
+          <div className="border border-[#3b3328] bg-[#0c0b09] p-4">
+            <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Style Balance</p>
+            <div className="mt-3 space-y-3">
+              {STYLE_KEYS.map((key) => {
+                const meta = STYLE_META[key];
+                const pct = Math.max(0, Math.min(100, Number(stylePercentages[key] ?? 0)));
+                return (
+                  <div key={key} className="grid grid-cols-[7.5rem_1fr_2.5rem] items-center gap-2 text-xs">
+                    <span className="font-semibold" style={{ color: meta.color }}>{meta.label}</span>
+                    <span className="h-2 overflow-hidden rounded-full bg-[#211b16]">
+                      <span className="block h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: meta.color }} />
+                    </span>
+                    <span className="text-right text-[#8f887d]">{pct}%</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-4 border-l-2 border-[#49a3a0] pl-3 text-xs leading-relaxed text-[#8f887d]">
+              This is not a class picker. It is a record of repeated behavior: workouts, recovery, combat replays, and commissions completed over time.
+            </p>
+          </div>
+        </div>
+      </Section>
+
       <AethoriaPanel>
         <AethoriaSectionTitle icon={Sparkles}>Attributes</AethoriaSectionTitle>
         <div className="grid grid-cols-3 gap-2 md:grid-cols-6">
@@ -149,11 +210,11 @@ export default function Character() {
           </div>
           <div className="border border-[#3b3328] bg-[#0c0b09] p-3">
             <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Dominant Style</p>
-            <p className="mt-1 font-serif text-sm font-bold text-[#49a3a0]">{data.identity.dominantStyle?.label ?? data.identity.dominantStyle?.style ?? "Still forming"}</p>
+            <p className="mt-1 font-serif text-sm font-bold text-[#49a3a0]">{styleLabel}</p>
           </div>
           <div className="border border-[#3b3328] bg-[#0c0b09] p-3">
             <p className="text-[9px] uppercase tracking-widest text-[#8f887d]">Specialization</p>
-            <p className="mt-1 font-serif text-sm font-bold text-[#d8c4a5]">{data.identity.dominantStyle?.hybridArchetype ?? "Earned through behavior"}</p>
+            <p className="mt-1 font-serif text-sm font-bold text-[#d8c4a5]">{specialization}</p>
           </div>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-[#8f887d]">

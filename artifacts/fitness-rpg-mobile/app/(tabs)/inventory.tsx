@@ -531,6 +531,8 @@ export default function CharacterScreen() {
   const summaryIdentity = char?.identity ?? identity;
   const activeTitle = summaryIdentity?.activeTitle ?? char?.titles?.[0]?.name ?? "No title equipped";
   const className = displayClassName(summaryIdentity?.class ?? player?.baseClass) ?? identity?.hybridArchetype ?? "Unranked Adventurer";
+  const summaryStyleIdentity = summaryIdentity?.styleIdentity ?? summaryIdentity?.dominantStyle ?? null;
+  const identityRecord = identity ?? summaryStyleIdentity;
   const bio = char?.biometrics ?? {};
   const realEquipment = char?.realEquipment ?? [];
   const inventorySummary = char?.inventorySummary ?? { items: 0, gear: 0, equippedGear: 0 };
@@ -552,13 +554,24 @@ export default function CharacterScreen() {
     return acc;
   }, {});
 
-  const identityTotal = identity
+  const identityTotal = identityRecord
     ? ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"]
-        .reduce((sum, k) => sum + ((identity as any)[k] ?? 0), 0)
+        .reduce((sum, k) => sum + ((identityRecord as any)[k] ?? (identityRecord as any).scores?.[k] ?? 0), 0)
     : 0;
-  const dominantStyleKey = typeof identity?.dominantStyle === "string" ? identity.dominantStyle : null;
-  const styleLabel = dominantStyleKey ? STYLE_META[dominantStyleKey]?.label ?? dominantStyleKey : "Still forming";
-  const specialization = identity?.hybridArchetype ?? "Earned through behavior";
+  const dominantStyleKey = typeof identityRecord?.dominantStyle === "string"
+    ? identityRecord.dominantStyle
+    : typeof identityRecord?.style === "string"
+      ? identityRecord.style
+      : null;
+  const styleLabel = identityRecord?.dominantStyleLabel ?? identityRecord?.label ?? (dominantStyleKey ? STYLE_META[dominantStyleKey]?.label ?? dominantStyleKey : "Still forming");
+  const secondaryStyleLabel = identityRecord?.secondaryStyleLabel ?? null;
+  const specialization = identityRecord?.hybridArchetype ?? "Earned through behavior";
+  const stylePct = (key: string) => {
+    const direct = Number((identityRecord as any)?.percentages?.[key]);
+    if (Number.isFinite(direct)) return Math.max(0, Math.min(100, direct));
+    const raw = (identityRecord as any)?.[key] ?? (identityRecord as any)?.scores?.[key] ?? 0;
+    return identityTotal > 0 ? Math.round((raw / identityTotal) * 100) : 0;
+  };
 
   const isLoading = charLoading || armoryLoading;
 
@@ -912,18 +925,17 @@ export default function CharacterScreen() {
         {tab === "identity" && (
           <View style={[cs.identityCard, { backgroundColor: "#171510", borderColor: "#3b3328" }]}>
             <Text style={cs.sectionLabel}>COMBAT STYLE IDENTITY</Text>
-            {identity?.dominantStyle && (
-              <Text style={[cs.dominantStyle, { color: STYLE_META[identity.dominantStyle]?.color ?? "#d9ad63" }]}>
-                {STYLE_META[identity.dominantStyle]?.label}
-                {identity.hybridArchetype ? ` - ${identity.hybridArchetype}` : ""}
-              </Text>
-            )}
-            <Text style={[cs.identityNote, { color: colors.mutedForeground }]}>
-              Built from {identity?.totalSessions ?? 0} training sessions. Shaped by every rep, set, and combat decision.
+            <Text style={[cs.dominantStyle, { color: dominantStyleKey ? STYLE_META[dominantStyleKey]?.color ?? "#d9ad63" : "#d9ad63" }]}>
+              {styleLabel}
+              {specialization !== "Earned through behavior" ? ` - ${specialization}` : ""}
             </Text>
+            {secondaryStyleLabel ? <Text style={cs.secondaryStyle}>Secondary tendency: {secondaryStyleLabel}</Text> : null}
+            <Text style={[cs.identityNote, { color: colors.mutedForeground }]}>
+              Built from {identityRecord?.totalSessions ?? 0} training sessions. Shaped by every rep, set, and combat decision.
+            </Text>
+            {identityRecord?.narrative ? <Text style={cs.identityNarrative}>{identityRecord.narrative}</Text> : null}
             {["strength", "striking", "conditioning", "grappling", "recovery", "discipline"].map((key) => {
-              const val = (identity as any)?.[key] ?? 0;
-              const pct = identityTotal > 0 ? Math.round((val / identityTotal) * 100) : 0;
+              const pct = stylePct(key);
               const meta = STYLE_META[key]!;
               return (
                 <View key={key} style={cs.identityBarRow}>
@@ -949,7 +961,7 @@ export default function CharacterScreen() {
                 </View>
                 <View style={cs.infoTile}>
                   <Text style={cs.infoLabel}>Specialization</Text>
-                  <Text style={cs.infoValue}>{identity?.hybridArchetype ?? "Earned through behavior"}</Text>
+                  <Text style={cs.infoValue}>{specialization}</Text>
                 </View>
               </View>
               <Text style={cs.infoNote}>
@@ -1197,7 +1209,9 @@ const cs = StyleSheet.create({
   identityCard: { borderWidth: 1, padding: 14 },
   sectionLabel: { fontSize: 9, letterSpacing: 3, color: "#9d8f80", textTransform: "uppercase", marginBottom: 10, fontFamily: "Inter_400Regular" },
   dominantStyle: { fontSize: 16, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 6 },
+  secondaryStyle: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: -2, marginBottom: 6, fontFamily: "Inter_400Regular" },
   identityNote: { fontSize: 12, lineHeight: 18, marginBottom: 12 },
+  identityNarrative: { borderLeftWidth: 2, borderLeftColor: "#49a3a0", color: "#b7ab9c", fontSize: 11, lineHeight: 17, paddingLeft: 10, marginBottom: 12 },
   identityBarRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   identityBarLabel: { width: 88, fontSize: 10, fontWeight: "700", fontFamily: "Inter_700Bold" },
   identityBarTrack: { flex: 1, height: 4, backgroundColor: "#2a2520", borderRadius: 2, overflow: "hidden" },
