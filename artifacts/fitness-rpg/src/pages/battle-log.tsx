@@ -597,6 +597,45 @@ function IdentityMilestoneCard({ event }: { event: any }) {
   );
 }
 
+function getMilestoneTone(milestone: any) {
+  const kind = String(milestone?.kind ?? "").toLowerCase();
+  if (kind.includes("raid_failed") || kind.includes("forced") || kind.includes("critical")) {
+    return { label: "Scar", border: "border-[#9d3e2a]", text: "text-[#d95f45]", bg: "bg-[#1a100e]" };
+  }
+  if (kind.includes("raid_claimed") || kind.includes("raid_completed") || kind.includes("boss")) {
+    return { label: "Victory", border: "border-[#d9ad63]", text: "text-[#d9ad63]", bg: "bg-[#17130d]" };
+  }
+  if (kind.includes("combat") || kind.includes("style")) {
+    return { label: "Battle Proof", border: "border-[#49a3a0]", text: "text-[#49a3a0]", bg: "bg-[#071312]" };
+  }
+  if (kind.includes("item") || kind.includes("title")) {
+    return { label: "Discovery", border: "border-[#6b4d2f]", text: "text-[#e5c386]", bg: "bg-[#11100e]" };
+  }
+  return { label: milestone?.source ?? "Recorded", border: "border-[#3b3328]", text: "text-[#d8c4a5]", bg: "bg-[#11100e]" };
+}
+
+function ChronicleMilestoneCard({ milestone }: { milestone: any }) {
+  const tone = getMilestoneTone(milestone);
+  return (
+    <div className={cn("border p-3", tone.border, tone.bg)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={cn("text-[9px] uppercase tracking-[0.18em]", tone.text)}>{tone.label}</p>
+          <p className="mt-1 font-serif text-sm font-bold text-[#e5c386]">{milestone?.title ?? "Milestone recorded"}</p>
+        </div>
+        <span className="shrink-0 text-[10px] uppercase tracking-wider text-[#8f887d]">{formatChronicleDate(milestone?.occurredAt)}</span>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-[#d8c4a5]">{milestone?.summary}</p>
+      {(milestone?.detail || milestone?.source) && (
+        <div className="mt-3 grid gap-2 border-t border-[#3b3328] pt-3 text-[10px] uppercase tracking-wider text-[#8f887d] md:grid-cols-2">
+          {milestone?.source && <span>Source <b className="text-[#d8c4a5]">{milestone.source}</b></span>}
+          {milestone?.detail && <span className="normal-case tracking-normal text-[#9f9586]">{milestone.detail}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BattleLog() {
   const [styleFilter, setStyleFilter] = useState<string>("all");
   const [mapZoom, setMapZoom] = useState(1);
@@ -759,7 +798,17 @@ export default function BattleLog() {
           </Card>
           <div className="grid gap-3 md:grid-cols-2">
             <Card className="border-[#3b3328] bg-[#11100e]"><CardContent className="p-4"><p className="mb-3 flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Medal className="size-4" />Titles Earned</p>{chronicle?.titlesEarned?.length ? chronicle.titlesEarned.map((title) => <p key={title.id} className="mb-2 text-xs text-[#d8c4a5]">{title.name} <span className="text-[#8f887d]">({title.rarity})</span></p>) : <p className="text-xs text-[#8f887d]">No titles yet.</p>}</CardContent></Card>
-            <Card className="border-[#3b3328] bg-[#11100e]"><CardContent className="p-4"><p className="mb-3 flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Sparkles className="size-4" />Major Milestones</p>{chronicle?.majorMilestones?.length ? chronicle.majorMilestones.map((m) => <p key={m.id} className="mb-2 text-xs text-[#d8c4a5]">{m.summary}</p>) : <p className="text-xs text-[#8f887d]">No milestones yet.</p>}</CardContent></Card>
+            <Card className="border-[#3b3328] bg-[#11100e]">
+              <CardContent className="p-4">
+                <p className="mb-1 flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Sparkles className="size-4" />Major Milestones</p>
+                <p className="mb-3 text-xs leading-relaxed text-[#8f887d]">The short list of moments that made Aethoria remember you.</p>
+                {chronicle?.majorMilestones?.length ? (
+                  <div className="space-y-2">
+                    {chronicle.majorMilestones.map((m) => <ChronicleMilestoneCard key={m.id} milestone={m} />)}
+                  </div>
+                ) : <p className="text-xs text-[#8f887d]">No milestones yet.</p>}
+              </CardContent>
+            </Card>
           </div>
           <Card className="rounded-none border-[#3b3328] bg-[#11100e]">
             <CardContent className="p-4">

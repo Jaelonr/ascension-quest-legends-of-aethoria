@@ -804,7 +804,37 @@ export default function ChronicleScreen() {
           </View>
           <View style={ch.recordCard}>
             <Text style={ch.recordTitle}>Major Milestones</Text>
-            {milestones.length ? milestones.map((m) => <Text key={m.id} style={ch.recordText}>{m.summary}</Text>) : <Text style={ch.recordMeta}>No milestones yet.</Text>}
+            <Text style={ch.recordText}>The short list of moments that made Aethoria remember you.</Text>
+            {milestones.length ? (
+              <View style={ch.milestoneList}>
+                {milestones.map((m: any) => {
+                  const kind = String(m?.kind ?? "").toLowerCase();
+                  const isScar = kind.includes("raid_failed") || kind.includes("forced") || kind.includes("critical");
+                  const isVictory = kind.includes("raid_claimed") || kind.includes("raid_completed") || kind.includes("boss");
+                  const isBattle = kind.includes("combat") || kind.includes("style");
+                  const tone = isScar ? "#d95f45" : isVictory ? "#d9ad63" : isBattle ? "#49a3a0" : "#d8c4a5";
+                  const label = isScar ? "Scar" : isVictory ? "Victory" : isBattle ? "Battle Proof" : (m?.source ?? "Recorded");
+                  return (
+                    <View key={String(m.id)} style={[ch.milestoneCard, { borderColor: tone + "80" }]}>
+                      <View style={ch.recordRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[ch.milestoneKicker, { color: tone }]}>{label}</Text>
+                          <Text style={ch.recordTitle}>{m?.title ?? "Milestone recorded"}</Text>
+                        </View>
+                        <Text style={ch.worldEventDate}>{formatChronicleDate(m?.occurredAt)}</Text>
+                      </View>
+                      <Text style={ch.recordText}>{m?.summary}</Text>
+                      {(m?.source || m?.detail) ? (
+                        <View style={ch.worldEventMetaGrid}>
+                          {m?.source ? <Text style={ch.worldEventMeta}>Source {String(m.source)}</Text> : null}
+                          {m?.detail ? <Text style={ch.milestoneDetail}>{String(m.detail)}</Text> : null}
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            ) : <Text style={ch.recordMeta}>No milestones yet.</Text>}
           </View>
           <View style={ch.recordCard}>
             <View style={ch.recordRow}>
@@ -1152,6 +1182,10 @@ const ch = StyleSheet.create({
   legendMarkList: { gap: 8, marginTop: 12 },
   legendMarkCard: { borderWidth: 1, backgroundColor: "#0c0b09", padding: 12 },
   legendMarkKicker: { color: "#9d8f80", fontSize: 9, textTransform: "uppercase", letterSpacing: 1.6, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  milestoneList: { gap: 8, marginTop: 12 },
+  milestoneCard: { borderWidth: 1, backgroundColor: "#0c0b09", padding: 12 },
+  milestoneKicker: { fontSize: 9, textTransform: "uppercase", letterSpacing: 1.6, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  milestoneDetail: { color: "#9f9586", fontSize: 10, lineHeight: 15, fontFamily: "Inter_400Regular", flexBasis: "100%" },
   campaignPosition: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14 },
   campaignChapter: { borderWidth: 1, backgroundColor: "#11100e" },
   campaignChapterHeader: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
