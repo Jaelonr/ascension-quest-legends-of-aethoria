@@ -184,7 +184,7 @@ function SystemDangerCard({ danger }: { danger: any }) {
       <View style={ch.dangerHeader}>
         <View>
           <Text style={ch.sectionLabel}>SYSTEM READING</Text>
-          <Text style={[ch.dangerTitle, { color: critical ? "#d95f45" : "#d9ad63" }]}>World Danger: {danger.label ?? "Critical"}</Text>
+          <Text style={[ch.dangerTitle, { color: critical ? "#d95f45" : "#d9ad63" }]}>World Danger: {danger.label ?? "Severe"}</Text>
         </View>
         <View style={[ch.dangerValueBox, { borderColor: critical ? "#9d3e2a" : "#72552e" }]}>
           <Text style={[ch.dangerValue, { color: critical ? "#d95f45" : "#d5a557" }]}>{value}%</Text>

@@ -40,8 +40,8 @@ const SLIDES: Slide[] = [
   },
   {
     type: "world",
-    text: "The world danger level is critical.",
-    subtext: "A great enemy gathers beyond the horizon. Aldric, Guild Master of the Adventurer's Guild, has seen enough to believe you matter.",
+    text: "The world danger level is severe.",
+    subtext: "A great enemy gathers beyond the horizon, but Aethoria has not fallen. Other adventurers still hold the line; Aldric has seen enough to believe your efforts can turn the war.",
   },
   {
     type: "narrative",

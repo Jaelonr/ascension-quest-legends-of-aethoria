@@ -582,8 +582,8 @@ export default function ProfileScreen() {
             Aethoria has received you. The Guild will see a summoned adventurer. Only you see the hidden mechanism writing over the dark.
           </Text>
           <View style={s.systemWarning}>
-            <Text style={s.systemWarningText}>WORLD DANGER: CRITICAL</Text>
-            <Text style={s.systemWarningSub}>The first record must be made before the Hall can assign your duty.</Text>
+            <Text style={s.systemWarningText}>WORLD DANGER: SEVERE</Text>
+            <Text style={s.systemWarningSub}>Aethoria still holds. Your first record helps the Hall decide where your effort can matter.</Text>
           </View>
         </View>
       );

@@ -54,8 +54,8 @@ const SLIDES: Slide[] = [
   },
   {
     type: "world",
-    text: "The world danger level is critical.",
-    subtext: "A great enemy gathers beyond the horizon. Aldric knows a summoning was attempted, but not the hidden System beneath it.",
+    text: "The world danger level is severe.",
+    subtext: "A great enemy gathers beyond the horizon, but Aethoria has not fallen. Other adventurers still hold the line; Aldric knows a summoning was attempted, but not the hidden System beneath it.",
   },
   {
     type: "final",

@@ -262,7 +262,7 @@ function WorldDangerPanel({ danger }: { danger: any }) {
       <View style={s.dangerHeader}>
         <View>
           <Text style={s.sectionLabel}>SYSTEM READING</Text>
-          <Text style={[s.dangerTitle, { color: critical ? "#d95f45" : "#d9ad63" }]}>World Danger: {danger.label ?? "Critical"}</Text>
+          <Text style={[s.dangerTitle, { color: critical ? "#d95f45" : "#d9ad63" }]}>World Danger: {danger.label ?? "Severe"}</Text>
         </View>
         <View style={[s.dangerValueBox, { borderColor: critical ? "#9d3e2a" : "#72552e" }]}>
           <Text style={[s.dangerValue, { color: critical ? "#d95f45" : "#d5a557" }]}>{value}%</Text>

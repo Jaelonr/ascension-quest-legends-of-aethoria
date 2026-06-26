@@ -463,7 +463,7 @@ function SystemDangerCard({ danger }: { danger: any }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.22em] text-[#9d8f80]">System reading</p>
-            <p className={cn("mt-1 font-serif text-lg font-bold", critical ? "text-[#d95f45]" : "text-[#d9ad63]")}>World Danger: {danger.label ?? "Critical"}</p>
+            <p className={cn("mt-1 font-serif text-lg font-bold", critical ? "text-[#d95f45]" : "text-[#d9ad63]")}>World Danger: {danger.label ?? "Severe"}</p>
           </div>
           <span className={cn("border px-2 py-1 text-xs font-bold", critical ? "border-[#9d3e2a] text-[#d95f45]" : "border-[#72552e] text-[#d5a557]")}>{value}%</span>
         </div>
