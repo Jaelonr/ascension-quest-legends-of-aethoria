@@ -416,7 +416,9 @@ function pathsFor(category: string, region: RegionTrainingIdentity): CommissionC
 }
 
 function choiceLimitFor(category: string, context: { injuryNotesPresent?: boolean; readiness?: string; neglectedStyle?: string | null }) {
-  if (category === "penalty_restoration" || context.injuryNotesPresent || context.readiness === "limited") return 1;
+  if (category === "penalty_restoration") return 1;
+  if (context.injuryNotesPresent || context.readiness === "critical" || context.readiness === "compromised") return 2;
+  if (context.readiness === "moderate") return 2;
   if (category === "story_linked" || category === "conditioning" || category === "recovery" || context.neglectedStyle) return 2;
   return 3;
 }
@@ -548,8 +550,10 @@ export function buildCommissionExpeditionDetail(category: string, location: Aeth
     discipline: "Complete nutrition, provisioning, hydration, or consistency tasks.",
   };
   const style = recommendedPath.intendedStyle;
-  const aldricReason = context.injuryNotesPresent || context.readiness === "limited"
-    ? "You are not lesser for needing recovery. You are alive. The assignment must build you without gambling with pain."
+  const aldricReason = context.injuryNotesPresent || context.readiness === "critical" || context.readiness === "compromised"
+    ? "You are not lesser for needing recovery. You are alive. The assignment should build you without gambling with pain; if you choose harder work, reduce the dose and record it honestly."
+    : context.readiness === "moderate"
+      ? "The road is open, but Aldric has marked it for restraint. Work is available; recklessness is not required."
     : context.dominantStyle === "strength" && (category === "conditioning" || region.regionId === "frostveil-peaks")
       ? "Frostveil does not care how hard a person can strike if the pass outlasts their breath. This road asks for a different kind of steel."
       : context.neglectedStyle

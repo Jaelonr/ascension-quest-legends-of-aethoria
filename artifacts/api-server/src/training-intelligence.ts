@@ -192,14 +192,14 @@ export async function recomputeTrainingIntelligence(playerId: number) {
     await db.insert(playerTrainingProfilesTable).values({
       playerId,
       recentProgressTrend: "insufficient_data",
-      progressiveOverloadReadiness: "observe",
+      progressiveOverloadReadiness: "moderate",
       summary: "The Hall's ledger has not observed enough training to recommend progression yet.",
       lastUpdatedAt: new Date(),
     }).onConflictDoUpdate({
       target: playerTrainingProfilesTable.playerId,
       set: {
         recentProgressTrend: "insufficient_data",
-        progressiveOverloadReadiness: "observe",
+        progressiveOverloadReadiness: "moderate",
         summary: "The Hall's ledger has not observed enough training to recommend progression yet.",
         lastUpdatedAt: new Date(),
       },
@@ -398,13 +398,13 @@ export async function recomputeTrainingIntelligence(playerId: number) {
         ? "stable"
         : "insufficient_data";
   const readiness = deloadRecommended
-    ? "recovery_first"
+    ? "critical"
     : recommendationTypes.some((type) => type === "add_weight" || type === "add_reps")
-      ? "ready"
-      : "observe";
+      ? "good"
+      : "moderate";
   const summary = deloadRecommended
     ? "Aldric has marked recovery before progression. The ledger shows fatigue or pain signals."
-    : readiness === "ready"
+    : readiness === "good"
       ? "The System has observed a stable pattern. One or more movements are ready for modest progression."
       : "The Hall's ledger is still observing. One day does not make a trend.";
 

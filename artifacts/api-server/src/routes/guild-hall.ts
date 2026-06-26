@@ -143,18 +143,29 @@ function hasAnyEquipment(equipment: string[], keys: string[]) {
   return keys.some((key) => source.includes(key));
 }
 
+function dailyReadiness(input: GuildPlayerContext, hasInjuryFlag = false) {
+  if (hasInjuryFlag) return "compromised";
+  if (input.wearableAnalysis.readiness && input.wearableAnalysis.readiness !== "insufficient_data") {
+    return input.wearableAnalysis.readiness;
+  }
+  if (input.sleepHours != null && input.sleepHours < 4.5) return "critical";
+  if (input.sleepHours != null && input.sleepHours < 6) return "compromised";
+  return "good";
+}
+
 function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
   const hasInjuryFlag = !!input.injuryNotes && /pain|injur|ache|shoulder|back|knee|hip|impingement|strain/i.test(input.injuryNotes);
   if (hasInjuryFlag || input.wearableAnalysis.commissionBias === "recovery" || (input.sleepHours != null && input.sleepHours < 6)) {
+    const readiness = dailyReadiness(input, hasInjuryFlag);
     return {
       category: "recovery",
-      readiness: hasInjuryFlag ? "limited" : "recovery",
+      readiness,
       rationale: hasInjuryFlag
-        ? "Your notes mention a limitation, so the Guild is assigning work that builds consistency without gambling with pain."
+        ? "Your notes mention a limitation, so the Guild recommends work that builds consistency without gambling with pain."
         : input.wearableAnalysis.source
-          ? `${input.wearableAnalysis.aldricLine} The Guild is treating restoration as the mission.`
-          : "Your recovery is thin today, so the Guild is treating restoration as the mission.",
-      counsel: "Restoration is still duty. Move carefully, eat like you intend to heal, and do not confuse courage with ignoring pain.",
+          ? `${input.wearableAnalysis.aldricLine} The Guild recommends restoration, though a reduced training path remains yours to choose.`
+          : "Your recovery is thin today, so the Guild recommends restoration, though the final call remains yours.",
+      counsel: "Restoration is still duty. If you train, move carefully, eat like you intend to heal, and do not confuse courage with ignoring pain.",
       tasks: [
         { description: "Complete a recovery, mobility, or easy walk session", targetValue: 1, unit: "session", order: 1 },
         { description: "Reach today's protein target for repair", targetValue: input.proteinTarget || 1, unit: "g", order: 2 },
@@ -167,7 +178,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
   if (input.missedCommissions > 0) {
     return {
       category: "penalty_restoration",
-      readiness: "ready",
+      readiness: dailyReadiness(input),
       rationale: "A recent commission was missed, so Aldric is assigning a restoration duty that is firm but achievable.",
       counsel: "A missed day is not exile. It is a debt of attention. Pay it with one clean, honest return to the path.",
       tasks: [
@@ -182,7 +193,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
   if (input.wearableAnalysis.commissionBias === "avoid_extra_conditioning") {
     return {
       category: "recovery",
-      readiness: "limited",
+      readiness: dailyReadiness(input),
       rationale: `${input.wearableAnalysis.aldricLine} The Guild will count today's travel before demanding more road work.`,
       counsel: "Do not confuse additional miles with wiser training. Keep the next duty controlled and useful.",
       tasks: [
@@ -197,7 +208,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
   if (input.neglectedStyle === "conditioning" || input.wearableAnalysis.commissionBias === "conditioning" || (input.dominantStyle === "strength" && input.steps < 5000)) {
     return {
       category: "conditioning",
-      readiness: "ready",
+      readiness: dailyReadiness(input),
       rationale: input.wearableAnalysis.commissionBias === "conditioning"
         ? `${input.wearableAnalysis.aldricLine} The road still tests lungs and legs.`
         : "Your record leans toward force, but the road still tests lungs and legs.",
@@ -214,7 +225,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
   if (hasAnyEquipment(input.equipment, ["heavy bag", "fightcamp", "speed bag", "double-end"])) {
     return {
       category: "skill_practice",
-      readiness: "ready",
+      readiness: dailyReadiness(input),
       rationale: "Your equipment supports striking practice, so the Guild is assigning a precision commission.",
       counsel: "Fast hands are only useful when the feet and breath obey. Keep the rounds sharp, not reckless.",
       tasks: [
@@ -229,7 +240,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
   if (hasAnyEquipment(input.equipment, ["wrestling mat", "yoga mat"])) {
     return {
       category: "grappling",
-      readiness: "ready",
+      readiness: dailyReadiness(input),
       rationale: "Your mat access makes control work practical today.",
       counsel: "Control is quiet strength. Drill positions, protect the joints, and leave the floor better than you found it.",
       tasks: [
@@ -243,7 +254,7 @@ function buildDailyCommissionPlan(input: GuildPlayerContext): CommissionPlan {
 
   return {
     category: input.activeRaidTitle ? "story_linked" : "training",
-    readiness: "ready",
+    readiness: dailyReadiness(input),
     rationale: input.activeRaidTitle
       ? `An active threat remains on the board: ${input.activeRaidTitle}. Today's commission prepares you for it.`
       : "A balanced daily commission chosen from your current Guild record.",
@@ -306,7 +317,7 @@ function buildTrainingLedgerAdjustment(playerContext: GuildPlayerContext, traini
   const weakest = profile?.weakestMovementPatterns?.[0] as string | undefined;
   if (!profile && !topRecommendation) return null;
 
-  if (profile?.deloadRecommended || profile?.progressiveOverloadReadiness === "recovery_first") {
+  if (profile?.deloadRecommended || profile?.progressiveOverloadReadiness === "critical" || profile?.progressiveOverloadReadiness === "compromised" || profile?.progressiveOverloadReadiness === "recovery_first") {
     const plan = buildDailyCommissionPlan({
       ...playerContext,
       injuryNotes: playerContext.injuryNotes ?? "Training ledger recovery flag",
@@ -314,9 +325,9 @@ function buildTrainingLedgerAdjustment(playerContext: GuildPlayerContext, traini
     return {
       ...plan,
       category: "recovery",
-      readiness: "recovery",
-      rationale: "The Hall's Training Ledger shows fatigue or pain signals, so Aldric has chosen a restoration duty disguised as field support.",
-      counsel: "Strength can wait. A reckless adventurer does not become an old one.",
+      readiness: profile?.progressiveOverloadReadiness === "critical" || profile?.progressiveOverloadReadiness === "recovery_first" ? "critical" : "compromised",
+      rationale: "The Hall's Training Ledger shows fatigue or pain signals, so Aldric recommends a restoration duty disguised as field support.",
+      counsel: "Strength can wait. If you train anyway, reduce the dose and record it honestly. A reckless adventurer does not become an old one.",
       context: {
         reason: "training_ledger_recovery",
         trainingLedgerSummary: profile?.summary,
@@ -335,7 +346,7 @@ function buildTrainingLedgerAdjustment(playerContext: GuildPlayerContext, traini
     return {
       ...plan,
       category: "conditioning",
-      readiness: "ready",
+      readiness: "good",
       rationale: "The ledger shows power holding steady, but the road will ask for lungs before it asks for force.",
       counsel: "You have built force. Today the Guild hides a different lesson in the route itself.",
       context: {
@@ -357,7 +368,7 @@ function buildTrainingLedgerAdjustment(playerContext: GuildPlayerContext, traini
     return {
       ...plan,
       category: "training",
-      readiness: "ready",
+      readiness: "good",
       rationale: `The Hall's ledger has marked ${topRecommendation.exerciseName} for modest progression.`,
       counsel: "The increase should be small. Enough to keep the blade sharp, not enough to court injury.",
       context: {
@@ -840,7 +851,7 @@ async function getGuildHallSnapshot(userId: string) {
       id: commission?.id ?? 0,
       category: commission?.category ?? plan.category,
       rationale: commission?.rationale ?? plan.rationale,
-      readiness: commission?.readiness ?? "ready",
+      readiness: commission?.readiness ?? "good",
       reportedAt: commission?.reportedAt?.toISOString() ?? null,
       location: commissionContext.location ?? null,
       travel: commissionContext.travel ?? null,
@@ -875,7 +886,8 @@ async function getGuildHallSnapshot(userId: string) {
       },
       guardrails: {
         injuryNotesPresent: !!playerContext.injuryNotes,
-        recoveryFirst: plan.readiness === "recovery" || plan.readiness === "limited",
+        reducedReadiness: ["moderate", "compromised", "critical"].includes(plan.readiness),
+        playerAgency: "Recommendations guide the player; they do not disable training.",
       },
     },
     campaign: { chapter: 1, title: "The Awakening" },

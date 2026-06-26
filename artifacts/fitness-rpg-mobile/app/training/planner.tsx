@@ -330,7 +330,7 @@ export default function TrainingPlannerScreen() {
             ? "Reading the Hall's Training Ledger..."
             : intelligence?.profile?.deloadRecommended
               ? "Recovery Before Progression"
-              : intelligence?.profile?.progressiveOverloadReadiness === "ready"
+              : intelligence?.profile?.progressiveOverloadReadiness === "good" || intelligence?.profile?.progressiveOverloadReadiness === "optimal"
                 ? "Progression Watch Active"
                 : "Observation Phase"}
         </Text>

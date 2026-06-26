@@ -46,7 +46,7 @@ type WearableSummary = {
 type WearableReadiness = {
   source: string | null;
   lastSyncedAt: string | null;
-  readiness: "high" | "normal" | "limited" | "recovery" | "insufficient_data";
+    readiness: "optimal" | "good" | "moderate" | "compromised" | "critical" | "insufficient_data";
   recommendation: string;
   activeRecommendation: string;
   commissionBias: string;

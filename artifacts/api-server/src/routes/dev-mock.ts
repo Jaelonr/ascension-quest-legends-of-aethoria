@@ -833,7 +833,11 @@ const buildMockGuildHall = () => ({
       proteinTarget: 180,
       mealsToday: 2,
     },
-    guardrails: { injuryNotesPresent: false, recoveryFirst: false },
+    guardrails: {
+      injuryNotesPresent: false,
+      reducedReadiness: false,
+      playerAgency: "Recommendations guide the player; they do not disable training.",
+    },
   },
   campaign: { chapter: 1, title: "The Awakening" },
   equippedGear: [
@@ -854,7 +858,7 @@ const buildMockGuildHall = () => ({
     restingHr: 62,
     source: "manual",
     lastSyncedAt: nowIso(),
-    interpretation: "normal",
+    interpretation: "good",
     activeRecommendation: "A light training or walking duty is appropriate while the ledger gathers more synced history.",
     aldricLine: "The ledger shows no reason to hold you back, provided the work stays honest and recorded.",
     systemAnalysis: {

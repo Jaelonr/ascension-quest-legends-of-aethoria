@@ -24,7 +24,7 @@ export interface WearableMetricEntry {
 export interface WearableSystemAnalysis {
   source: string | null;
   lastSyncedAt: string | null;
-  readiness: "high" | "normal" | "limited" | "recovery" | "insufficient_data";
+  readiness: "optimal" | "good" | "moderate" | "compromised" | "critical" | "insufficient_data";
   recommendation: string;
   activeRecommendation: string;
   commissionBias: "recovery" | "conditioning" | "training" | "avoid_extra_conditioning" | "observe";
@@ -108,19 +108,30 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
 
   const reasoning: string[] = [];
   const playerDataUsed: string[] = [];
-  let readiness: WearableSystemAnalysis["readiness"] = metricCount ? "normal" : "insufficient_data";
+  let readiness: WearableSystemAnalysis["readiness"] = metricCount ? "good" : "insufficient_data";
   let commissionBias: WearableSystemAnalysis["commissionBias"] = metricCount ? "training" : "observe";
   let recommendation = "Collect more wearable or manual recovery data before adapting today's training.";
   let activeRecommendation = "Log steps, sleep, recovery notes, or sync Health Connect.";
 
   if (sleepLastNight != null) {
     playerDataUsed.push(`Sleep: ${sleepLastNight} hours`);
-    if (sleepLastNight < 6) {
-      readiness = "recovery";
+    if (sleepLastNight < 4.5) {
+      readiness = "critical";
+      commissionBias = "recovery";
+      reasoning.push("Sleep is far below the recovery threshold used by Ascension Quest for harder training days.");
+      recommendation = "Strongly prefer recovery, mobility, nutrition, or very low-intensity work today.";
+      activeRecommendation = "Do not progress load today. If training anyway, choose a reduced-intensity path.";
+    } else if (sleepLastNight < 6) {
+      readiness = "compromised";
       commissionBias = "recovery";
       reasoning.push("Sleep is below the recovery threshold used by Ascension Quest for harder training days.");
       recommendation = "Prefer recovery, mobility, nutrition, or low-intensity work today.";
-      activeRecommendation = "Avoid aggressive progression and choose a recovery-friendly commission.";
+      activeRecommendation = "Avoid aggressive progression. You may still train, but reduce intensity or choose recovery.";
+    } else if (sleepLastNight >= 8) {
+      readiness = "optimal";
+      reasoning.push("Sleep supports normal or harder work if recent training also supports it.");
+      recommendation = "Training is reasonable if other signals and recent performance agree.";
+      activeRecommendation = "Harder work is available, but progression still depends on workout history and pain-free execution.";
     } else {
       reasoning.push("Sleep is not below the low-sleep threshold.");
     }
@@ -128,13 +139,13 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
 
   if (stepsToday != null) {
     playerDataUsed.push(`Steps today: ${stepsToday}`);
-    if (stepsToday >= 12000 && readiness !== "recovery") {
-      readiness = sleepLastNight != null && sleepLastNight < 7 ? "limited" : "normal";
+    if (stepsToday >= 12000 && readiness !== "critical" && readiness !== "compromised") {
+      readiness = sleepLastNight != null && sleepLastNight < 7 ? "moderate" : readiness === "optimal" ? "good" : readiness;
       commissionBias = "avoid_extra_conditioning";
       reasoning.push("Step volume is high enough that extra conditioning should be assigned cautiously.");
       recommendation = "Count today's travel contribution and avoid piling on unnecessary conditioning.";
       activeRecommendation = "Use steps for exploration progress; choose strength, recovery, or skill work if training more.";
-    } else if (stepsToday < 3500 && readiness === "normal") {
+    } else if (stepsToday < 3500 && (readiness === "good" || readiness === "optimal")) {
       commissionBias = "conditioning";
       reasoning.push("Low current step volume supports a walking or light-conditioning duty if recovery is otherwise acceptable.");
       recommendation = "A walking, mobility, or light-conditioning commission is appropriate.";
@@ -145,7 +156,7 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
   if (hrvToday != null && avgHrv7d != null) {
     playerDataUsed.push(`HRV today: ${hrvToday}`, `7-day average HRV: ${avgHrv7d}`);
     if (hrvToday < avgHrv7d * 0.85) {
-      readiness = "limited";
+      readiness = readiness === "critical" ? "critical" : "compromised";
       commissionBias = "recovery";
       reasoning.push("HRV is materially below the recent personal average, so intensity should be moderated.");
       recommendation = "Favor lower-intensity work until recovery data returns toward baseline.";
@@ -156,7 +167,7 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
   if (restingHrToday != null && avgRestingHr7d != null) {
     playerDataUsed.push(`Resting HR today: ${restingHrToday}`, `7-day average resting HR: ${avgRestingHr7d}`);
     if (restingHrToday >= avgRestingHr7d + 8) {
-      readiness = "limited";
+      readiness = readiness === "critical" ? "critical" : "compromised";
       commissionBias = "recovery";
       reasoning.push("Resting heart rate is elevated above the recent personal average, which lowers confidence in harder work.");
       recommendation = "Use a recovery-first recommendation unless other context clearly supports training.";
@@ -175,10 +186,12 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
     reasoning.push("No strong wearable signal was available, so the recommendation stays conservative.");
   }
 
-  const aldricLine = readiness === "recovery"
-    ? "The Hall's records show thin recovery. I would send you to restoration work before asking for fire."
-    : readiness === "limited"
-      ? "Your reserves are not empty, but they are not to be squandered. Take the measured road today."
+  const aldricLine = readiness === "critical"
+    ? "The Hall's records show a body running on scraps. I would choose restoration, and if you insist on training, I would strip the work down to the bone."
+    : readiness === "compromised"
+      ? "Your reserves are not empty, but they are not to be squandered. I would take the measured road today."
+      : readiness === "moderate"
+        ? "You can work, but not every road should become a proving ground. Keep the dose honest."
       : commissionBias === "avoid_extra_conditioning"
         ? "You have already traveled far. I will not mistake more marching for better training."
         : commissionBias === "conditioning"
@@ -215,11 +228,11 @@ export function buildWearableSystemAnalysis(entries: WearableMetricEntry[], toda
       playerDataUsed,
       evidence: [
         "Wearable values are treated as context signals, not diagnosis.",
-        "Recovery concerns suppress aggressive training progression and favor lower-intensity duties.",
+        "Recovery concerns suppress aggressive training progression and favor lower-intensity duties without removing player agency.",
         "High step volume can satisfy travel/exploration progress without implying continent-scale movement.",
       ],
       sourceDocuments: wearableSourceDocuments(source),
-      safetyNote: readiness === "limited" || readiness === "recovery"
+      safetyNote: readiness === "moderate" || readiness === "compromised" || readiness === "critical"
         ? "If symptoms are severe, unusual, or persistent, consult a qualified healthcare professional."
         : null,
       insufficientData: confidenceLevel === "insufficient_data",
