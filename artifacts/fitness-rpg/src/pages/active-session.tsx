@@ -39,11 +39,11 @@ const STYLE_COLORS: Record<string, { text: string; border: string; bg: string; g
 };
 
 const VERDICT_META: Record<string, { color: string; icon: string }> = {
-  "Victory":           { color: "text-yellow-400", icon: "🏆" },
-  "Narrow Victory":    { color: "text-cyan-400",   icon: "⚔️" },
-  "Recovery Secured":  { color: "text-green-400",  icon: "✦" },
-  "Strategic Retreat": { color: "text-orange-400", icon: "🛡️" },
-  "Training Complete": { color: "text-green-400",  icon: "✅" },
+  "Victory":           { color: "text-yellow-400", icon: "VICTORY" },
+  "Narrow Victory":    { color: "text-cyan-400",   icon: "FIELD WON" },
+  "Recovery Secured":  { color: "text-green-400",  icon: "RECOVERY" },
+  "Strategic Retreat": { color: "text-orange-400", icon: "RETREAT" },
+  "Training Complete": { color: "text-green-400",  icon: "COMPLETE" },
 };
 
 interface CompletionData {
@@ -60,10 +60,12 @@ function CombatReplayModal({
   data,
   sessionName,
   onReturn,
+  onChronicle,
 }: {
   data: CompletionData;
   sessionName: string;
   onReturn: () => void;
+  onChronicle: () => void;
 }) {
   const [shown, setShown] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
@@ -255,7 +257,7 @@ function CombatReplayModal({
               const cls = rarityColors[r.rarity] ?? rarityColors.common;
               return (
                 <div className={cn("border rounded-xl p-3.5 bg-white/5 space-y-1", cls)}>
-                  <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">⚙ Gear Drop</p>
+                  <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">Recovered Gear</p>
                   <div className="flex items-center justify-between gap-2">
                     <span className={cn("text-sm font-bold font-serif", cls.split(" ")[0])}>{r.name}</span>
                     <span className={cn("text-[10px] font-mono uppercase border px-2 py-0.5 rounded", cls)}>{r.rarity}</span>
@@ -268,7 +270,7 @@ function CombatReplayModal({
             {/* Raid impact */}
             {replay?.raidImpact && (
               <div className="border border-orange-400/30 bg-orange-400/10 rounded-xl p-3.5">
-                <p className="text-[9px] font-mono uppercase tracking-widest text-orange-400 mb-1.5">⚔ Raid Progress</p>
+                <p className="text-[9px] font-mono uppercase tracking-widest text-orange-400 mb-1.5">Raid Progress</p>
                 <p className="text-sm text-foreground/90 leading-relaxed">{replay.raidImpact}</p>
               </div>
             )}
@@ -285,7 +287,7 @@ function CombatReplayModal({
             {/* Mission reward */}
             {data.missionClaimed && (
               <div className="border border-yellow-400/40 bg-yellow-400/5 rounded-xl p-4 text-center space-y-1 animate-in fade-in duration-700">
-                <p className="text-[9px] font-mono uppercase tracking-widest text-yellow-400/70 mb-2">⚔ Commission Sealed</p>
+                <p className="text-[9px] font-mono uppercase tracking-widest text-yellow-400/70 mb-2">Commission Sealed</p>
                 <p className="font-serif text-base font-bold text-yellow-400">{data.missionClaimed.title}</p>
                 <div className="flex justify-center gap-4 text-sm font-mono mt-1">
                   <span className="text-cyan-400">+{data.missionClaimed.xpReward} XP</span>
@@ -300,7 +302,7 @@ function CombatReplayModal({
               "text-center py-3 border border-white/10 bg-white/5 rounded-xl font-mono text-base font-bold tracking-wide",
               verdictMeta.color
             )}>
-              {verdictMeta.icon} {replay?.verdict ?? "Training Complete"}
+              {verdictMeta.icon}: {replay?.verdict ?? "Training Complete"}
             </div>
 
             {/* Narrative consequence */}
@@ -311,12 +313,21 @@ function CombatReplayModal({
               </div>
             )}
 
-            <Button
-              className="w-full py-6 text-base font-bold bg-cyan-500/20 border border-cyan-400/50 text-cyan-400 hover:bg-cyan-500/30 font-mono tracking-widest"
-              onClick={onReturn}
-            >
-              Return to Guild Hall
-            </Button>
+            <div className="grid gap-2">
+              <Button
+                className="w-full py-6 text-base font-bold bg-cyan-500/20 border border-cyan-400/50 text-cyan-400 hover:bg-cyan-500/30 font-mono tracking-widest"
+                onClick={onReturn}
+              >
+                Return to Guild Hall
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full py-5 border-[#6b4d2f] bg-[#15110d] text-[#d9ad63] hover:bg-[#21170f] font-mono tracking-widest"
+                onClick={onChronicle}
+              >
+                View In Chronicle
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -488,7 +499,8 @@ export default function ActiveSession() {
       <CombatReplayModal
         data={completionData}
         sessionName={session.name}
-        onReturn={() => setLocation("/training")}
+        onReturn={() => setLocation("/guild-hall")}
+        onChronicle={() => setLocation("/chronicle?tab=replays")}
       />
     );
   }

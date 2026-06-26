@@ -86,10 +86,12 @@ function CombatReplayModal({
   data,
   visible,
   onClose,
+  onChronicle,
 }: {
   data: CompletionData;
   visible: boolean;
   onClose: () => void;
+  onChronicle: () => void;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -181,7 +183,7 @@ function CombatReplayModal({
           ))}
           {!allRevealed && events.length > 0 && (
             <View style={s.dotsRow}>
-              <Text style={s.dots}>• • •</Text>
+              <Text style={s.dots}>...</Text>
             </View>
           )}
 
@@ -190,7 +192,7 @@ function CombatReplayModal({
             <View style={s.statsBlock}>
               <View style={s.statsRow}>
                 <View style={[s.statCard, { borderColor: "#0dcef540" }]}>
-                  <Text style={[s.statIcon]}>⚡</Text>
+                  <Text style={[s.statIcon]}>XP</Text>
                   <Text style={[s.statValue, { color: "#0dcef5" }]}>+{data.xpEarned}</Text>
                   <Text style={s.statLabel}>XP Earned</Text>
                 </View>
@@ -288,6 +290,9 @@ function CombatReplayModal({
 
               <TouchableOpacity style={s.returnBtn} onPress={onClose} activeOpacity={0.8}>
                 <Text style={s.returnBtnText}>RETURN TO THE HALL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.chronicleBtn} onPress={onChronicle} activeOpacity={0.8}>
+                <Text style={s.chronicleBtnText}>VIEW IN CHRONICLE</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -479,7 +484,7 @@ export default function ActiveSessionScreen() {
 
   const handleFinish = () => {
     Alert.alert(
-      "⚔️ Finish Battle?",
+      "Finish Battle?",
       "This will complete your session and generate your combat report.",
       [
         { text: "Cancel", style: "cancel" },
@@ -527,7 +532,12 @@ export default function ActiveSessionScreen() {
 
   const handleReplayClose = () => {
     setShowReplay(false);
-    router.back();
+    router.replace("/(tabs)" as any);
+  };
+
+  const handleReplayChronicle = () => {
+    setShowReplay(false);
+    router.replace("/(tabs)/battle-log?tab=replays" as any);
   };
 
   const totalPlanned = exercises.reduce((n, e) => n + (e.sets ?? 3), 0);
@@ -638,7 +648,7 @@ export default function ActiveSessionScreen() {
                 <View style={{ flex: 1 }}>
                   <View style={s.exTitleRow}>
                     <Text style={{ fontSize: 16, marginRight: 6 }}>
-                      {isComplete ? "✅" : "⚔️"}
+                      {isComplete ? "Done" : "Log"}
                     </Text>
                     <Text style={[s.exName, { color: colors.foreground }]} numberOfLines={1}>
                       {ex.name ?? `Exercise ${exId}`}
@@ -801,6 +811,7 @@ export default function ActiveSessionScreen() {
           data={completion}
           visible={showReplay}
           onClose={handleReplayClose}
+          onChronicle={handleReplayChronicle}
         />
       )}
     </KeyboardAvoidingView>
@@ -1181,12 +1192,28 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 4,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   returnBtnText: {
     fontSize: 14,
     fontFamily: "Inter_700Bold",
     color: "#0dcef5",
+    letterSpacing: 2,
+  },
+  chronicleBtn: {
+    backgroundColor: "#15110d",
+    borderWidth: 1,
+    borderColor: "#6b4d2f",
+    borderRadius: 12,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  chronicleBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#d9ad63",
     letterSpacing: 2,
   },
 });
