@@ -50,7 +50,7 @@ type ChatLine = { id: string; role: "user" | "assistant"; content: string };
 function WorldDangerBar({ danger }: { danger: any }) {
   if (!danger) return null;
   const value = Math.max(0, Math.min(100, Number(danger.value ?? 100)));
-  const critical = value >= 85;
+  const critical = danger.state === "critical" || value >= 75;
   return (
     <section className={cn(
       "mt-4 border bg-[#11100e] p-4",

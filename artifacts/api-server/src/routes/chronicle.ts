@@ -7,6 +7,7 @@ import {
   guildReportsTable,
   itemDiscoveriesTable,
   personalRecordsTable,
+  playerStyleIdentityTable,
   playerTitlesTable,
   questsTable,
   titlesTable,
@@ -17,11 +18,40 @@ import { getOrCreatePlayer } from "../progression";
 import { buildWorldDanger } from "../domain/world-danger";
 
 const router = Router();
+const STYLE_KEYS = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
+
+function serializeStyleIdentity(identity?: typeof playerStyleIdentityTable.$inferSelect | null) {
+  if (!identity) return null;
+  const scores = {
+    strength: identity.strengthScore,
+    striking: identity.strikingScore,
+    conditioning: identity.conditioningScore,
+    grappling: identity.grapplingScore,
+    recovery: identity.recoveryScore,
+    discipline: identity.disciplineScore,
+  };
+  const total = STYLE_KEYS.reduce((sum, key) => sum + scores[key], 0);
+  const ranked = STYLE_KEYS.map((key) => ({ key, score: scores[key] })).sort((a, b) => b.score - a.score);
+  const percentages = Object.fromEntries(STYLE_KEYS.map((key) => [
+    key,
+    total > 0 ? Math.round((scores[key] / total) * 100) : 0,
+  ]));
+  return {
+    id: identity.id,
+    totalSessions: identity.totalSessions,
+    dominantStyle: ranked[0]?.score ? ranked[0].key : null,
+    secondaryStyle: ranked[1]?.score ? ranked[1].key : null,
+    hybridArchetype: identity.hybridArchetype,
+    scores,
+    percentages,
+    updatedAt: identity.updatedAt.toISOString(),
+  };
+}
 
 router.get("/chronicle/summary", async (req, res) => {
   try {
     const { player } = await getOrCreatePlayer(req.userId);
-    const [replays, reports, discoveries, raids, titles, records, milestones, worldEvents, campaign] = await Promise.all([
+    const [replays, reports, discoveries, raids, titles, records, milestones, worldEvents, campaign, styleIdentity] = await Promise.all([
       db.select().from(combatReplaysTable).where(eq(combatReplaysTable.playerId, player.id)).orderBy(desc(combatReplaysTable.createdAt)).limit(20),
       db.select().from(guildReportsTable).where(eq(guildReportsTable.playerId, player.id)).orderBy(desc(guildReportsTable.generatedAt)).limit(12),
       db.select().from(itemDiscoveriesTable).where(eq(itemDiscoveriesTable.playerId, player.id)).orderBy(desc(itemDiscoveriesTable.discoveredAt)).limit(50),
@@ -42,10 +72,12 @@ router.get("/chronicle/summary", async (req, res) => {
         .orderBy(desc(guildMasterMemoriesTable.importance), desc(guildMasterMemoriesTable.occurredAt)).limit(20),
       db.select().from(worldEventsTable).where(eq(worldEventsTable.playerId, player.id)).orderBy(desc(worldEventsTable.occurredAt)).limit(20),
       db.select().from(questsTable).where(and(eq(questsTable.playerId, player.id), eq(questsTable.type, "main"))).orderBy(desc(questsTable.createdAt)).limit(10),
+      db.select().from(playerStyleIdentityTable).where(eq(playerStyleIdentityTable.playerId, player.id)).limit(1),
     ]);
 
     res.json({
       worldDanger: buildWorldDanger(raids),
+      styleIdentity: serializeStyleIdentity(styleIdentity[0]),
       battleReplays: replays.map((replay) => ({
         ...replay,
         createdAt: replay.createdAt.toISOString(),

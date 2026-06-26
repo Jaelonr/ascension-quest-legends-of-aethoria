@@ -10,6 +10,165 @@ const isLaunchStoreItem = (item: typeof storeItemsTable.$inferSelect) =>
 
 type HallOfferingSeed = typeof storeItemsTable.$inferInsert;
 
+function hallGear(
+  name: string,
+  description: string,
+  slot: string,
+  subtype: string,
+  goldCost: number,
+  rarity: HallOfferingSeed["rarity"],
+  styleAffinity: string,
+  section: HallOfferingSeed["section"] = "permanent",
+  effectValue = 1,
+  levelRequired?: number,
+): HallOfferingSeed {
+  return {
+    name,
+    description,
+    type: "equipment_skin",
+    goldCost,
+    rarity,
+    section,
+    category: `gear:${slot}:${subtype}`,
+    styleAffinity,
+    effectValue,
+    ...(levelRequired ? { levelRequired } : {}),
+  };
+}
+
+function hallConsumable(
+  name: string,
+  description: string,
+  category: string,
+  goldCost: number,
+  rarity: HallOfferingSeed["rarity"],
+  section: HallOfferingSeed["section"],
+  effectValue: number,
+): HallOfferingSeed {
+  return {
+    name,
+    description,
+    type: "recovery_token",
+    goldCost,
+    rarity,
+    section,
+    category,
+    styleAffinity: "recovery",
+    effectValue,
+  };
+}
+
+const EXPANDED_HALL_GEAR_OFFERINGS: HallOfferingSeed[] = [
+  hallGear("Padded Initiate Cap", "A soft training cap for new adventurers who are still learning how often the road strikes first.", "head", "cloth", 90, "common", "discipline"),
+  hallGear("Leather Trail Hood", "Frontier scouts wear hoods like this when rain and branches make helmets a poor bargain.", "head", "leather", 190, "common", "conditioning"),
+  hallGear("Iron Kettle Helm", "Plain iron, dented in the old places. It belongs to adventurers who would rather survive than pose.", "head", "metal", 440, "uncommon", "strength"),
+  hallGear("Frostveil Fur Hood", "White fur and blue stitching from the northern passes. It marks the wearer as someone who respects cold roads.", "head", "fur", 620, "uncommon", "frost", "daily", 1),
+  hallGear("Sunken Pearl Circlet", "A circlet traded through N'Thaloris surface docks. Its pearl never dries, even beside the Hall fire.", "head", "circlet", 980, "rare", "water", "weekly", 2),
+  hallGear("Ember Champion Crown", "A red-brass browguard worn after formal trial bouts in the Ember Plains.", "head", "crown", 1280, "rare", "fire", "weekly", 2),
+  hallGear("Diamondwake Halo", "A luminous headpiece that bends spell-light into a calm ring behind the wearer.", "head", "halo", 2100, "epic", "light", "raid", 3, 6),
+
+  hallGear("Corded Training Amulet", "A simple cord charm given to recruits who keep showing up after the easy days end.", "neck", "amulet", 120, "common", "discipline"),
+  hallGear("Copper Vitality Chain", "A healer's chain stamped with a grain sheaf, a waterskin, and a closed fist.", "neck", "amulet", 310, "uncommon", "recovery"),
+  hallGear("Silver Coast Charter Pendant", "A polished pendant used by merchant envoys to prove they have business worth protecting.", "neck", "pendant", 760, "rare", "discipline", "weekly", 2),
+  hallGear("Blackstone Oath Torque", "A heavy neck ring from old fortress garrisons. It makes promises feel heavier.", "neck", "torque", 880, "rare", "earth", "weekly", 2),
+  hallGear("Leviathan-Touched Locket", "A sealed locket from the Sunken Kingdom. The inside smells faintly of stormwater.", "neck", "locket", 1460, "epic", "water", "raid", 3, 5),
+
+  hallGear("Quilted Shoulder Guards", "Light guards for training yards, caravan roads, and the first few mistakes every adventurer makes.", "shoulders", "cloth", 150, "common", "discipline"),
+  hallGear("Leather Ranger Mantle", "A flexible mantle favored by hunters who need to climb, crawl, and keep moving.", "shoulders", "leather", 330, "uncommon", "conditioning"),
+  hallGear("Iron Pauldrons", "Plain pauldrons that make no promise except that the first blow will meet metal.", "shoulders", "metal", 640, "uncommon", "strength"),
+  hallGear("Emberplate Shoulders", "Wide red plates made to look larger in torchlight and narrower in a duel.", "shoulders", "plate", 1140, "rare", "fire", "weekly", 2),
+  hallGear("Mithril Wing Mantle", "A bright mantle from Lumenhall armorers, cut to suggest noble speed rather than brute mass.", "shoulders", "mithril", 1550, "epic", "light", "raid", 3, 5),
+
+  hallGear("Basin Workshirt", "Sturdy village clothing for honest labor, long walks, and chores that become legend only later.", "chest", "clothing", 110, "common", "recovery"),
+  hallGear("Frontier Beast-Hide Vest", "Tough hide armor with claw scars left visible as a warning and a boast.", "chest", "leather", 520, "uncommon", "grappling", "daily", 1),
+  hallGear("Blackstone Brigandine", "Layered plates under dark cloth, favored by dungeon crews entering old fortress roads.", "chest", "brigandine", 870, "rare", "earth", "weekly", 2),
+  hallGear("Ember Plains Cuirass", "A heat-darkened cuirass worn by champions who settle direct problems directly.", "chest", "plate", 1180, "rare", "fire", "weekly", 2),
+  hallGear("Tidecourt Robe", "A formal robe from N'Thaloris surface envoys, embroidered with districts no map has shown you yet.", "chest", "robe", 1320, "rare", "water", "weekly", 2),
+  hallGear("Mythril Duel Harness", "Light, expensive, and difficult to mistake for common steel. It is armor that expects witnesses.", "chest", "mithril", 1900, "epic", "light", "raid", 3, 6),
+  hallGear("Diamond Oath Plate", "Ceremonial armor faceted like a vow. It does not make you invincible; it makes you visible.", "chest", "diamond", 2800, "legendary", "light", "raid", 4, 8),
+
+  hallGear("Practice Bracers", "Cheap bracers for learning the difference between effort and recklessness.", "arms", "cloth", 100, "common", "discipline"),
+  hallGear("Rope-Bound Vambraces", "Frontier arm guards wrapped in climbing rope and old field charms.", "arms", "leather", 260, "common", "grappling"),
+  hallGear("Iron Forearm Guards", "Blunt iron guards with enough weight to make every carry feel official.", "arms", "metal", 410, "uncommon", "strength"),
+  hallGear("Stormrunner Bracers", "Brass rings click softly when the wearer changes pace.", "arms", "storm", 790, "rare", "storm", "weekly", 2),
+  hallGear("Frostline Vambraces", "Cold-blue guards used by scouts who tie discipline to breath control.", "arms", "frost", 930, "rare", "frost", "weekly", 2),
+
+  hallGear("Canvas Training Gloves", "Gloves for ropes, bags, cold handles, and first attempts.", "hands", "cloth", 120, "common", "discipline"),
+  hallGear("Dockfighter Wraps", "Salt-stained wraps from the Silver Coast, better for footwork than pride.", "hands", "wraps", 290, "uncommon", "striking", "daily", 1),
+  hallGear("Grappler's Grip Gloves", "Fingerless gloves used by frontier handlers who prefer control to slaughter.", "hands", "leather", 360, "uncommon", "grappling"),
+  hallGear("Blackstone Crusher Gauntlets", "Heavy gauntlets for breaking doors, carrying stones, and reminding monsters what mass means.", "hands", "metal", 920, "rare", "earth", "weekly", 2),
+  hallGear("Ember Fist Wraps", "Red wraps used in clan challenge circles where speed and heat blur together.", "hands", "wraps", 880, "rare", "fire", "weekly", 2),
+
+  hallGear("Plain Leather Belt", "A belt with room for chalk, knife, token, and one poor decision.", "waist", "belt", 80, "common", "discipline"),
+  hallGear("Provisioner's Sash", "A broad sash with hidden pockets for salts, notes, and little things that keep expeditions alive.", "waist", "sash", 220, "common", "recovery"),
+  hallGear("Iron-Buckled Warbelt", "A belt made to hold weight without complaint.", "waist", "belt", 460, "uncommon", "strength"),
+  hallGear("Lumenhall Coin Girdle", "A fashionable girdle whose tiny coins mark the wearer as welcome near serious merchants.", "waist", "girdle", 870, "rare", "discipline", "weekly", 2),
+  hallGear("Tideglass Waist Chain", "A decorative chain worn by traders who know which docks in N'Thaloris are above water at dusk.", "waist", "chain", 980, "rare", "water", "weekly", 2),
+
+  hallGear("Traveler's Trousers", "Durable trousers patched in places that suggest the previous owner kept walking.", "legs", "clothing", 100, "common", "conditioning"),
+  hallGear("Leather Trail Greaves", "Light greaves for underbrush, gravel roads, and the kind of kneeling that happens after hard rounds.", "legs", "leather", 300, "uncommon", "conditioning"),
+  hallGear("Iron Legguards", "Heavy guards for adventurers training the lower body to carry more than its own doubt.", "legs", "metal", 620, "uncommon", "strength"),
+  hallGear("Verdant Warden Pants", "Green fieldwear from Basin wardens who patrol slowly, consistently, and longer than expected.", "legs", "cloth", 680, "rare", "recovery", "weekly", 2),
+  hallGear("Mithril Runner Greaves", "Bright greaves cut thin enough to suggest speed and expensive enough to cause gossip.", "legs", "mithril", 1320, "epic", "storm", "raid", 3, 5),
+
+  hallGear("Village Sandals", "Simple sandals from a village where chores start before sunrise and end when they are done.", "feet", "sandals", 70, "common", "recovery"),
+  hallGear("Harbor Road Boots", "Boots made for wet boards, slick stones, and paperwork that somehow becomes danger.", "feet", "boots", 250, "common", "conditioning"),
+  hallGear("Iron March Boots", "Heavy boots that make the floor aware of you.", "feet", "metal", 520, "uncommon", "strength"),
+  hallGear("Frostveil Climbing Boots", "Spiked boots for cold passes where arrogance becomes a weather condition.", "feet", "frost", 760, "rare", "frost", "weekly", 2),
+  hallGear("Stormstep Boots", "Blue-laced boots that seem to arrive half a beat before the rest of you.", "feet", "storm", 1040, "rare", "storm", "weekly", 2),
+
+  hallGear("Hooded Road Cloak", "A dark cloak for being less interesting to rain, guards, and tavern questions.", "cloak", "cloth", 180, "common", "discipline"),
+  hallGear("Verdant Healer's Cloak", "A green cloak with herb pockets and a smell of clean water.", "cloak", "cloth", 520, "uncommon", "recovery"),
+  hallGear("Silver Envoy Mantle", "A formal mantle cut for negotiation, status, and being seen entering the correct door.", "cloak", "mantle", 920, "rare", "discipline", "weekly", 2),
+  hallGear("Shadowgate Cloak", "A dark cloak whose lining shows stars that do not belong above Aethoria.", "cloak", "shadow", 1550, "epic", "shadow", "raid", 3, 6),
+  hallGear("Dawnlit Return Cloak", "A pale cloak that glows faintly whenever a Return Stone wakes.", "cloak", "light", 1880, "epic", "light", "raid", 3, 6),
+
+  hallGear("Training Dagger", "A dull dagger for learning lines, angles, and humility.", "weapon", "dagger", 140, "common", "striking"),
+  hallGear("Ashwood Wand", "A simple wand that turns focus into a visible spark and little else.", "weapon", "wand", 220, "common", "arcane"),
+  hallGear("Frontier Handaxe", "A practical axe for brush, camp work, and the sort of trouble that ignores warnings.", "weapon", "axe", 340, "uncommon", "strength"),
+  hallGear("Blackstone Warhammer", "A blunt hammer for problems that stopped caring about elegance centuries ago.", "weapon", "hammer", 760, "rare", "earth", "weekly", 2),
+  hallGear("Silver Coast Rapier", "A narrow blade made for quick feet, clean timing, and trouble that must not become scandal.", "weapon", "rapier", 840, "rare", "striking", "weekly", 2),
+  hallGear("Frostveil Longbow", "A pale longbow that teaches patience through cold fingers and distant targets.", "weapon", "bow", 900, "rare", "frost", "weekly", 2),
+  hallGear("N'Thalorian Coral Staff", "A coral-forged staff crafted with techniques unavailable outside the Sunken Kingdom.", "weapon", "staff", 1720, "epic", "water", "raid", 3, 6),
+  hallGear("Emberglass Greatsword", "A broad blade that glows like banked coals when the wielder has earned the heat.", "weapon", "greatsword", 1840, "epic", "fire", "raid", 3, 6),
+  hallGear("Mythril Skybow", "A silver bow from merchant-prince collections, too fine to be common and too useful to be only decorative.", "weapon", "bow", 2050, "epic", "light", "raid", 3, 7),
+  hallGear("Diamond Starstaff", "A staff crowned with a faceted stone that splits mana into seven patient colors.", "weapon", "staff", 3100, "legendary", "arcane", "raid", 4, 9),
+
+  hallGear("Training Shield Board", "A wooden board with dents arranged like a beginner's education.", "offhand", "shield", 130, "common", "discipline"),
+  hallGear("Iron Tower Shield", "A heavy shield that makes every carry feel like a vote for survival.", "offhand", "shield", 700, "uncommon", "strength"),
+  hallGear("Harbor Duel Buckler", "A small buckler used on narrow docks where backing up is sometimes impossible.", "offhand", "buckler", 540, "uncommon", "striking", "daily", 1),
+  hallGear("Verdant Ward Shield", "A green-painted shield carried by wardens escorting healers through damaged fields.", "offhand", "shield", 880, "rare", "recovery", "weekly", 2),
+  hallGear("Tidecourt Mirror Shield", "A polished shield that reflects water even in dry rooms.", "offhand", "shield", 1460, "epic", "water", "raid", 3, 6),
+
+  hallGear("Iron Promise Ring", "A plain ring for adventurers who need fewer promises and more follow-through.", "ring_left", "ring", 180, "common", "discipline"),
+  hallGear("Briarwatch Herb Ring", "A small green ring used by Basin healers to remember which hand gathered which herb.", "ring_left", "ring", 410, "uncommon", "recovery"),
+  hallGear("Frostmark Ring", "A cold silver ring that tightens slightly when the wearer lies about being fine.", "ring_left", "ring", 760, "rare", "frost", "weekly", 2),
+  hallGear("Lumenhall Banker's Signet", "A ring from the Radiant Port, useful anywhere gold speaks before titles.", "ring_right", "ring", 960, "rare", "discipline", "weekly", 2),
+  hallGear("Stormcaller's Band", "A blue ring that hums after sprints, footwork, and sudden decisions.", "ring_right", "ring", 920, "rare", "storm", "weekly", 2),
+  hallGear("Sovereign-Scarred Band", "A damaged black ring kept under glass until the Hall decides someone can bear the reminder.", "ring_right", "ring", 2100, "epic", "shadow", "raid", 3, 7),
+
+  hallGear("Chipped Focus Stone", "A little focus stone that makes concentration feel heavier in the hand.", "relic", "focus", 160, "common", "arcane"),
+  hallGear("Quartermaster's Ledger Charm", "A brass charm stamped with tiny numbers and a warning against skipping meals.", "relic", "charm", 320, "uncommon", "discipline"),
+  hallGear("Return Stone Shard", "A shard from an old Return Stone. It cannot teleport you, but it remembers the direction home.", "relic", "stone", 760, "rare", "light", "weekly", 2),
+  hallGear("Blackstone Dungeon Key", "A relic key from a fortress door that no longer exists in one piece.", "relic", "key", 1160, "rare", "earth", "weekly", 2),
+  hallGear("Tideglass Compass", "A compass that points toward the nearest safe surface, which is not always north.", "relic", "compass", 1500, "epic", "water", "raid", 3, 5),
+  hallGear("Ember Plains War Banner", "A small banner charm awarded to those who choose direct work and survive the heat.", "relic", "banner", 1550, "epic", "fire", "raid", 3, 6),
+  hallGear("Aethorian Dawn Sigil", "A rare sigil that brightens when the Chronicle records a hard-won week.", "relic", "sigil", 2600, "legendary", "light", "raid", 4, 8),
+
+  hallGear("Faint Blue Aura", "A cosmetic aura like cold breath at sunrise. It changes the battle's mood, not your real strength.", "aura", "effect", 500, "uncommon", "frost", "daily", 0),
+  hallGear("Campfire Aura", "A warm cosmetic glow used by adventurers who want their return to look less lonely.", "aura", "effect", 520, "uncommon", "fire", "daily", 0),
+  hallGear("Stormwake Aura", "A cosmetic effect that trails faint sparks after quick movement.", "aura", "effect", 980, "rare", "storm", "weekly", 0),
+  hallGear("Deepwater Aura", "A slow blue shimmer associated with Tidebound envoys and uncomfortable silences.", "aura", "effect", 1050, "rare", "water", "weekly", 0),
+  hallGear("Mythril Dawn Aura", "A bright aura with the expensive restraint of Lumenhall ceremonial magic.", "aura", "effect", 1780, "epic", "light", "raid", 0, 5),
+
+  hallConsumable("Field Recovery Tonic", "A bitter tonic for the day after honest effort. It supports recovery in the story, not reckless training.", "consumable:potion", 140, "common", "daily", 40),
+  hallConsumable("Basin Sleep Draught", "A non-magical herbal draught in lore: chamomile, mint, and a reminder to stop pretending rest is weakness.", "consumable:potion", 180, "common", "daily", 35),
+  hallConsumable("Tidebound Hydration Salts", "Blue salts used before long docks, hot roads, and sessions where thirst arrives too late.", "consumable:provision", 220, "uncommon", "daily", 45),
+  hallConsumable("Ember Plains Heat Balm", "A warming balm used after heavy labor. Aldric insists it is not permission to ignore pain.", "consumable:potion", 360, "uncommon", "weekly", 55),
+  hallConsumable("Verdant Basin Meal Token", "A provisioning token redeemable in story for bread, stew, and the kind of meal that keeps patrols moving.", "consumable:provision", 300, "uncommon", "weekly", 50),
+  hallConsumable("Return Stone Polish", "A tiny ritual kit for cleaning a Return Stone after a completed expedition.", "consumable:utility", 480, "rare", "weekly", 60),
+];
+
 const HALL_GEAR_OFFERINGS: HallOfferingSeed[] = [
   {
     name: "Wanderer's Linen Tunic",
@@ -243,6 +402,7 @@ const HALL_GEAR_OFFERINGS: HallOfferingSeed[] = [
     styleAffinity: "recovery",
     effectValue: 30,
   },
+  ...EXPANDED_HALL_GEAR_OFFERINGS,
 ];
 
 function storeSlotFromCategory(category?: string | null) {
