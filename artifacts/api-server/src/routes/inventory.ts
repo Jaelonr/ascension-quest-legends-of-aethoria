@@ -606,6 +606,60 @@ function toStoreClientItem(item: typeof storeItemsTable.$inferSelect) {
   };
 }
 
+function storeCategoryKeyForSummary(item: typeof storeItemsTable.$inferSelect) {
+  const category = String(item.category ?? item.type ?? "utility").toLowerCase();
+  const slot = String(storeSlotFromCategory(item.category) ?? "").toLowerCase();
+  if (category.includes("potion") || item.type === "recovery_token") return "potions";
+  if (category.includes("scroll") || category.includes("utility")) return "scrolls";
+  if (category.includes("title") || slot === "title") return "titles";
+  if (category.includes("cosmetic") || slot.includes("aura")) return "cosmetics";
+  if (category.includes("relic") || slot === "relic") return "relics";
+  if (category.includes("ring") || category.includes("necklace") || ["ring", "ring_left", "ring_right", "neck"].includes(slot)) return "jewelry";
+  if (category.includes("weapon") || ["weapon", "offhand"].includes(slot)) return "weapons";
+  if (category.startsWith("gear") || slot) return "armor";
+  return "scrolls";
+}
+
+function storeSubcategoryKeyForSummary(item: typeof storeItemsTable.$inferSelect) {
+  const category = String(item.category ?? "").toLowerCase();
+  const parts = category.split(":").filter(Boolean);
+  if (parts[0] === "gear" && parts[1]) return parts[1];
+  if (parts[0] === "consumable" && parts[1]) return parts[1];
+  return storeSlotFromCategory(item.category) ?? parts[0] ?? "misc";
+}
+
+function incrementCount(target: Record<string, number>, key: string | null | undefined) {
+  if (!key) return;
+  target[key] = (target[key] ?? 0) + 1;
+}
+
+function buildStoreCatalogSummary(items: Array<typeof storeItemsTable.$inferSelect>) {
+  const sectionCounts: Record<string, number> = {};
+  const categoryCounts: Record<string, number> = {};
+  const subcategoryCounts: Record<string, number> = {};
+  const rarityCounts: Record<string, number> = {};
+  const affinities = new Set<string>();
+
+  for (const item of items) {
+    incrementCount(sectionCounts, item.section ?? "permanent");
+    incrementCount(categoryCounts, storeCategoryKeyForSummary(item));
+    incrementCount(subcategoryCounts, storeSubcategoryKeyForSummary(item));
+    incrementCount(rarityCounts, item.rarity ?? "common");
+    if (item.styleAffinity) affinities.add(item.styleAffinity);
+  }
+
+  return {
+    totalAvailable: items.length,
+    sectionCounts,
+    categoryCounts,
+    subcategoryCounts,
+    rarityCounts,
+    affinityCount: affinities.size,
+    economyNote: "Hall gear is narrative-first: affinities, appearances, regional flavor, and capped bonuses. Real power is still earned through training.",
+    collectionNote: "Discovered offerings remain part of the Chronicle even if they are later sold, salvaged, unequipped, or lost.",
+  };
+}
+
 export async function ensureHallOfferingCatalog() {
   const names = HALL_GEAR_OFFERINGS.map((item) => item.name);
   const existing = await db.select({ name: storeItemsTable.name })
@@ -794,6 +848,7 @@ router.get("/store/sections", async (req, res) => {
         title: "The Hall's Offerings",
         lore: "The Hall is no mere shop. Aldric once faced the thing beneath its stones, bound it with mercy instead of pride, and now it reveals tools for adventurers who keep returning.",
       },
+      catalogSummary: buildStoreCatalogSummary(allItems),
       permanent: allItems.filter(i => i.section === "permanent").map(fmt),
       daily: rotate(dailyPool, dayOfYear, 5).map(fmt),
       weekly: rotate(weeklyPool, weekOfYear, 6).map(fmt),

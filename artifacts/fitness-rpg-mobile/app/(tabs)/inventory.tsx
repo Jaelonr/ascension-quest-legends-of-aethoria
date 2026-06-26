@@ -538,6 +538,11 @@ export default function CharacterScreen() {
   const inventorySummary = char?.inventorySummary ?? { items: 0, gear: 0, equippedGear: 0 };
   const appearance = char?.appearance ?? { aura: null, cosmeticCount: 0 };
   const recordedEquipment = realEquipment.filter((item) => item.available !== false);
+  const catalogSummary = (storeSections as any)?.catalogSummary;
+  const catalogCategoryCounts = catalogSummary?.categoryCounts ?? {};
+  const catalogFeaturedCategories = OFFERING_CATEGORY_META
+    .filter((category) => category.key !== "all" && Number(catalogCategoryCounts[category.key] ?? 0) > 0)
+    .slice(0, 8);
   const activeOfferings = ((storeSections as any)?.[offeringSection] ?? []) as any[];
   const availableOfferingCategories = new Set(activeOfferings.map(offeringCategoryKey));
   const categoryOfferings = offeringCategory === "all"
@@ -784,6 +789,42 @@ export default function CharacterScreen() {
                 </Text>
               </View>
             </View>
+
+            {catalogSummary ? (
+              <View style={cs.catalogSummaryGrid}>
+                <View style={cs.catalogSummaryTile}>
+                  <Text style={cs.catalogSummaryLabel}>Catalog</Text>
+                  <Text style={cs.catalogSummaryValue}>{catalogSummary.totalAvailable}</Text>
+                </View>
+                <View style={cs.catalogSummaryTile}>
+                  <Text style={cs.catalogSummaryLabel}>Armor</Text>
+                  <Text style={cs.catalogSummaryValue}>{catalogCategoryCounts.armor ?? 0}</Text>
+                </View>
+                <View style={cs.catalogSummaryTile}>
+                  <Text style={cs.catalogSummaryLabel}>Weapons</Text>
+                  <Text style={cs.catalogSummaryValue}>{catalogCategoryCounts.weapons ?? 0}</Text>
+                </View>
+                <View style={cs.catalogSummaryTile}>
+                  <Text style={cs.catalogSummaryLabel}>Affinities</Text>
+                  <Text style={[cs.catalogSummaryValue, { color: "#49a3a0" }]}>{catalogSummary.affinityCount ?? 0}</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {catalogFeaturedCategories.length > 0 ? (
+              <View style={cs.catalogChipWrap}>
+                {catalogFeaturedCategories.map((category) => (
+                  <View key={category.key} style={cs.catalogChip}>
+                    <Feather name={category.icon} size={10} color="#b7ab9c" />
+                    <Text style={cs.catalogChipText}>{category.label} {catalogCategoryCounts[category.key]}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {catalogSummary?.economyNote ? (
+              <Text style={cs.catalogEconomyNote}>{catalogSummary.economyNote}</Text>
+            ) : null}
 
             <View style={cs.offerSectionTabs}>
               {OFFERING_SECTION_META.map((section) => {
@@ -1180,6 +1221,14 @@ const cs = StyleSheet.create({
   offeringsIcon: { width: 34, height: 34, borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#15110d", alignItems: "center", justifyContent: "center" },
   offeringsTitle: { color: "#d9ad63", fontSize: 16, fontFamily: "PlayfairDisplay_700Bold" },
   offeringsCopy: { color: "#8f887d", fontSize: 11, lineHeight: 16, marginTop: 4 },
+  catalogSummaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 },
+  catalogSummaryTile: { width: "48.8%", borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 9 },
+  catalogSummaryLabel: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Inter_400Regular" },
+  catalogSummaryValue: { color: "#d9ad63", fontSize: 17, marginTop: 2, fontFamily: "PlayfairDisplay_700Bold" },
+  catalogChipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 },
+  catalogChip: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingHorizontal: 8, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 5 },
+  catalogChipText: { color: "#b7ab9c", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
+  catalogEconomyNote: { borderLeftWidth: 2, borderLeftColor: "#49a3a0", color: "#9dbdb8", fontSize: 11, lineHeight: 16, paddingLeft: 10, marginBottom: 12, fontFamily: "Inter_400Regular" },
   offerSectionTabs: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
   offerSectionTab: { width: "48.8%", minHeight: 42, borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", paddingHorizontal: 8, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 6 },
   offerSectionTabActive: { borderColor: "#d9ad63", backgroundColor: "#1b1511" },

@@ -580,6 +580,11 @@ export default function Inventory() {
   const weeklyItems = sections?.weekly    ?? [];
   const permItems   = sections?.permanent ?? [];
   const raidItems   = sections?.raid      ?? [];
+  const catalogSummary = (sections as any)?.catalogSummary;
+  const catalogCategoryCounts = catalogSummary?.categoryCounts ?? {};
+  const catalogFeaturedCategories = SHOP_CATEGORY_FILTERS
+    .filter((category) => category.key !== "all" && Number(catalogCategoryCounts[category.key] ?? 0) > 0)
+    .slice(0, 8);
 
   const dominantStyle = styleIdentity?.dominantStyle as string | null | undefined;
   const styleForYou   = dominantStyle
@@ -733,6 +738,38 @@ export default function Inventory() {
             <p className="mt-1 text-[11px] leading-relaxed text-[#8f887d]">
               The Hall is no common shop. Aldric once bound the thing beneath its stones, and now it reveals useful artifacts to adventurers who keep returning.
             </p>
+            {catalogSummary ? (
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="border border-[#3b3328] bg-[#0c0b09] p-2">
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-[#8f887d]">Catalog</p>
+                  <p className="font-serif text-lg font-bold text-[#d9ad63]">{catalogSummary.totalAvailable}</p>
+                </div>
+                <div className="border border-[#3b3328] bg-[#0c0b09] p-2">
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-[#8f887d]">Armor</p>
+                  <p className="font-serif text-lg font-bold text-[#d8c4a5]">{catalogCategoryCounts.armor ?? 0}</p>
+                </div>
+                <div className="border border-[#3b3328] bg-[#0c0b09] p-2">
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-[#8f887d]">Weapons</p>
+                  <p className="font-serif text-lg font-bold text-[#d8c4a5]">{catalogCategoryCounts.weapons ?? 0}</p>
+                </div>
+                <div className="border border-[#3b3328] bg-[#0c0b09] p-2">
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-[#8f887d]">Affinities</p>
+                  <p className="font-serif text-lg font-bold text-[#49a3a0]">{catalogSummary.affinityCount ?? 0}</p>
+                </div>
+              </div>
+            ) : null}
+            {catalogFeaturedCategories.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {catalogFeaturedCategories.map((category) => (
+                  <span key={category.key} className="border border-[#3b3328] bg-[#0c0b09] px-2 py-1 text-[9px] uppercase tracking-wide text-[#b7ab9c]">
+                    {category.icon} {category.label} {catalogCategoryCounts[category.key]}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {catalogSummary?.economyNote ? (
+              <p className="mt-3 border-l border-[#49a3a0] pl-3 text-[10px] leading-relaxed text-[#9dbdb8]">{catalogSummary.economyNote}</p>
+            ) : null}
           </div>
           {isLoadingSections ? (
             <div className="space-y-3">
