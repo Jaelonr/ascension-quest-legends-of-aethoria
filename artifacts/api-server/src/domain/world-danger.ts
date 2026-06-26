@@ -39,6 +39,6 @@ export function buildWorldDanger(raids: BossRaidRecord[]) {
             ? "Guarded"
             : "Recovering",
     systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
-    nextRelief: "The summoning happened before the enemy could fully win. Other adventurers still hold the line, but the protagonist's recorded victories can shift the war.",
+    nextRelief: "Aethoria is in severe danger, not final defeat. Other adventurers still hold the line while the summoned adventurer trains, grows, and turns recorded victories into the Guild's comeback.",
   };
 }

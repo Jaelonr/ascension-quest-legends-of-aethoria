@@ -140,6 +140,14 @@ function CombatReplayModal({
         )}
 
         {/* Narrative events — staggered reveal */}
+        <div className="border border-cyan-400/25 bg-cyan-400/5 rounded-xl p-3.5">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-cyan-400/70">Real session translated</p>
+          <p className="mt-1 text-sm leading-relaxed text-foreground/90">
+            {data.durationMinutes} minutes, {data.totalSets} logged set{data.totalSets === 1 ? "" : "s"}, and {data.prCount} personal record{data.prCount === 1 ? "" : "s"} became a {theme.label} field record.
+          </p>
+          <p className="mt-1 text-[11px] text-cyan-100/60">The Chronicle records the fight; your body keeps the earned progress.</p>
+        </div>
+
         {events.length > 0 && (
           <div className="space-y-2.5">
             {events.slice(0, revealedCount).map((ev, i) => (

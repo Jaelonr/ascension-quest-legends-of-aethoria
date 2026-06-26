@@ -109,6 +109,17 @@ function CombatReplayModal({
   const gearDrop = replay?.gearDrop;
   const raidImpact = replay?.raidImpact;
   const narrativeConsequence = replay?.narrativeConsequence;
+  const dominantStyleLabel = STYLE_META[replay?.dominantStyle ?? ""]?.label ?? "Adventurer";
+  const raidImpactTitle = typeof raidImpact === "string" ? "Raid pressure recorded" : raidImpact?.title ?? "Raid pressure recorded";
+  const raidImpactText = typeof raidImpact === "string"
+    ? raidImpact
+    : raidImpact?.description ?? "Your field work has been added to the campaign ledger.";
+  const consequenceTitle = typeof narrativeConsequence === "string"
+    ? "A consequence is recorded"
+    : narrativeConsequence?.title ?? "A consequence is recorded";
+  const consequenceText = typeof narrativeConsequence === "string"
+    ? narrativeConsequence
+    : narrativeConsequence?.description ?? String(narrativeConsequence ?? "");
 
   useEffect(() => {
     if (!visible) { setRevealedCount(0); return; }
@@ -148,6 +159,15 @@ function CombatReplayModal({
           <Text style={s.replayLabel}>BATTLE REPORT</Text>
           <Text style={s.replayTitle}>{replay?.encounterName ?? "Battle Complete"}</Text>
           <Text style={s.replayEnemy}>vs. {replay?.enemyName ?? data.sessionName}</Text>
+          <View style={s.translationCard}>
+            <Text style={s.translationKicker}>REAL SESSION TRANSLATED</Text>
+            <Text style={s.translationText}>
+              {data.durationMinutes} minutes, {data.totalSets} logged set{data.totalSets === 1 ? "" : "s"}, and {data.prCount} personal record{data.prCount === 1 ? "" : "s"} became a {dominantStyleLabel} field record.
+            </Text>
+            <Text style={s.translationSub}>
+              The Chronicle records the fight; your body keeps the earned progress.
+            </Text>
+          </View>
 
           {/* Narrative events */}
           {events.slice(0, revealedCount).map((ev, i) => (
@@ -234,24 +254,16 @@ function CombatReplayModal({
               {raidImpact && (
                 <View style={s.replayInfoCard}>
                   <Text style={s.panelKicker}>CAMPAIGN PRESSURE</Text>
-                  <Text style={s.replayInfoTitle}>
-                    {raidImpact.title ?? "The Guild records the result"}
-                  </Text>
-                  <Text style={s.replayInfoText}>
-                    {raidImpact.description ?? "Your field work has been added to the campaign ledger."}
-                  </Text>
+                  <Text style={s.replayInfoTitle}>{raidImpactTitle}</Text>
+                  <Text style={s.replayInfoText}>{raidImpactText}</Text>
                 </View>
               )}
 
               {narrativeConsequence && (
                 <View style={s.replayInfoCard}>
                   <Text style={s.panelKicker}>CHRONICLE MARK</Text>
-                  <Text style={s.replayInfoTitle}>
-                    {narrativeConsequence.title ?? "A consequence is recorded"}
-                  </Text>
-                  <Text style={s.replayInfoText}>
-                    {narrativeConsequence.description ?? String(narrativeConsequence)}
-                  </Text>
+                  <Text style={s.replayInfoTitle}>{consequenceTitle}</Text>
+                  <Text style={s.replayInfoText}>{consequenceText}</Text>
                 </View>
               )}
 
@@ -962,6 +974,34 @@ const s = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     marginBottom: 8,
+  },
+  translationCard: {
+    borderWidth: 1,
+    borderColor: "#1f6f73",
+    backgroundColor: "#061112",
+    borderRadius: 10,
+    padding: 14,
+    gap: 5,
+    marginBottom: 2,
+  },
+  translationKicker: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: "#49a3a0",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+  },
+  translationText: {
+    color: "#e9dfd1",
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: "Inter_700Bold",
+  },
+  translationSub: {
+    color: "#9dbdb8",
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: "Inter_400Regular",
   },
   eventCard: {
     backgroundColor: "#ffffff08",
