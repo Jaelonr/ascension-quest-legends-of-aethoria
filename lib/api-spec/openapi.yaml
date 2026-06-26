@@ -3989,6 +3989,40 @@ components:
         discoveredAt:
           type: string
 
+    RegionProgress:
+      type: object
+      additionalProperties: true
+      required: [regionId, regionName, known, discovered, visited, commissionsCompleted, bossesDefeated, explorationPercent]
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        regionId:
+          type: string
+        regionName:
+          type: string
+        known:
+          type: boolean
+        discovered:
+          type: boolean
+        visited:
+          type: boolean
+        commissionsCompleted:
+          type: integer
+        bossesDefeated:
+          type: integer
+        explorationPercent:
+          type: integer
+        dominantStyleUsed:
+          type: ["string", "null"]
+        lastVisitedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
     WorldDanger:
       type: object
       required: [value, state, label, defeatedBosses, activeThreats, failedIncursions, systemNote, nextRelief]
@@ -4055,6 +4089,10 @@ components:
         map:
           type: object
           additionalProperties: true
+        regionProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegionProgress"
         majorMilestones:
           type: array
           items:

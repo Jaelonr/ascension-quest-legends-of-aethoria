@@ -2482,6 +2482,22 @@ export const GetChronicleSummaryResponse = zod.object({
   "titlesEarned": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
   "personalRecords": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
   "map": zod.record(zod.string(), zod.unknown()).optional(),
+  "regionProgress": zod.array(zod.object({
+  "id": zod.number().optional(),
+  "playerId": zod.number().optional(),
+  "regionId": zod.string(),
+  "regionName": zod.string(),
+  "known": zod.boolean(),
+  "discovered": zod.boolean(),
+  "visited": zod.boolean(),
+  "commissionsCompleted": zod.number(),
+  "bossesDefeated": zod.number(),
+  "explorationPercent": zod.number(),
+  "dominantStyleUsed": zod.string().nullish(),
+  "lastVisitedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})).optional(),
   "majorMilestones": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
   "worldEvents": zod.array(zod.object({
   "id": zod.number(),

@@ -1802,6 +1802,26 @@ export interface ItemDiscovery {
   discoveredAt: string;
 }
 
+export interface RegionProgress {
+  id?: number;
+  playerId?: number;
+  regionId: string;
+  regionName: string;
+  known: boolean;
+  discovered: boolean;
+  visited: boolean;
+  commissionsCompleted: number;
+  bossesDefeated: number;
+  explorationPercent: number;
+  /** @nullable */
+  dominantStyleUsed?: string | null;
+  /** @nullable */
+  lastVisitedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+ }
+
 export type ChronicleSummaryGuildReportsItem = { [key: string]: unknown };
 
 export type ChronicleSummaryCampaignProgressItem = { [key: string]: unknown };
@@ -1826,6 +1846,7 @@ export interface ChronicleSummary {
   titlesEarned?: ChronicleSummaryTitlesEarnedItem[];
   personalRecords?: ChronicleSummaryPersonalRecordsItem[];
   map?: ChronicleSummaryMap;
+  regionProgress?: RegionProgress[];
   majorMilestones?: ChronicleSummaryMajorMilestonesItem[];
   worldEvents?: WorldEvent[];
   [key: string]: unknown;
