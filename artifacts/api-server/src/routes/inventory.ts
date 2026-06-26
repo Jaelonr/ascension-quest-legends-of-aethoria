@@ -58,6 +58,32 @@ function hallConsumable(
   };
 }
 
+function hallStoreItem(
+  name: string,
+  description: string,
+  type: HallOfferingSeed["type"],
+  category: string,
+  goldCost: number,
+  rarity: HallOfferingSeed["rarity"],
+  section: HallOfferingSeed["section"],
+  styleAffinity: string,
+  effectValue = 0,
+  levelRequired?: number,
+): HallOfferingSeed {
+  return {
+    name,
+    description,
+    type,
+    goldCost,
+    rarity,
+    section,
+    category,
+    styleAffinity,
+    effectValue,
+    ...(levelRequired ? { levelRequired } : {}),
+  };
+}
+
 const EXPANDED_HALL_GEAR_OFFERINGS: HallOfferingSeed[] = [
   hallGear("Padded Initiate Cap", "A soft training cap for new adventurers who are still learning how often the road strikes first.", "head", "cloth", 90, "common", "discipline"),
   hallGear("Leather Trail Hood", "Frontier scouts wear hoods like this when rain and branches make helmets a poor bargain.", "head", "leather", 190, "common", "conditioning"),
@@ -160,6 +186,24 @@ const EXPANDED_HALL_GEAR_OFFERINGS: HallOfferingSeed[] = [
   hallGear("Stormwake Aura", "A cosmetic effect that trails faint sparks after quick movement.", "aura", "effect", 980, "rare", "storm", "weekly", 0),
   hallGear("Deepwater Aura", "A slow blue shimmer associated with Tidebound envoys and uncomfortable silences.", "aura", "effect", 1050, "rare", "water", "weekly", 0),
   hallGear("Mythril Dawn Aura", "A bright aura with the expensive restraint of Lumenhall ceremonial magic.", "aura", "effect", 1780, "epic", "light", "raid", 0, 5),
+  hallGear("Shadowed Gate Aura", "A cosmetic darkness that gathers at the feet after difficult victories. It marks danger survived, not power bought.", "aura", "effect", 1960, "epic", "shadow", "raid", 0, 6),
+  hallGear("Verdant Mercy Aura", "A soft green glow used by healers and wardens after restoration work.", "aura", "effect", 820, "rare", "recovery", "weekly", 0),
+
+  hallGear("Banner of First Return", "A small back-banner for adventurers who came back through the Hall's stones and kept training anyway.", "title", "banner", 420, "uncommon", "discipline", "daily", 0),
+  hallGear("Briarwatch Helper's Banner", "A village banner given for carrying medicine, mending fences, and doing the unglamorous work that keeps people alive.", "title", "banner", 540, "uncommon", "recovery", "daily", 0),
+  hallGear("Lumenhall Charter Banner", "A silk banner recognized by port clerks, bankers, and guards who prefer proper documents to hero speeches.", "title", "banner", 1120, "rare", "discipline", "weekly", 1),
+  hallGear("Frostveil Pass Standard", "A narrow banner stitched with mountain-white thread. It says the wearer has learned respect for distance.", "title", "banner", 1180, "rare", "frost", "weekly", 1),
+  hallGear("Ember Trial Pennant", "A red pennant carried by those who survived direct work under a hard sun.", "title", "banner", 1220, "rare", "fire", "weekly", 1),
+  hallGear("Tidebound Guest Pennant", "A blue-green pennant that tells N'Thaloris dock guards you have at least been vouched for once.", "title", "banner", 1380, "rare", "water", "weekly", 1),
+  hallGear("Blackstone Delver Standard", "A black-and-gold standard for ruin crews who enter old stone knowing not all doors want to open.", "title", "banner", 1600, "epic", "earth", "raid", 1, 5),
+  hallGear("Aethoria Rally Standard", "A campaign banner the Hall only releases when the Guild's comeback has begun to feel possible.", "title", "banner", 3200, "legendary", "light", "raid", 2, 8),
+
+  hallGear("Silver Coast Crossbow", "A compact crossbow built for ship rails, alley corners, and diplomatic escorts that go poorly.", "weapon", "crossbow", 980, "rare", "striking", "weekly", 2),
+  hallGear("Verdant Shepherd Staff", "A plain staff used by Basin wardens to guide animals, travelers, and stubborn recruits.", "weapon", "staff", 660, "uncommon", "recovery", "daily", 1),
+  hallGear("Blackstone Pike", "A long iron pike made for keeping armored things exactly where you can still breathe.", "weapon", "polearm", 1180, "rare", "strength", "weekly", 2),
+  hallGear("Sunken Kingdom Trident", "A three-pronged weapon from surface docks above N'Thaloris. Surface folk call it ceremonial until corrected.", "weapon", "trident", 1680, "epic", "water", "raid", 3, 6),
+  hallGear("Valecrest Magecoat", "Formal mage clothing from the capital: sober cut, hidden pockets, and runework that pretends not to be expensive.", "chest", "magecoat", 1260, "rare", "arcane", "weekly", 2),
+  hallGear("Silver Coast Court Shoes", "Polished shoes made for estates, embassies, and fleeing very politely when negotiations fail.", "feet", "court", 720, "rare", "discipline", "weekly", 1),
 
   hallConsumable("Field Recovery Tonic", "A bitter tonic for the day after honest effort. It supports recovery in the story, not reckless training.", "consumable:potion", 140, "common", "daily", 40),
   hallConsumable("Basin Sleep Draught", "A non-magical herbal draught in lore: chamomile, mint, and a reminder to stop pretending rest is weakness.", "consumable:potion", 180, "common", "daily", 35),
@@ -167,6 +211,16 @@ const EXPANDED_HALL_GEAR_OFFERINGS: HallOfferingSeed[] = [
   hallConsumable("Ember Plains Heat Balm", "A warming balm used after heavy labor. Aldric insists it is not permission to ignore pain.", "consumable:potion", 360, "uncommon", "weekly", 55),
   hallConsumable("Verdant Basin Meal Token", "A provisioning token redeemable in story for bread, stew, and the kind of meal that keeps patrols moving.", "consumable:provision", 300, "uncommon", "weekly", 50),
   hallConsumable("Return Stone Polish", "A tiny ritual kit for cleaning a Return Stone after a completed expedition.", "consumable:utility", 480, "rare", "weekly", 60),
+  hallConsumable("Greater Recovery Tonic", "A stronger tonic kept behind the counter for grueling weeks. It supports recovery; it does not excuse ignoring pain.", "consumable:potion", 520, "rare", "weekly", 70),
+  hallConsumable("Sunken Electrolyte Phial", "A clear phial from N'Thaloris surface healers, used before long humid routes and low-impact conditioning.", "consumable:potion", 460, "rare", "weekly", 65),
+  hallConsumable("Guild Feast Writ", "A writ for one proper meal after a serious commission. The Hall considers recovery part of the work.", "consumable:provision", 740, "epic", "raid", 80),
+  hallStoreItem("Scroll of Steady Progression", "A training scroll that reminds the adventurer to add weight only when the ledger proves readiness.", "training_scroll", "scroll:progression", 360, "uncommon", "daily", "discipline"),
+  hallStoreItem("Scroll of Deload Wisdom", "A scroll Aldric keeps near the stubborn recruits. It says that backing off can be strategy, not surrender.", "training_scroll", "scroll:recovery", 420, "uncommon", "daily", "recovery"),
+  hallStoreItem("Frostveil Endurance Writ", "A conditioning scroll for long roads, thin air, and the humility of sustained effort.", "training_scroll", "scroll:conditioning", 620, "rare", "weekly", "conditioning", 1),
+  hallStoreItem("Ember Strength Writ", "A strength scroll for direct work: carry, press, pull, repeat, and leave pride outside the rack.", "training_scroll", "scroll:strength", 640, "rare", "weekly", "strength", 1),
+  hallStoreItem("Wild Frontier Control Writ", "A grappling and control scroll for beasts that should be subdued rather than slain.", "training_scroll", "scroll:grappling", 680, "rare", "weekly", "grappling", 1),
+  hallStoreItem("Silver Coast Footwork Theme", "A battle-replay theme of lamps, wet dock boards, and quick steps near expensive trouble.", "workout_theme", "theme:battle_replay", 900, "rare", "weekly", "striking"),
+  hallStoreItem("Blackstone Dungeon Theme", "A battle-replay theme of old stone, torch smoke, and something heavy moving beyond the door.", "workout_theme", "theme:battle_replay", 1040, "rare", "weekly", "strength"),
 ];
 
 const HALL_GEAR_OFFERINGS: HallOfferingSeed[] = [
@@ -408,7 +462,21 @@ const HALL_GEAR_OFFERINGS: HallOfferingSeed[] = [
 function storeSlotFromCategory(category?: string | null) {
   if (!category?.startsWith("gear:")) return null;
   const [, slot] = category.split(":");
-  return slot || null;
+  const normalized: Record<string, string> = {
+    aura: "aura_cosmetic",
+    aura_effect: "aura_cosmetic",
+    cosmetic: "aura_cosmetic",
+    banner: "title",
+    main_hand: "weapon",
+    off_hand: "offhand",
+    back: "cloak",
+    helmet: "head",
+    necklace: "neck",
+    gloves: "hands",
+    boots: "feet",
+    armor: "chest",
+  };
+  return normalized[slot ?? ""] ?? slot ?? null;
 }
 
 function isGearOffering(item: typeof storeItemsTable.$inferSelect) {
@@ -445,6 +513,8 @@ function iconKeyFor(slot?: string | null, affinity?: string | null) {
   if (slot === "cloak") return "cloak";
   if (slot?.startsWith("ring")) return "ring";
   if (slot === "relic") return "relic";
+  if (slot === "title") return "banner";
+  if (slot === "aura_cosmetic") return "aura";
   return slot;
 }
 
@@ -458,6 +528,8 @@ function layerOrderFor(slot?: string | null) {
     offhand: 50,
     weapon: 60,
     relic: 70,
+    title: 75,
+    aura_cosmetic: 76,
     ring_left: 80,
     ring_right: 81,
   };
@@ -471,8 +543,10 @@ function gearFlavorForItem(item: Pick<typeof storeItemsTable.$inferSelect, "name
   if (name.includes("frost")) return "cold mana settled into your stance, making each controlled breath look deliberate.";
   if (name.includes("mithril")) return "mithril flashed like a noble charter, opening doors that plain iron would not.";
   if (name.includes("diamondweave")) return "diamondweave bent spell-light around your silhouette, making your discipline look almost ceremonial.";
+  if (name.includes("banner") || name.includes("standard") || name.includes("pennant")) return "your banner changed how witnesses remembered the expedition, turning a workout into a public mark in the Chronicle.";
+  if (name.includes("aura")) return "the aura changed the color of the battle around you, adding atmosphere without pretending to change your real body.";
   if (name.includes("robe") || name.includes("focus") || elementalAffinity === "arcane") return "quiet runes answered your focus, changing the shape of your aura before the strike landed.";
-  if (name.includes("bow") || name.includes("crossbow")) return "your equipment marked you as road-capable, the sort of adventurer caravans prefer to hire twice.";
+  if (name.includes("bow") || name.includes("crossbow") || name.includes("trident") || name.includes("pike")) return "your equipment marked you as road-capable, the sort of adventurer caravans prefer to hire twice.";
   if (name.includes("leather") || name.includes("cloak") || name.includes("boots")) return "travel-worn gear made you look native to the road, not merely dropped upon it.";
   if (name.includes("iron")) return "iron weight gave your silhouette the blunt authority of someone used to hard labor.";
   return `${elementalAffinity} affinity gathered around your equipped gear, altering the story of the exchange.`;
@@ -491,10 +565,14 @@ function regionModifierTagsForItem(
 
   if (name.includes("frost")) addRegion("frostveil_peaks", 3);
   if (name.includes("ember")) addRegion("ember_plains", 3);
+  if (name.includes("blackstone")) addRegion("blackstone_highlands", 3);
+  if (name.includes("verdant") || name.includes("briarwatch")) addRegion("verdant_basin", 3);
+  if (name.includes("lumenhall") || name.includes("silver coast")) addRegion("silver_coast", 3);
   if (name.includes("tideglass")) {
     addRegion("sunken_kingdom", 3);
     addRegion("silver_coast", 2);
   }
+  if (name.includes("sunken") || name.includes("n'")) addRegion("sunken_kingdom", 3);
   if (name.includes("mithril") || name.includes("diamondweave")) {
     addRegion("silver_coast", 3);
     addRegion("valecrest", 2);
