@@ -109,6 +109,7 @@ function CombatReplayModal({
   const gearDrop = replay?.gearDrop;
   const raidImpact = replay?.raidImpact;
   const narrativeConsequence = replay?.narrativeConsequence;
+  const payoff = replay?.payoff;
   const dominantStyleLabel = STYLE_META[replay?.dominantStyle ?? ""]?.label ?? "Adventurer";
   const raidImpactTitle = typeof raidImpact === "string" ? "Raid pressure recorded" : raidImpact?.title ?? "Raid pressure recorded";
   const raidImpactText = typeof raidImpact === "string"
@@ -161,8 +162,9 @@ function CombatReplayModal({
           <Text style={s.replayEnemy}>vs. {replay?.enemyName ?? data.sessionName}</Text>
           <View style={s.translationCard}>
             <Text style={s.translationKicker}>REAL SESSION TRANSLATED</Text>
+            {payoff?.headline ? <Text style={s.translationTitle}>{payoff.headline}</Text> : null}
             <Text style={s.translationText}>
-              {data.durationMinutes} minutes, {data.totalSets} logged set{data.totalSets === 1 ? "" : "s"}, and {data.prCount} personal record{data.prCount === 1 ? "" : "s"} became a {dominantStyleLabel} field record.
+              {payoff?.fitnessTranslation ?? `${data.durationMinutes} minutes, ${data.totalSets} logged set${data.totalSets === 1 ? "" : "s"}, and ${data.prCount} personal record${data.prCount === 1 ? "" : "s"} became a ${dominantStyleLabel} field record.`}
             </Text>
             <Text style={s.translationSub}>
               The Chronicle records the fight; your body keeps the earned progress.
@@ -256,6 +258,14 @@ function CombatReplayModal({
                   <Text style={s.panelKicker}>CAMPAIGN PRESSURE</Text>
                   <Text style={s.replayInfoTitle}>{raidImpactTitle}</Text>
                   <Text style={s.replayInfoText}>{raidImpactText}</Text>
+                </View>
+              )}
+
+              {payoff && (
+                <View style={s.replayInfoCard}>
+                  <Text style={s.panelKicker}>CHRONICLE MEANING</Text>
+                  <Text style={s.replayInfoTitle}>{payoff.worldEffect}</Text>
+                  <Text style={s.replayInfoText}>{payoff.nextHook}</Text>
                 </View>
               )}
 
@@ -990,6 +1000,12 @@ const s = StyleSheet.create({
     color: "#49a3a0",
     letterSpacing: 2,
     textTransform: "uppercase",
+  },
+  translationTitle: {
+    color: "#e5c386",
+    fontSize: 15,
+    lineHeight: 19,
+    fontFamily: "PlayfairDisplay_700Bold",
   },
   translationText: {
     color: "#e9dfd1",

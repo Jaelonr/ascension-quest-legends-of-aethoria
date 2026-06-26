@@ -75,6 +75,7 @@ function CombatReplayModal({
   const style   = replay?.dominantStyle as string | undefined;
   const theme   = STYLE_COLORS[style ?? "strength"] ?? STYLE_COLORS.strength;
   const verdictMeta = VERDICT_META[replay?.verdict] ?? VERDICT_META["Training Complete"];
+  const payoff = replay?.payoff;
 
   useEffect(() => {
     const t = setTimeout(() => setShown(true), 80);
@@ -142,8 +143,9 @@ function CombatReplayModal({
         {/* Narrative events — staggered reveal */}
         <div className="border border-cyan-400/25 bg-cyan-400/5 rounded-xl p-3.5">
           <p className="text-[9px] font-mono uppercase tracking-widest text-cyan-400/70">Real session translated</p>
+          {payoff?.headline && <p className="mt-1 font-serif text-base font-bold text-[#e5c386]">{payoff.headline}</p>}
           <p className="mt-1 text-sm leading-relaxed text-foreground/90">
-            {data.durationMinutes} minutes, {data.totalSets} logged set{data.totalSets === 1 ? "" : "s"}, and {data.prCount} personal record{data.prCount === 1 ? "" : "s"} became a {theme.label} field record.
+            {payoff?.fitnessTranslation ?? `${data.durationMinutes} minutes, ${data.totalSets} logged set${data.totalSets === 1 ? "" : "s"}, and ${data.prCount} personal record${data.prCount === 1 ? "" : "s"} became a ${theme.label} field record.`}
           </p>
           <p className="mt-1 text-[11px] text-cyan-100/60">The Chronicle records the fight; your body keeps the earned progress.</p>
         </div>
@@ -264,6 +266,14 @@ function CombatReplayModal({
               <div className="border border-orange-400/30 bg-orange-400/10 rounded-xl p-3.5">
                 <p className="text-[9px] font-mono uppercase tracking-widest text-orange-400 mb-1.5">⚔ Raid Progress</p>
                 <p className="text-sm text-foreground/90 leading-relaxed">{replay.raidImpact}</p>
+              </div>
+            )}
+
+            {payoff && (
+              <div className="border border-[#6b4d2f] bg-[#15110d] rounded-xl p-3.5">
+                <p className="text-[9px] font-mono uppercase tracking-widest text-[#9d8f80] mb-1.5">Chronicle meaning</p>
+                <p className="text-xs text-[#d8c4a5] leading-relaxed">{payoff.worldEffect}</p>
+                <p className="mt-2 text-[11px] text-[#9dbdb8] leading-relaxed">{payoff.nextHook}</p>
               </div>
             )}
 
