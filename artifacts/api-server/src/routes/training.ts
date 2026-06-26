@@ -5,7 +5,7 @@ import {
   workoutSetsTable, personalRecordsTable, playerTable, nutritionLogsTable,
   nutritionTargetsTable, playerBiometricsTable, bossRaidsTable,
   combatReplaysTable, playerStyleIdentityTable, rpgGearTable,
-  guildMasterMemoriesTable, worldEventsTable,
+  guildMasterMemoriesTable, itemDiscoveriesTable, worldEventsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { autoClaimActiveMission } from "./campaign";
@@ -89,6 +89,131 @@ function styleLabel(style: string | null | undefined) {
     discipline: "Runesage",
   };
   return labels[style] ?? style.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+type GearInsert = typeof rpgGearTable.$inferInsert;
+type WorkoutGearDrop = Omit<GearInsert, "playerId">;
+
+function affinityForStyle(style: string | null | undefined) {
+  const map: Record<string, string> = {
+    strength: "earth",
+    striking: "storm",
+    conditioning: "wind",
+    grappling: "earth",
+    recovery: "water",
+    discipline: "light",
+  };
+  return map[style ?? ""] ?? "physical";
+}
+
+function rarityForWorkoutDrop(input: {
+  prCount: number;
+  durationMinutes: number;
+  activeRaids: Array<{ difficulty?: string | null }>;
+  commissionContext: any | null;
+  nutritionMet: boolean;
+}) {
+  const raidDifficulties = input.activeRaids.map((raid) => String(raid.difficulty ?? "E").toUpperCase());
+  if (raidDifficulties.some((difficulty) => difficulty === "S" || difficulty === "A")) return "epic";
+  if (raidDifficulties.length > 0 || input.prCount >= 2 || (input.durationMinutes >= 60 && input.commissionContext)) return "rare";
+  if (input.prCount > 0 || input.durationMinutes >= 45 || input.commissionContext?.flavorKind === "main_quest") return "uncommon";
+  if (input.commissionContext && input.durationMinutes >= 20 && input.nutritionMet) return "common";
+  return null;
+}
+
+function buildWorkoutGearDrop(input: {
+  sessionId: number;
+  durationMinutes: number;
+  dominantStyle: StyleKey | null;
+  prCount: number;
+  activeRaids: Array<{ difficulty?: string | null; title?: string | null }>;
+  commissionContext: any | null;
+  nutritionMet: boolean;
+}): WorkoutGearDrop | null {
+  const rarity = rarityForWorkoutDrop(input);
+  if (!rarity) return null;
+
+  const style = input.dominantStyle ?? "discipline";
+  const affinity = affinityForStyle(style);
+  const region = input.commissionContext?.regionName ?? null;
+  const regionKey = normalizeRegionKey(region);
+  const location = input.commissionContext?.locationName ?? null;
+  const raidTitle = input.activeRaids[0]?.title ?? null;
+  const source = raidTitle
+    ? `Raid pressure: ${raidTitle}`
+    : region
+      ? `Commission: ${region}`
+      : "Training Yard";
+  const slot: GearInsert["slot"] = rarity === "epic" ? "aura_cosmetic" : "relic";
+  const styleNames: Record<StyleKey, { noun: string; token: string; flavor: string }> = {
+    strength: {
+      noun: "Iron Effort",
+      token: "Sigil",
+      flavor: "It remembers loaded carries, hard sets, and the kind of work that makes old stone reconsider.",
+    },
+    striking: {
+      noun: "Stormstep",
+      token: "Charm",
+      flavor: "It hums after clean rounds, quick feet, and precise openings earned under fatigue.",
+    },
+    conditioning: {
+      noun: "Roadwarden",
+      token: "Pace Token",
+      flavor: "It records distance honestly: caravan where the road is vast, footwork where the work was yours.",
+    },
+    grappling: {
+      noun: "Chainwarden",
+      token: "Binding Cord",
+      flavor: "It marks control over panic, pressure over spectacle, and victories where the enemy was taken alive.",
+    },
+    recovery: {
+      noun: "Verdant",
+      token: "Recovery Charm",
+      flavor: "It carries the quiet proof that survival, breath, and restoration are not lesser forms of courage.",
+    },
+    discipline: {
+      noun: "Oathkeeper",
+      token: "Ledger Pin",
+      flavor: "It belongs to adventurers who return to the work even when the day offers no applause.",
+    },
+  };
+  const styleName = styleNames[style];
+  const regionPrefix = region
+    ? String(region).replace(/\s*\/\s*/g, " ").split(" ").slice(0, 2).join(" ")
+    : styleName.noun;
+  const name = rarity === "epic"
+    ? `${regionPrefix} ${styleName.noun} Aura`
+    : `${regionPrefix} ${styleName.token}`;
+  const xpBonusPercent = rarity === "common" ? 0 : rarity === "uncommon" ? 1 : rarity === "rare" ? 2 : 3;
+  const modifiers = [
+    `affinity:${affinity}`,
+    `earned_from:${style}`,
+    "gear_effect:narrative_first",
+    "stat_impact:marginal",
+    ...(regionKey ? [`local_attire:${regionKey}`, `regional_gold_bonus:${regionKey}:${rarity === "common" ? 1 : 2}`] : []),
+    ...(input.prCount > 0 ? [`personal_record_proof:${input.prCount}`] : []),
+    ...(raidTitle ? ["raid_pressure_proof"] : []),
+  ];
+
+  return {
+    name,
+    displayName: name,
+    slot,
+    rarity,
+    iconKey: slot === "aura_cosmetic" ? `aura_${affinity}` : `relic_${affinity}`,
+    layerOrder: slot === "aura_cosmetic" ? 95 : 80,
+    statBonuses: {},
+    flavorText: styleName.flavor,
+    loreText: `${styleName.flavor} ${region ? `Recovered after duty in ${region}${location ? ` near ${location}` : ""}.` : "Recovered after recorded training."}`,
+    source,
+    affinity: style,
+    elementalAffinity: affinity,
+    narrativeModifiers: [...new Set(modifiers)],
+    xpBonusPercent,
+    cosmeticKey: slot === "aura_cosmetic" ? `aura_${affinity}` : `relic_${affinity}`,
+    cosmeticVariant: affinity,
+    equipped: false,
+  };
 }
 
 function commissionPathConsequence(context: any, replay: NonNullable<ReturnType<typeof generateCombatReplay>>) {
@@ -316,6 +441,7 @@ async function recordCombatChronicleMilestones(input: {
       goldEarned: input.goldEarned,
       prCount: input.prCount,
       nutritionMet: input.nutritionMet,
+      gearDropName: input.replay.gearDrop?.name ?? null,
       regionName,
       locationName,
       completionPath,
@@ -771,7 +897,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
         const { player: freshPlayer } = await getOrCreatePlayer(req.userId);
 
         // Generate Combat Replay
-        const combatInput: CombatInput = {
+        const baseCombatInput: CombatInput = {
           sessionName: commissionContext?.intendedStyle
             ? `${session.name} - ${commissionContext.regionName ?? "Aethoria"} ${commissionContext.intendedStyle}`
             : session.name,
@@ -813,6 +939,58 @@ router.patch("/training/sessions/:id", async (req, res) => {
           } : null,
         };
 
+        const preliminaryStyle = classifyWorkoutStyle(baseCombatInput).dominant;
+        const workoutGearDrop = buildWorkoutGearDrop({
+          sessionId: session.id,
+          durationMinutes,
+          dominantStyle: preliminaryStyle,
+          prCount,
+          activeRaids,
+          commissionContext,
+          nutritionMet,
+        });
+
+        let combatGearDrop: CombatInput["gearDrop"] = null;
+        if (workoutGearDrop) {
+          const [gear] = await db.insert(rpgGearTable).values({
+            playerId: player.id,
+            ...workoutGearDrop,
+          }).returning();
+
+          combatGearDrop = gear
+            ? { name: gear.name, rarity: gear.rarity, slot: gear.slot }
+            : { name: workoutGearDrop.name!, rarity: workoutGearDrop.rarity!, slot: workoutGearDrop.slot! };
+
+          await db.insert(itemDiscoveriesTable).values({
+            playerId: player.id,
+            itemId: null,
+            itemName: combatGearDrop.name,
+            rarity: combatGearDrop.rarity,
+            category: combatGearDrop.slot,
+            sourceType: "workout_drop",
+            sourceLabel: workoutGearDrop.source ?? "Training Yard",
+            loreText: workoutGearDrop.loreText ?? workoutGearDrop.flavorText,
+            currentState: "owned",
+          }).onConflictDoUpdate({
+            target: [itemDiscoveriesTable.playerId, itemDiscoveriesTable.itemName, itemDiscoveriesTable.sourceType],
+            set: { currentState: "owned", updatedAt: new Date() },
+          });
+
+          await db.insert(guildMasterMemoriesTable).values({
+            playerId: player.id,
+            kind: "item_discovery",
+            sourceKey: `workout-drop:${session.id}`,
+            summary: `${session.name} recovered ${combatGearDrop.name}, a ${combatGearDrop.rarity} ${combatGearDrop.slot}.`,
+            importance: combatGearDrop.rarity === "epic" || combatGearDrop.rarity === "rare" ? 3 : 2,
+            occurredAt: new Date(),
+          }).onConflictDoNothing();
+        }
+
+        const combatInput: CombatInput = {
+          ...baseCombatInput,
+          gearDrop: combatGearDrop,
+        };
+
         combatReplay = generateCombatReplay(combatInput);
 
         // Save combat replay
@@ -832,6 +1010,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
           prCount,
           elementalAffinity: combatInput.elementalAffinity,
           narrativeModifiers: combatInput.narrativeModifiers,
+          gearDrop: combatInput.gearDrop,
           raidImpact: combatReplay.raidImpact,
           narrativeIntensity,
         }).returning();

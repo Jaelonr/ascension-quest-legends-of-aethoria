@@ -70,6 +70,7 @@ export interface CombatReplayData {
   verdict: string;
   events: CombatEvent[];
   styleScores: StyleScores;
+  gearDrop: { name: string; rarity: string; slot: string } | null;
   raidImpact: string | null;
   narrativeConsequence: string | null;
   payoff: CombatReplayPayoff;
@@ -827,6 +828,7 @@ export function generateCombatReplay(input: CombatInput): CombatReplayData {
     verdict,
     events,
     styleScores: scores,
+    gearDrop: input.gearDrop,
     raidImpact,
     narrativeConsequence,
   };
