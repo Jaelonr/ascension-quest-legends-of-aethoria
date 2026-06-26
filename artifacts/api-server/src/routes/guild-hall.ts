@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   bossRaidsTable,
   aethoriaLocationsTable,
+  combatReplaysTable,
   dailyCommissionsTable,
   db,
   equipmentTable,
@@ -798,7 +799,7 @@ async function getGuildHallSnapshot(userId: string) {
   await settleExpiredDuties(player.id);
   const quest = await ensureDailyQuest(player.id);
   const today = getTodayStr();
-  const [playerContext, existingCommission, memories, consequences, worldEvents, gear, offerings, raids, locations, trainingLedger] = await Promise.all([
+  const [playerContext, existingCommission, memories, consequences, worldEvents, gear, offerings, raids, locations, trainingLedger, latestReplay] = await Promise.all([
     getGuildPlayerContext(player.id),
     db.select().from(dailyCommissionsTable).where(and(eq(dailyCommissionsTable.playerId, player.id), eq(dailyCommissionsTable.date, today))).limit(1),
     db.select().from(guildMasterMemoriesTable).where(eq(guildMasterMemoriesTable.playerId, player.id))
@@ -815,6 +816,8 @@ async function getGuildHallSnapshot(userId: string) {
       console.warn("training intelligence unavailable for guild hall", err);
       return null;
     }),
+    db.select().from(combatReplaysTable).where(eq(combatReplaysTable.playerId, player.id))
+      .orderBy(desc(combatReplaysTable.createdAt)).limit(1),
   ]);
 
   const dailyPlan = buildTrainingLedgerAdjustment(playerContext, trainingLedger) ?? buildDailyCommissionPlan(playerContext);
@@ -898,6 +901,23 @@ async function getGuildHallSnapshot(userId: string) {
     player: { ...player, stats },
     worldDanger: buildWorldDanger(raids),
     activeThreat: buildActiveThreatSummary(raids),
+    latestBattleProof: latestReplay[0] ? {
+      id: latestReplay[0].id,
+      encounterName: latestReplay[0].encounterName,
+      enemyName: latestReplay[0].enemyName,
+      verdict: latestReplay[0].verdict,
+      dominantStyle: latestReplay[0].dominantStyle,
+      hybridArchetype: latestReplay[0].hybridArchetype,
+      xpEarned: latestReplay[0].xpEarned,
+      goldEarned: latestReplay[0].goldEarned,
+      prCount: latestReplay[0].prCount,
+      gearDrop: latestReplay[0].gearDrop as any,
+      raidImpact: latestReplay[0].raidImpact,
+      createdAt: latestReplay[0].createdAt.toISOString(),
+      hallLine: latestReplay[0].gearDrop
+        ? `The latest battle report returned with proof from the field: ${(latestReplay[0].gearDrop as any)?.name ?? "an uncatalogued relic"}.`
+        : `The latest battle report shows ${latestReplay[0].dominantStyle} pressure against ${latestReplay[0].enemyName}.`,
+    } : null,
     commission: {
       id: commission?.id ?? 0,
       category: commission?.category ?? plan.category,

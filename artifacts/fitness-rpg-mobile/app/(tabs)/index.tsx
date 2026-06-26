@@ -370,6 +370,41 @@ function AethoriaLedger({ events, onOpenChronicle }: { events: any[]; onOpenChro
   );
 }
 
+function LatestBattleProof({ proof, onOpenChronicle }: { proof: any; onOpenChronicle: () => void }) {
+  if (!proof) return null;
+  const gear = proof.gearDrop as { name?: string; rarity?: string; slot?: string } | null;
+  return (
+    <View style={s.battleProofCard}>
+      <View style={s.ledgerHeaderRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.sectionLabel}>LATEST BATTLE PROOF</Text>
+          <Text style={s.battleProofTitle} numberOfLines={1}>{proof.encounterName}</Text>
+          <Text style={s.battleProofMeta}>vs. {proof.enemyName} · {proof.verdict}</Text>
+        </View>
+        <TouchableOpacity style={s.ledgerChronicleBtn} onPress={onOpenChronicle} activeOpacity={0.82}>
+          <Text style={s.ledgerChronicleText}>Replay</Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={s.battleProofLine}>{proof.hallLine}</Text>
+      <View style={s.battleProofTags}>
+        <Text style={[s.battleProofTag, { color: "#49a3a0", borderColor: "#345f5d" }]}>+{proof.xpEarned} XP</Text>
+        <Text style={[s.battleProofTag, { color: "#d9ad63", borderColor: "#6b4d2f" }]}>+{proof.goldEarned} Gold</Text>
+        {proof.prCount > 0 ? <Text style={[s.battleProofTag, { color: "#e2ad4d", borderColor: "#8c6a36" }]}>{proof.prCount} PR</Text> : null}
+        <Text style={[s.battleProofTag, { color: "#d8c4a5", borderColor: "#3b3328" }]}>{proof.dominantStyle}</Text>
+      </View>
+      {gear?.name ? (
+        <View style={s.battleProofRelic}>
+          <Text style={s.battleProofRelicLabel}>RECOVERED RELIC</Text>
+          <Text style={s.battleProofRelicName}>{gear.name}</Text>
+          <Text style={s.battleProofRelicMeta}>
+            {String(gear.rarity ?? "common").toUpperCase()} · {String(gear.slot ?? "relic").replace(/_/g, " ")}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function formatReadinessSource(source?: string | null) {
   if (source === "health_connect") return "Health Connect";
   if (source === "samsung_health") return "Samsung Health";
@@ -739,6 +774,10 @@ export default function HallScreen() {
               events={hallAny?.worldEvents ?? []}
               onOpenChronicle={() => router.push("/(tabs)/battle-log?tab=records" as any)}
             />
+            <LatestBattleProof
+              proof={hallAny?.latestBattleProof}
+              onOpenChronicle={() => router.push("/(tabs)/battle-log?tab=replays" as any)}
+            />
             <AldricPanel hall={hallAny} onOpen={() => setAldricOpen(true)} />
 
             <TouchableOpacity
@@ -1013,6 +1052,16 @@ const s = StyleSheet.create({
   worldEventText: { color: "#baa9a2", fontSize: 11, lineHeight: 17, fontFamily: "Inter_400Regular", marginTop: 5 },
   worldEventMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 7 },
   worldEventMeta: { color: "#8f887d", fontSize: 9, fontFamily: "Inter_400Regular" },
+  battleProofCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#0e0d0b", padding: 12, marginBottom: 14 },
+  battleProofTitle: { color: "#e5c386", fontSize: 17, fontFamily: "PlayfairDisplay_700Bold", marginTop: 2 },
+  battleProofMeta: { color: "#8f887d", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  battleProofLine: { color: "#b7ab9c", fontSize: 12, lineHeight: 18, marginTop: 3, fontFamily: "Inter_400Regular" },
+  battleProofTags: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 10 },
+  battleProofTag: { borderWidth: 1, backgroundColor: "#11100e", paddingHorizontal: 8, paddingVertical: 5, fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
+  battleProofRelic: { borderWidth: 1, borderColor: "#8c6a36", backgroundColor: "#171109", padding: 10, marginTop: 10 },
+  battleProofRelicLabel: { color: "#9d8f80", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1.6 },
+  battleProofRelicName: { color: "#d9ad63", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
+  battleProofRelicMeta: { color: "#8f887d", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2, textTransform: "capitalize" },
   worldMemoryPanel: { borderWidth: 1, borderColor: "#6a3028", backgroundColor: "#1b1110", padding: 12, marginTop: 14 },
   worldMemoryTitle: { color: "#d48b73", fontSize: 15, fontFamily: "PlayfairDisplay_700Bold" },
   worldMemoryText: { color: "#baa9a2", fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular", marginTop: 4 },

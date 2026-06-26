@@ -179,6 +179,37 @@ function AethoriaLedger({ events }: { events: any[] }) {
   );
 }
 
+function LatestBattleProof({ proof }: { proof: any }) {
+  if (!proof) return null;
+  const gear = proof.gearDrop as { name?: string; rarity?: string; slot?: string } | null;
+  return (
+    <section className="mt-4 border border-[#6b4d2f] bg-[#0e0d0b] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-[#9d8f80]">Latest battle proof</p>
+          <h2 className="mt-1 truncate font-serif text-lg font-bold text-[#e5c386]">{proof.encounterName}</h2>
+          <p className="text-xs text-[#8f887d]">vs. {proof.enemyName} - {proof.verdict}</p>
+        </div>
+        <a href="/chronicle?tab=replays" className="shrink-0 border border-[#6b4d2f] px-3 py-2 text-[10px] font-bold uppercase text-[#d9ad63]">Replay</a>
+      </div>
+      <p className="mt-3 text-xs leading-relaxed text-[#b7ab9c]">{proof.hallLine}</p>
+      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wide">
+        <span className="border border-[#345f5d] bg-[#071111] px-2 py-1 text-[#49a3a0]">+{proof.xpEarned} XP</span>
+        <span className="border border-[#6b4d2f] bg-[#171109] px-2 py-1 text-[#d9ad63]">+{proof.goldEarned} Gold</span>
+        {proof.prCount > 0 ? <span className="border border-[#8c6a36] bg-[#1a130d] px-2 py-1 text-[#e2ad4d]">{proof.prCount} PR</span> : null}
+        <span className="border border-[#3b3328] bg-[#11100e] px-2 py-1 text-[#d8c4a5]">{proof.dominantStyle}</span>
+      </div>
+      {gear?.name && (
+        <div className="mt-3 border border-[#8c6a36] bg-[#171109] p-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-[#9d8f80]">Recovered relic</p>
+          <p className="mt-1 font-serif text-base font-bold text-[#d9ad63]">{gear.name}</p>
+          <p className="text-[11px] capitalize text-[#8f887d]">{gear.rarity ?? "common"} {String(gear.slot ?? "relic").replace(/_/g, " ")}</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function taskIcon(description: string) {
   const value = description.toLowerCase();
   if (value.includes("protein")) return Apple;
@@ -784,6 +815,7 @@ export default function GuildHall() {
       <WorldDangerBar danger={extended.worldDanger} />
       <GuildDirectivePanel threat={extended.activeThreat} onOpenRaids={() => navigate("/raids")} />
       <AethoriaLedger events={data.worldEvents ?? []} />
+      <LatestBattleProof proof={extended.latestBattleProof} />
 
       <section className="mt-4 overflow-hidden border border-[#6b4d2f] bg-[#11100e] md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(330px,0.85fr)]">
         <img src="/assets/grandmaster-aldric.jpg" alt="Grandmaster Aldric in the Guild Hall" className="aspect-[4/3] w-full object-cover object-[42%_30%] md:h-full md:aspect-auto" />
