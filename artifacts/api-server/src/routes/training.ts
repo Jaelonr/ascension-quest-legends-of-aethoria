@@ -13,7 +13,7 @@ import { getOrCreatePlayer, buildPlayerResponse } from "../progression";
 import { applyXpEvent, updateStreak } from "../progression";
 import { progressRaidTasks } from "./boss-raids";
 import {
-  classifyWorkoutStyle, generateCombatReplay,
+  classifyWorkoutStyle, generateCombatReplay, getRaidStyleBonus,
   type CombatInput, type NarrativeIntensity, type WorkoutSetData,
 } from "../combat-engine";
 import { getTrainingIntelligence, recomputeTrainingIntelligence } from "../training-intelligence";
@@ -83,6 +83,18 @@ function styleLabel(style: string | null | undefined) {
   return style.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function selectRaidPressureFields(playerId: number, statuses = ["active"]) {
+  return db.select({
+    id: bossRaidsTable.id,
+    title: bossRaidsTable.title,
+    difficulty: bossRaidsTable.difficulty,
+    status: bossRaidsTable.status,
+    tasks: bossRaidsTable.tasks,
+  })
+    .from(bossRaidsTable)
+    .where(and(eq(bossRaidsTable.playerId, playerId), inArray(bossRaidsTable.status, statuses as any)));
+}
+
 async function recordCombatChronicleMilestones(input: {
   playerId: number;
   replayId: number | null;
@@ -90,6 +102,7 @@ async function recordCombatChronicleMilestones(input: {
   sessionName: string;
   replay: NonNullable<ReturnType<typeof generateCombatReplay>>;
   commissionContext: any | null;
+  activeRaids: Array<{ id: number; title: string; difficulty: string; status: string; tasks: unknown }>;
   xpEarned: number;
   goldEarned: number;
   prCount: number;
@@ -165,6 +178,47 @@ async function recordCombatChronicleMilestones(input: {
         travelMethod: input.commissionContext?.travelMethod ?? null,
         completionPath,
       },
+    }).onConflictDoNothing();
+  }
+
+  for (const raid of input.activeRaids) {
+    const tasks = Array.isArray(raid.tasks) ? raid.tasks as any[] : [];
+    const completedTasks = tasks.filter((task) => task?.completed).length;
+    const totalTasks = tasks.length;
+    const bonus = getRaidStyleBonus(input.replay.dominantStyle, raid.difficulty);
+    const progressLabel = totalTasks > 0 ? `${completedTasks}/${totalTasks} raid duties complete` : "raid pressure recorded";
+    const advantageText = bonus.multiplier > 1
+      ? bonus.narrative
+      : `${style} pressure tested the raid's defenses while other adventurers held the wider line.`;
+
+    await db.insert(worldEventsTable).values({
+      playerId: input.playerId,
+      worldKey: `raid-pressure:${raid.id}:${input.sessionId}`,
+      title: `Raid Pressure: ${raid.title}`,
+      description: `${input.sessionName} pushed against ${raid.title}. ${progressLabel}. ${advantageText}`,
+      status: totalTasks > 0 && completedTasks >= totalTasks ? "resolved" : "active",
+      severity: raid.difficulty === "A" || raid.difficulty === "S" ? "major" : "moderate",
+      reversible: true,
+      metadata: {
+        raidId: raid.id,
+        replayId: input.replayId,
+        sessionId: input.sessionId,
+        difficulty: raid.difficulty,
+        dominantStyle: input.replay.dominantStyle,
+        styleMultiplier: bonus.multiplier,
+        completedTasks,
+        totalTasks,
+      },
+      resolvedAt: totalTasks > 0 && completedTasks >= totalTasks ? new Date() : null,
+    }).onConflictDoNothing();
+
+    await db.insert(guildMasterMemoriesTable).values({
+      playerId: input.playerId,
+      kind: "raid_pressure",
+      sourceKey: `raid-pressure:${raid.id}:${input.sessionId}`,
+      summary: `${input.sessionName} applied ${style} pressure against ${raid.title}; ${progressLabel}.`,
+      importance: raid.difficulty === "A" || raid.difficulty === "S" ? 3 : 2,
+      occurredAt: new Date(),
     }).onConflictDoNothing();
   }
 }
@@ -476,8 +530,12 @@ router.patch("/training/sessions/:id", async (req, res) => {
 
         xpResult = await applyXpEvent(player.id, totalXp, "Workout Completed", "training", today);
 
+        const raidsBeforeProgress = await selectRaidPressureFields(player.id, ["active"]);
         await progressRaidTasks(player.id, "workout_sessions", 1);
         if (prCount > 0) await progressRaidTasks(player.id, "prs", prCount);
+        const progressedRaidIds = new Set(raidsBeforeProgress.map((raid) => raid.id));
+        const activeRaids = (await selectRaidPressureFields(player.id, ["active", "completed"]))
+          .filter((raid) => progressedRaidIds.has(raid.id));
 
         // Nutrition bonus
         const nutritionLogs = await db.select().from(nutritionLogsTable)
@@ -494,11 +552,6 @@ router.patch("/training/sessions/:id", async (req, res) => {
             await applyXpEvent(player.id, 50, "Nutrition Target Met", "nutrition", today);
           }
         }
-
-        // Get active raids for combat context
-        const activeRaids = await db.select({ title: bossRaidsTable.title })
-          .from(bossRaidsTable)
-          .where(and(eq(bossRaidsTable.playerId, player.id), eq(bossRaidsTable.status, "active")));
 
         const { player: freshPlayer } = await getOrCreatePlayer(req.userId);
 
@@ -601,6 +654,7 @@ router.patch("/training/sessions/:id", async (req, res) => {
           sessionName: session.name,
           replay: combatReplay,
           commissionContext,
+          activeRaids,
           xpEarned: totalXp,
           goldEarned,
           prCount,

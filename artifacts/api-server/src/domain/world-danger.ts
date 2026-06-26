@@ -21,7 +21,7 @@ export function buildWorldDanger(raids: BossRaidRecord[]) {
   const relief = defeated.reduce((sum, raid) => sum + (DIFFICULTY_RELIEF[(raid.difficulty ?? "E").toUpperCase()] ?? 4), 0);
   const pressure = failed.length * 5 + active.length * 2;
   const value = Math.max(5, Math.min(100, STARTING_WORLD_DANGER - relief + pressure));
-  const state = value >= 75 ? "critical" : value >= 60 ? "severe" : value >= 40 ? "unstable" : value >= 20 ? "guarded" : "recovering";
+  const state = value >= 90 ? "critical" : value >= 60 ? "severe" : value >= 40 ? "unstable" : value >= 20 ? "guarded" : "recovering";
 
   return {
     value,
@@ -39,6 +39,6 @@ export function buildWorldDanger(raids: BossRaidRecord[]) {
             ? "Guarded"
             : "Recovering",
     systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
-    nextRelief: "The summoning happened before the enemy could fully win. Defeating bosses lowers world danger; failed incursions and active threats raise it.",
+    nextRelief: "The summoning happened before the enemy could fully win. Other adventurers still hold the line, but the protagonist's recorded victories can shift the war.",
   };
 }

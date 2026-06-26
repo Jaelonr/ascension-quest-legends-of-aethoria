@@ -256,7 +256,7 @@ function AldricChatModal({
 function WorldDangerPanel({ danger }: { danger: any }) {
   if (!danger) return null;
   const value = Math.max(0, Math.min(100, Number(danger.value ?? 100)));
-  const critical = danger.state === "critical" || value >= 75;
+  const critical = danger.state === "critical" || value >= 90;
   return (
     <View style={[s.dangerCard, { borderColor: critical ? "#9d3e2a" : "#6b4d2f" }]}>
       <View style={s.dangerHeader}>

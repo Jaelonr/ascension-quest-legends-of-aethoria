@@ -728,13 +728,13 @@ const buildMockGuildHall = () => ({
   player,
   worldDanger: {
     value: 77,
-    state: "critical",
-    label: "Critical",
+    state: "severe",
+    label: "Severe",
     defeatedBosses: 0,
     activeThreats: 1,
     failedIncursions: 0,
     systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
-    nextRelief: "The summoning happened before the enemy could fully win. Defeating bosses lowers world danger; failed incursions and active threats raise it.",
+    nextRelief: "The summoning happened before the enemy could fully win. Other adventurers still hold the line, but the protagonist's recorded victories can shift the war.",
   },
   commission: {
     id: 1,
@@ -930,13 +930,13 @@ router.get("/chronicle/summary", (_req, res) => {
   res.json({
     worldDanger: {
       value: 77,
-      state: "critical",
-      label: "Critical",
+      state: "severe",
+      label: "Severe",
       defeatedBosses: 0,
       activeThreats: 1,
       failedIncursions: 0,
       systemNote: "Only the summoned adventurer can read this System-level danger index. The Guild senses pressure, but not the exact measure.",
-      nextRelief: "The summoning happened before the enemy could fully win. Defeating bosses lowers world danger; failed incursions and active threats raise it.",
+      nextRelief: "The summoning happened before the enemy could fully win. Other adventurers still hold the line, but the protagonist's recorded victories can shift the war.",
     },
     battleReplays: battleLog,
     guildReports: [
