@@ -130,7 +130,7 @@ function normalizeCharacterTab(tab: string | string[] | undefined): TabKey {
 }
 
 const OFFERING_SECTION_META = [
-  { key: "permanent", label: "Hall Shop", note: "Always available while supplies remain.", icon: "shopping-bag" },
+  { key: "permanent", label: "Hall Shelves", note: "Always available while the Hall chooses to reveal them.", icon: "shopping-bag" },
   { key: "daily", label: "Daily", note: "A rotating tray of short-term utilities.", icon: "sun" },
   { key: "weekly", label: "Weekly", note: "Longer-cycle relics, sidegrades, and curios.", icon: "calendar" },
   { key: "raid", label: "Raid", note: "Items unlocked by dangerous campaign work.", icon: "shield" },
@@ -203,6 +203,20 @@ function formatItemCategory(item: any) {
     return `${titleCase(kind ?? "consumable")} Consumable`;
   }
   return titleCase(category);
+}
+
+function formatOfferingRole(item: any) {
+  const category = offeringCategoryKey(item);
+  if (item?.isGear) return "Narrative gear: appearance, affinity, regional flavor, and capped XP.";
+  if (category === "potions") return "Field support: recovery and preparation utility.";
+  if (category === "scrolls") return "Guild utility: planning, training, or route support.";
+  if (category === "titles" || category === "cosmetics") return "Identity expression: record, aura, and Chronicle flavor.";
+  return "Hall record: sidegrade, story marker, or narrative expression.";
+}
+
+function formatOfferingMaterial(item: any) {
+  const [, , material] = String(item?.category ?? "").split(":");
+  return material ? titleCase(material) : null;
 }
 
 function offeringCategoryKey(item: any) {
@@ -716,7 +730,7 @@ export default function CharacterScreen() {
                 </View>
                 <Text style={[cs.emptyTitle, { color: colors.foreground }]}>Inventory empty</Text>
                 <Text style={[cs.emptyDesc, { color: colors.mutedForeground }]}>
-                  Purchase items from the store or earn them through combat.
+                  Hall purchases and earned relics gather here before they become part of your armory or Chronicle.
                 </Text>
               </View>
             ) : (
@@ -926,6 +940,7 @@ export default function CharacterScreen() {
                   const rarityColor = RARITY_COLORS[item.rarity ?? "common"] ?? "#9ca3af";
                   const locked = item.meetsRequirements === false || item.locked === true;
                   const category = formatItemCategory(item);
+                  const material = formatOfferingMaterial(item);
                   const cost = item.priceGold ?? item.costGold ?? item.goldCost ?? item.price ?? 0;
                   return (
                     <View key={`${offeringSection}-${item.id}`} style={[cs.offerItem, { borderColor: rarityColor + "45" }]}>
@@ -937,9 +952,15 @@ export default function CharacterScreen() {
                           {item.displayName ?? item.name}
                         </Text>
                         <Text style={cs.itemMeta}>{category} - {item.rarity ?? "common"}</Text>
+                        <View style={cs.offerMetaWrap}>
+                          {material ? <Text style={cs.offerMetaChip}>{material}</Text> : null}
+                          {item.elementalAffinity ? <Text style={cs.offerMetaChip}>{item.elementalAffinity}</Text> : null}
+                          {item.isGear ? <Text style={cs.offerMetaChip}>Capped bonus</Text> : null}
+                        </View>
                         <Text style={[cs.itemDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
                           {item.description ?? item.loreText ?? "A useful Hall offering for the road ahead."}
                         </Text>
+                        <Text style={cs.offerRoleText} numberOfLines={2}>{formatOfferingRole(item)}</Text>
                         {item.styleAffinity ? (
                           <Text style={cs.offerAffinity}>{item.styleAffinity} affinity</Text>
                         ) : null}
@@ -1277,6 +1298,9 @@ const cs = StyleSheet.create({
   offerSubFilterTextActive: { color: "#d9ad63" },
   offerItem: { borderWidth: 1, backgroundColor: "#171510", padding: 10, flexDirection: "row", alignItems: "center", gap: 10 },
   offerItemIcon: { width: 34, height: 34, borderWidth: 1, backgroundColor: "#0c0b09", alignItems: "center", justifyContent: "center" },
+  offerMetaWrap: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 5 },
+  offerMetaChip: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", color: "#b7ab9c", fontSize: 9, letterSpacing: 0.8, textTransform: "uppercase", paddingHorizontal: 5, paddingVertical: 2, fontFamily: "Inter_700Bold" },
+  offerRoleText: { color: "#9dbdb8", fontSize: 10, lineHeight: 14, marginTop: 5, fontFamily: "Inter_400Regular" },
   offerAffinity: { color: "#49a3a0", fontSize: 10, marginTop: 4, textTransform: "capitalize", fontFamily: "Inter_700Bold" },
   offerActionColumn: { alignItems: "flex-end", gap: 8 },
   offerCost: { color: "#d9ad63", fontSize: 11, fontFamily: "Inter_700Bold" },

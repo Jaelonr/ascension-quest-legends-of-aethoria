@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Backpack, Shield, Sword, Lock, Calendar, Clock, Eye, Layers, ScrollText, Sparkles, Swords } from "lucide-react";
+import { Coins, Backpack, Shield, Sword, Lock, Calendar, Clock, Eye, Layers, ScrollText, Sparkles, Swords, type LucideIcon } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -42,14 +42,24 @@ const STYLE_COLORS: Record<string, string> = {
   discipline: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10",
 };
 
-const SLOT_ICONS: Record<string, string> = {
-  weapon: "⚔️", offhand: "🛡️", helmet: "🪖", chest: "🧥",
-  gloves: "🧤", boots: "👢", ring: "💍", necklace: "📿",
-};
+function slotIconFor(slot?: string): LucideIcon {
+  const normalized = String(slot ?? "").toLowerCase();
+  if (normalized.includes("weapon") || normalized.includes("hand")) return Sword;
+  if (normalized.includes("ring") || normalized.includes("neck") || normalized.includes("relic") || normalized.includes("aura")) return Sparkles;
+  if (normalized.includes("scroll") || normalized.includes("title")) return ScrollText;
+  if (normalized.includes("potion") || normalized.includes("consumable")) return Backpack;
+  if (normalized) return Shield;
+  return Layers;
+}
 
-const CATEGORY_ICONS: Record<string, string> = {
-  consumable: "🧪", gear: "⚔️", cosmetic: "🎨", title: "📜", utility: "🔧",
-};
+function categoryIconFor(type?: string): LucideIcon {
+  const normalized = String(type ?? "").toLowerCase();
+  if (normalized.includes("gear") || normalized.includes("equipment")) return Sword;
+  if (normalized.includes("cosmetic")) return Eye;
+  if (normalized.includes("title") || normalized.includes("scroll")) return ScrollText;
+  if (normalized.includes("consumable") || normalized.includes("recovery")) return Backpack;
+  return Layers;
+}
 
 function GearDetailPanel({ gear, slotLabel }: { gear: RpgGear | null; slotLabel?: string }) {
   if (!gear) {
@@ -119,6 +129,7 @@ function GearCard({ gear, onInspect, inspecting }: { gear: RpgGear; onInspect?: 
   const affinity = gear.affinity ?? gear.elementalAffinity;
 
   const statBonusEntries = Object.entries(gear.statBonuses ?? {}).filter(([, v]) => (v ?? 0) > 0);
+  const SlotIcon = slotIconFor(gear.slot);
 
   const handleEquip = () => {
     equipGear.mutate({ id: gear.id }, {
@@ -138,7 +149,9 @@ function GearCard({ gear, onInspect, inspecting }: { gear: RpgGear; onInspect?: 
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2.5 flex-1 min-w-0">
-            <span className="text-xl shrink-0 mt-0.5">{SLOT_ICONS[gear.slot] ?? "🎁"}</span>
+            <span className={cn("grid size-8 shrink-0 place-items-center border bg-black/25", r.border, r.color)}>
+              <SlotIcon className="size-4" />
+            </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <h3 className={cn("font-serif font-bold text-sm leading-tight truncate", r.color)}>{displayName}</h3>
@@ -203,6 +216,18 @@ function StoreItemCard({
   const r = RARITY_STYLES[item.rarity] ?? RARITY_STYLES.common;
   const locked = item.meetsRequirements === false;
   const styleClass = item.styleAffinity ? STYLE_COLORS[item.styleAffinity] : null;
+  const CategoryIcon = storeCategoryIcon(item);
+  const itemCategory = storeCategoryKey(item);
+  const subcategory = storeSubcategoryKey(item);
+  const subcategoryLabel = SHOP_SUBCATEGORY_LABELS[subcategory] ?? titleCase(subcategory);
+  const material = String(item.category ?? "").split(":").filter(Boolean)[2];
+  const roleLine = item.isGear
+    ? "Narrative gear: appearance, affinity, regional flavor, and capped XP."
+    : itemCategory === "potions"
+      ? "Field support: recovery and preparation utility."
+      : itemCategory === "scrolls"
+        ? "Guild utility: planning, training, or route support."
+        : "Hall record: cosmetic, title, or narrative expression.";
 
   return (
     <Card className={cn(
@@ -213,8 +238,8 @@ function StoreItemCard({
     )}>
       <CardContent className="p-3">
         <div className="flex items-start gap-3">
-          <div className="text-xl shrink-0 mt-0.5">
-            {storeCategoryIcon(item)}
+          <div className={cn("grid size-9 shrink-0 place-items-center border bg-black/25 mt-0.5", r.border, r.color)}>
+            <CategoryIcon className="size-4" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
@@ -240,7 +265,23 @@ function StoreItemCard({
                     </span>
                   )}
                 </div>
+                <div className="mb-1.5 flex flex-wrap gap-1.5">
+                  <span className="border border-[#3b3328] bg-[#0c0b09] px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-[#b7ab9c]">
+                    {subcategoryLabel}
+                  </span>
+                  {material && (
+                    <span className="border border-[#3b3328] bg-[#0c0b09] px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-[#8f887d]">
+                      {titleCase(material)}
+                    </span>
+                  )}
+                  {item.elementalAffinity && (
+                    <span className="border border-[#49a3a0]/40 bg-[#49a3a0]/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-[#9ad7cf]">
+                      {item.elementalAffinity}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2">{item.description}</p>
+                <p className="mt-1 text-[9px] leading-tight text-[#9dbdb8]">{roleLine}</p>
               </div>
             </div>
 
@@ -273,15 +314,15 @@ function StoreItemCard({
 }
 
 const SHOP_CATEGORY_FILTERS = [
-  { key: "all", label: "All", icon: "✦" },
-  { key: "armor", label: "Armor", icon: "🛡️" },
-  { key: "weapons", label: "Weapons", icon: "⚔️" },
-  { key: "jewelry", label: "Jewelry", icon: "💍" },
-  { key: "relics", label: "Relics", icon: "✹" },
-  { key: "potions", label: "Potions", icon: "🧪" },
-  { key: "scrolls", label: "Scrolls", icon: "📜" },
-  { key: "cosmetics", label: "Cosmetics", icon: "✨" },
-  { key: "titles", label: "Titles", icon: "🏳" },
+  { key: "all", label: "All", icon: Sparkles },
+  { key: "armor", label: "Armor", icon: Shield },
+  { key: "weapons", label: "Weapons", icon: Sword },
+  { key: "jewelry", label: "Jewelry", icon: Sparkles },
+  { key: "relics", label: "Relics", icon: Layers },
+  { key: "potions", label: "Potions", icon: Backpack },
+  { key: "scrolls", label: "Scrolls", icon: ScrollText },
+  { key: "cosmetics", label: "Cosmetics", icon: Eye },
+  { key: "titles", label: "Titles", icon: Swords },
 ] as const;
 
 const SHOP_SUBCATEGORY_LABELS: Record<string, string> = {
@@ -350,8 +391,8 @@ function storeSubcategoryKey(item: any) {
   return slot || parts[0] || "misc";
 }
 
-function storeCategoryIcon(item: any) {
-  return SHOP_CATEGORY_FILTERS.find((filter) => filter.key === storeCategoryKey(item))?.icon ?? "✦";
+function storeCategoryIcon(item: any): LucideIcon {
+  return SHOP_CATEGORY_FILTERS.find((filter) => filter.key === storeCategoryKey(item))?.icon ?? Sparkles;
 }
 
 function displaySlot(slot: string) {
@@ -435,20 +476,23 @@ function StoreSection({
   return (
     <div className="space-y-3">
       <div className="flex gap-1.5 flex-wrap">
-        {SHOP_CATEGORY_FILTERS.filter(c => c.key === "all" || availableCats.has(c.key)).map(cat => (
-          <button
-            key={cat.key}
-            onClick={() => selectCategory(cat.key)}
-            className={cn(
-              "text-[10px] font-mono px-2.5 py-1 rounded-full border transition-colors capitalize",
-              catFilter === cat.key
-                ? "bg-primary/20 border-primary/50 text-primary"
-                : "border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
-            )}
-          >
-            {cat.icon} {cat.key === "all" ? `All (${items.length})` : cat.label}
-          </button>
-        ))}
+        {SHOP_CATEGORY_FILTERS.filter(c => c.key === "all" || availableCats.has(c.key)).map(cat => {
+          const Icon = cat.icon;
+          return (
+            <button
+              key={cat.key}
+              onClick={() => selectCategory(cat.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 text-[10px] font-mono px-2.5 py-1 rounded-full border transition-colors capitalize",
+                catFilter === cat.key
+                  ? "bg-primary/20 border-primary/50 text-primary"
+                  : "border-border/40 text-muted-foreground hover:border-border hover:text-foreground"
+              )}
+            >
+              <Icon className="size-3" /> {cat.key === "all" ? `All (${items.length})` : cat.label}
+            </button>
+          );
+        })}
       </div>
 
       {availableSubs.length > 1 && (
@@ -692,7 +736,7 @@ export default function Inventory() {
             <div className="text-center py-14 border border-dashed border-border/30 rounded-xl">
               <Backpack className="w-12 h-12 mx-auto mb-3 opacity-20" />
               <p className="text-muted-foreground text-sm font-medium">Your bag is empty</p>
-              <p className="text-xs text-muted-foreground mt-1">Purchase items from the store to fill your inventory.</p>
+              <p className="text-xs text-muted-foreground mt-1">Hall purchases and earned relics gather here before they become part of your armory or Chronicle.</p>
             </div>
           ) : (
             inventory?.map(item => {
@@ -701,7 +745,14 @@ export default function Inventory() {
                 <Card key={item.id} className={cn("border overflow-hidden transition-all", r.border, r.bg, r.glow)}>
                   <CardContent className="p-3">
                     <div className="flex items-start gap-3">
-                      <div className="text-xl shrink-0 mt-0.5">{CATEGORY_ICONS[item.itemType ?? "consumable"] ?? "🎁"}</div>
+                      {(() => {
+                        const CategoryIcon = categoryIconFor(item.itemType);
+                        return (
+                          <div className="grid size-8 shrink-0 place-items-center border border-[#3b3328] bg-[#0c0b09] text-[#d9ad63]">
+                            <CategoryIcon className="size-4" />
+                          </div>
+                        );
+                      })()}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-0.5">
                           <h3 className={cn("font-serif font-bold text-sm leading-tight", r.color)}>{item.itemName}</h3>
@@ -760,11 +811,14 @@ export default function Inventory() {
             ) : null}
             {catalogFeaturedCategories.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {catalogFeaturedCategories.map((category) => (
-                  <span key={category.key} className="border border-[#3b3328] bg-[#0c0b09] px-2 py-1 text-[9px] uppercase tracking-wide text-[#b7ab9c]">
-                    {category.icon} {category.label} {catalogCategoryCounts[category.key]}
-                  </span>
-                ))}
+                {catalogFeaturedCategories.map((category) => {
+                  const Icon = category.icon;
+                  return (
+                    <span key={category.key} className="inline-flex items-center gap-1.5 border border-[#3b3328] bg-[#0c0b09] px-2 py-1 text-[9px] uppercase tracking-wide text-[#b7ab9c]">
+                      <Icon className="size-3" /> {category.label} {catalogCategoryCounts[category.key]}
+                    </span>
+                  );
+                })}
               </div>
             ) : null}
             {catalogSummary?.economyNote ? (
@@ -780,7 +834,7 @@ export default function Inventory() {
             <Tabs defaultValue="permanent" className="w-full">
               <TabsList className="w-full grid grid-cols-4 bg-black/40 border border-border/30 h-9 mb-4">
                 <TabsTrigger value="permanent" className="text-[10px] data-[state=active]:bg-card gap-1">
-                  <Sword className="w-3 h-3" /> Shop
+                  <Sword className="w-3 h-3" /> Hall
                 </TabsTrigger>
                 <TabsTrigger value="daily" className="text-[10px] data-[state=active]:bg-card gap-1">
                   <Clock className="w-3 h-3" />
@@ -816,7 +870,7 @@ export default function Inventory() {
                     <div className="space-y-2.5">
                       <div className="flex items-center gap-2 px-0.5">
                         <span className={cn("text-[9px] font-mono uppercase tracking-[0.2em] border px-2 py-0.5 capitalize", badge)}>
-                          ⚔ Your Style: {dominantStyle}
+                          Your Style: {dominantStyle}
                         </span>
                         <span className="text-[9px] text-muted-foreground">Recommended items</span>
                       </div>
