@@ -188,6 +188,22 @@ function ReplayDialog({ replay, onClose }: { replay: any; onClose: () => void })
           </div>
         )}
 
+        {payoff?.battlePhases?.length ? (
+          <div className="space-y-2 rounded-xl border border-[#6b4d2f] bg-[#11100e] p-3">
+            <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-[#9d8f80]">Battle phases</p>
+            {payoff.battlePhases.map((phase: any, index: number) => (
+              <div key={`${phase.title}-${index}`} className="border border-[#3b3328] bg-[#0c0b09] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-serif text-sm font-bold text-[#e5c386]">{phase.title}</p>
+                  <span className="text-[10px] font-mono uppercase text-[#49a3a0]">Phase {index + 1}</span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-[#d8c4a5]">{phase.summary}</p>
+                <p className="mt-2 text-[10px] uppercase tracking-wide text-[#8f887d]">{phase.evidence}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {/* Narrative events — staggered reveal */}
         {events.length > 0 ? (
           <div className="space-y-2.5">

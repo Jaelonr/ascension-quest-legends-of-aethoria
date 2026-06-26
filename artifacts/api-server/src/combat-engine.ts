@@ -82,6 +82,14 @@ export interface CombatReplayPayoff {
   worldEffect: string;
   nextHook: string;
   pathEffect: string | null;
+  battlePhases: CombatReplayPhase[];
+}
+
+export interface CombatReplayPhase {
+  title: string;
+  summary: string;
+  evidence: string;
+  type: "opening" | "pressure" | "turning_point" | "outcome";
 }
 
 const STRENGTH_KEYWORDS = [
@@ -687,7 +695,7 @@ export function buildCombatReplayPayoff(replay: {
   gearDrop?: { name?: string; rarity?: string; slot?: string } | null;
   raidImpact?: string | null;
   narrativeConsequence?: string | null;
-  events?: Array<{ text?: string | null }> | null;
+  events?: Array<{ text?: string | null; type?: string | null }> | null;
   commission?: CommissionCombatContext | null;
 }): CombatReplayPayoff {
   const dominant = (replay.dominantStyle && replay.dominantStyle in STYLE_PAYOFFS
@@ -709,6 +717,19 @@ export function buildCombatReplayPayoff(replay: {
   const pathEffect = completionPathOutcome(replay.commission, dominant)
     ?? replay.events?.find((event) => typeof event?.text === "string" && event.text.startsWith("Tactical outcome:"))?.text
     ?? null;
+  const events = replay.events ?? [];
+  const opening = events.find((event) => event?.type === "special" && event?.text && !event.text.startsWith("Tactical outcome:"))?.text
+    ?? `The encounter opened against ${enemy}.`;
+  const pressure = events.find((event) => event?.type === "stat")?.text
+    ?? `The session became ${primary.trait} under pressure.`;
+  const turningPoint = events.find((event) => event?.type === "pr")?.text
+    ?? events.find((event) => event?.type === "gear")?.text
+    ?? events.find((event) => event?.type === "raid")?.text
+    ?? pathEffect
+    ?? `The decisive pattern was ${primary.trait}${secondaryPhrase}.`;
+  const outcome = replay.raidImpact
+    ?? replay.narrativeConsequence
+    ?? `Rewards were earned because the real work was completed.`;
 
   return {
     headline: `${verdict} against ${enemy}`,
@@ -722,6 +743,38 @@ export function buildCombatReplayPayoff(replay: {
       ? `Repeated sessions are shaping the ${replay.hybridArchetype} path.`
       : "Repeat the pattern and the Chronicle will learn what kind of adventurer you are becoming.",
     pathEffect,
+    battlePhases: [
+      {
+        title: "Opening",
+        summary: opening,
+        evidence: replay.commission?.regionName
+          ? `Commission route: ${replay.commission.regionName}${replay.commission.locationName ? ` near ${replay.commission.locationName}` : ""}`
+          : `Encounter: ${enemy}`,
+        type: "opening",
+      },
+      {
+        title: "Pressure",
+        summary: pressure,
+        evidence: `Dominant style: ${styleTitle(dominant)}`,
+        type: "pressure",
+      },
+      {
+        title: "Turning Point",
+        summary: turningPoint,
+        evidence: replay.prCount && replay.prCount > 0
+          ? `${replay.prCount} personal record${replay.prCount === 1 ? "" : "s"} recorded`
+          : secondary
+            ? `Secondary style: ${styleTitle(secondary)}`
+            : "Pattern held through completion",
+        type: "turning_point",
+      },
+      {
+        title: "Outcome",
+        summary: outcome,
+        evidence: `Reward: +${replay.xpEarned ?? 0} XP, +${replay.goldEarned ?? 0} gold`,
+        type: "outcome",
+      },
+    ],
   };
 }
 

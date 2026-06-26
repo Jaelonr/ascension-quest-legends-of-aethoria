@@ -302,6 +302,22 @@ function ReplayModal({ replay, onClose }: { replay: any; onClose: () => void }) 
             </View>
           )}
 
+          {payoff?.battlePhases?.length ? (
+            <View style={rm.phaseCard}>
+              <Text style={rm.payoffLabel}>BATTLE PHASES</Text>
+              {payoff.battlePhases.map((phase: any, index: number) => (
+                <View key={`${phase.title}-${index}`} style={rm.phaseRow}>
+                  <View style={rm.phaseTop}>
+                    <Text style={rm.phaseTitle}>{phase.title}</Text>
+                    <Text style={rm.phaseNumber}>Phase {index + 1}</Text>
+                  </View>
+                  <Text style={rm.phaseSummary}>{phase.summary}</Text>
+                  <Text style={rm.phaseEvidence}>{phase.evidence}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           {/* Narrative events */}
           {events.length === 0 && (
             <Text style={rm.noEvents}>No battle record found for this session.</Text>
@@ -424,6 +440,13 @@ const rm = StyleSheet.create({
   payoffTitle: { color: "#e5c386", fontSize: 16, fontFamily: "PlayfairDisplay_700Bold", marginTop: 4 },
   payoffText: { color: "#d8c4a5", fontSize: 12, lineHeight: 18, marginTop: 6, fontFamily: "Inter_400Regular" },
   pathEffect: { color: "#9dbdb8", fontSize: 11, lineHeight: 16, marginTop: 8, borderLeftWidth: 1, borderLeftColor: "#6b4d2f", paddingLeft: 8, fontFamily: "Inter_400Regular" },
+  phaseCard: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", borderRadius: 10, padding: 12, gap: 8 },
+  phaseRow: { borderWidth: 1, borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 10 },
+  phaseTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  phaseTitle: { color: "#e5c386", fontSize: 14, fontFamily: "PlayfairDisplay_700Bold", flex: 1 },
+  phaseNumber: { color: "#49a3a0", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, fontFamily: "Inter_700Bold" },
+  phaseSummary: { color: "#d8c4a5", fontSize: 11, lineHeight: 16, marginTop: 5, fontFamily: "Inter_400Regular" },
+  phaseEvidence: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 7, fontFamily: "Inter_700Bold" },
   noEvents: { textAlign: "center", color: "#6b5d4f", fontStyle: "italic", marginTop: 24, fontSize: 13 },
   eventCard: { backgroundColor: "#181612", borderWidth: 1, borderColor: "#2a2520", borderRadius: 8, padding: 14 },
   eventText: { color: "#d8c4a5", fontSize: 13, lineHeight: 20 },

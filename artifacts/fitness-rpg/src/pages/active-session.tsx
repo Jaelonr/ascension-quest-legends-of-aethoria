@@ -156,6 +156,22 @@ function CombatReplayModal({
           <p className="mt-1 text-[11px] text-cyan-100/60">The Chronicle records the fight; your body keeps the earned progress.</p>
         </div>
 
+        {payoff?.battlePhases?.length ? (
+          <div className="space-y-2 rounded-xl border border-[#6b4d2f] bg-[#11100e] p-3.5">
+            <p className="text-[9px] font-mono uppercase tracking-widest text-[#9d8f80]">Battle Phases</p>
+            {payoff.battlePhases.map((phase: any, index: number) => (
+              <div key={`${phase.title}-${index}`} className="border border-[#3b3328] bg-[#0c0b09] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-serif text-sm font-bold text-[#e5c386]">{phase.title}</p>
+                  <span className="text-[10px] font-mono uppercase text-[#49a3a0]">Phase {index + 1}</span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-[#d8c4a5]">{phase.summary}</p>
+                <p className="mt-2 text-[10px] uppercase tracking-wide text-[#8f887d]">{phase.evidence}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {events.length > 0 && (
           <div className="space-y-2.5">
             {events.slice(0, revealedCount).map((ev, i) => (

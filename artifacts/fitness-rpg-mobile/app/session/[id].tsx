@@ -175,6 +175,22 @@ function CombatReplayModal({
             </Text>
           </View>
 
+          {payoff?.battlePhases?.length ? (
+            <View style={s.phaseCard}>
+              <Text style={s.panelKicker}>BATTLE PHASES</Text>
+              {payoff.battlePhases.map((phase: any, index: number) => (
+                <View key={`${phase.title}-${index}`} style={s.phaseRow}>
+                  <View style={s.phaseTop}>
+                    <Text style={s.phaseTitle}>{phase.title}</Text>
+                    <Text style={s.phaseNumber}>Phase {index + 1}</Text>
+                  </View>
+                  <Text style={s.phaseSummary}>{phase.summary}</Text>
+                  <Text style={s.phaseEvidence}>{phase.evidence}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           {/* Narrative events */}
           {events.slice(0, revealedCount).map((ev, i) => (
             <View key={i} style={s.eventCard}>
@@ -1041,6 +1057,55 @@ const s = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     fontFamily: "Inter_400Regular",
+  },
+  phaseCard: {
+    borderWidth: 1,
+    borderColor: "#6b4d2f",
+    backgroundColor: "#11100e",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  phaseRow: {
+    borderWidth: 1,
+    borderColor: "#3b3328",
+    backgroundColor: "#0c0b09",
+    padding: 10,
+  },
+  phaseTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+  },
+  phaseTitle: {
+    color: "#e5c386",
+    fontSize: 14,
+    fontFamily: "PlayfairDisplay_700Bold",
+    flex: 1,
+  },
+  phaseNumber: {
+    color: "#49a3a0",
+    fontSize: 9,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    fontFamily: "Inter_700Bold",
+  },
+  phaseSummary: {
+    color: "#d8c4a5",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 5,
+    fontFamily: "Inter_400Regular",
+  },
+  phaseEvidence: {
+    color: "#8f887d",
+    fontSize: 9,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginTop: 7,
+    fontFamily: "Inter_700Bold",
   },
   eventCard: {
     backgroundColor: "#ffffff08",
