@@ -530,6 +530,47 @@ function WorldEventRow({ event }: { event: any }) {
   );
 }
 
+function isIdentityMilestoneEvent(event: any) {
+  const key = String(event?.worldKey ?? "").toLowerCase();
+  const title = String(event?.title ?? "").toLowerCase();
+  return key.includes("style-identity")
+    || key.includes("style-archetype")
+    || title.includes("combat identity")
+    || title.includes("archetype formed");
+}
+
+function IdentityMilestoneCard({ event }: { event: any }) {
+  const metadata = event?.metadata ?? {};
+  const dominantStyle = metadata.dominantStyle as string | undefined;
+  const previousDominantStyle = metadata.previousDominantStyle as string | undefined;
+  const styleMeta = dominantStyle ? STYLE_META[dominantStyle] : null;
+  const previousLabel = previousDominantStyle ? STYLE_META[previousDominantStyle]?.label ?? previousDominantStyle : null;
+  const currentLabel = dominantStyle ? STYLE_META[dominantStyle]?.label ?? dominantStyle : null;
+  const archetype = metadata.hybridArchetype ?? event?.title?.replace(/^Archetype Formed:\s*/i, "");
+
+  return (
+    <div className={cn("border bg-[#0c0b09] p-4", styleMeta?.border ?? "border-[#6b4d2f]")}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[9px] uppercase tracking-[0.22em] text-[#9d8f80]">Legend mark</p>
+          <p className={cn("mt-1 font-serif text-lg font-bold", styleMeta?.text ?? "text-[#d9ad63]")}>
+            {event?.title ?? "Combat identity recorded"}
+          </p>
+        </div>
+        <span className="shrink-0 border border-[#3b3328] px-2 py-1 text-[10px] uppercase tracking-wider text-[#8f887d]">
+          {formatChronicleDate(event?.createdAt ?? event?.occurredAt)}
+        </span>
+      </div>
+      {event?.description && <p className="mt-2 text-xs leading-relaxed text-[#cfc5b8]">{event.description}</p>}
+      <div className="mt-3 grid gap-2 border-t border-[#3b3328] pt-3 text-[10px] uppercase tracking-wider text-[#8f887d] md:grid-cols-3">
+        {currentLabel && <span>Style <b className="text-[#d8c4a5]">{previousLabel ? `${previousLabel} -> ${currentLabel}` : currentLabel}</b></span>}
+        {archetype && <span>Archetype <b className="text-[#d8c4a5]">{String(archetype)}</b></span>}
+        {metadata.totalSessions != null && <span>Field records <b className="font-mono text-[#d8c4a5]">{String(metadata.totalSessions)}</b></span>}
+      </div>
+    </div>
+  );
+}
+
 export default function BattleLog() {
   const [styleFilter, setStyleFilter] = useState<string>("all");
   const [mapZoom, setMapZoom] = useState(1);
@@ -564,6 +605,7 @@ export default function BattleLog() {
     ? chronicle.map.description
     : "The Hall's records have begun charting your passage through Aethoria. Regions, Gates, roads, and battle sites will appear here as your Chronicle grows. For now, only the routes most often spoken of in the Guild's ledgers are clear.";
   const mapStatus = !chronicle?.map?.status || chronicle.map.status === "placeholder" ? "Known Routes" : chronicle.map.status;
+  const identityMilestones = (chronicle?.worldEvents ?? []).filter(isIdentityMilestoneEvent);
 
   return (
     <div
@@ -666,6 +708,29 @@ export default function BattleLog() {
         </TabsContent>
 
         <TabsContent value="records" className="space-y-3 pt-3">
+          <Card className="rounded-none border-[#6b4d2f] bg-[#11100e]">
+            <CardContent className="p-4">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Sparkles className="size-4" />Legend Marks</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#8f887d]">
+                    When your training changes how Aethoria reads you, the Chronicle records it here before it becomes just another line in the ledger.
+                  </p>
+                </div>
+                <Badge variant="outline" className="shrink-0 rounded-none border-[#6b4d2f] text-[#d8c4a5]">{identityMilestones.length} marks</Badge>
+              </div>
+              {identityMilestones.length ? (
+                <div className="space-y-2">
+                  {identityMilestones.map((event) => <IdentityMilestoneCard key={event.id ?? `${event.title}-${event.createdAt}`} event={event} />)}
+                </div>
+              ) : (
+                <div className="border border-dashed border-[#3b3328] bg-[#0c0b09] px-4 py-6 text-center">
+                  <p className="font-serif text-sm font-bold text-[#d8c4a5]">No legend marks yet.</p>
+                  <p className="mt-1 text-xs text-[#8f887d]">Complete enough sessions for the Chronicle to name your combat identity.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <div className="grid gap-3 md:grid-cols-2">
             <Card className="border-[#3b3328] bg-[#11100e]"><CardContent className="p-4"><p className="mb-3 flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Medal className="size-4" />Titles Earned</p>{chronicle?.titlesEarned?.length ? chronicle.titlesEarned.map((title) => <p key={title.id} className="mb-2 text-xs text-[#d8c4a5]">{title.name} <span className="text-[#8f887d]">({title.rarity})</span></p>) : <p className="text-xs text-[#8f887d]">No titles yet.</p>}</CardContent></Card>
             <Card className="border-[#3b3328] bg-[#11100e]"><CardContent className="p-4"><p className="mb-3 flex items-center gap-2 font-serif text-sm font-bold text-[#d9ad63]"><Sparkles className="size-4" />Major Milestones</p>{chronicle?.majorMilestones?.length ? chronicle.majorMilestones.map((m) => <p key={m.id} className="mb-2 text-xs text-[#d8c4a5]">{m.summary}</p>) : <p className="text-xs text-[#8f887d]">No milestones yet.</p>}</CardContent></Card>

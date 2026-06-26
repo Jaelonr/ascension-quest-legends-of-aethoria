@@ -615,6 +615,15 @@ function getWorldEventTone(event: any) {
   return { label: status ? status.replace(/_/g, " ") : "Recorded", border: "#6b4d2f", text: "#d9ad63", bg: "#11100e" };
 }
 
+function isIdentityMilestoneEvent(event: any) {
+  const key = String(event?.worldKey ?? "").toLowerCase();
+  const title = String(event?.title ?? "").toLowerCase();
+  return key.includes("style-identity")
+    || key.includes("style-archetype")
+    || title.includes("combat identity")
+    || title.includes("archetype formed");
+}
+
 export default function ChronicleScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -703,8 +712,55 @@ export default function ChronicleScreen() {
       const milestones = chronicle?.majorMilestones ?? [];
       const records = chronicle?.personalRecords ?? [];
       const worldEvents = chronicle?.worldEvents ?? [];
+      const identityMilestones = worldEvents.filter(isIdentityMilestoneEvent);
       return (
         <View style={ch.panelStack}>
+          <View style={ch.recordCard}>
+            <View style={ch.recordRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={ch.recordTitle}>Legend Marks</Text>
+                <Text style={ch.recordText}>
+                  When your training changes how Aethoria reads you, the Chronicle records it here before it becomes just another line in the ledger.
+                </Text>
+              </View>
+              <Text style={ch.statePill}>{identityMilestones.length} marks</Text>
+            </View>
+            {identityMilestones.length ? (
+              <View style={ch.legendMarkList}>
+                {identityMilestones.map((event: any) => {
+                  const metadata = event?.metadata ?? {};
+                  const dominantStyle = metadata.dominantStyle as string | undefined;
+                  const previousDominantStyle = metadata.previousDominantStyle as string | undefined;
+                  const styleMeta = dominantStyle ? STYLE_META[dominantStyle] : null;
+                  const previousLabel = previousDominantStyle ? STYLE_META[previousDominantStyle]?.label ?? previousDominantStyle : null;
+                  const currentLabel = dominantStyle ? STYLE_META[dominantStyle]?.label ?? dominantStyle : null;
+                  const archetype = metadata.hybridArchetype ?? String(event?.title ?? "").replace(/^Archetype Formed:\s*/i, "");
+                  return (
+                    <View key={String(event.id ?? `${event.title}-${event.createdAt}`)} style={[ch.legendMarkCard, { borderColor: styleMeta?.color ?? "#6b4d2f" }]}>
+                      <View style={ch.recordRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={ch.legendMarkKicker}>Legend mark</Text>
+                          <Text style={[ch.recordTitle, { color: styleMeta?.color ?? "#d9ad63" }]}>{event?.title ?? "Combat identity recorded"}</Text>
+                        </View>
+                        <Text style={ch.worldEventDate}>{formatChronicleDate(event?.createdAt ?? event?.occurredAt)}</Text>
+                      </View>
+                      {event?.description ? <Text style={ch.recordText}>{event.description}</Text> : null}
+                      <View style={ch.worldEventMetaGrid}>
+                        {currentLabel && <Text style={ch.worldEventMeta}>Style {previousLabel ? `${previousLabel} -> ${currentLabel}` : currentLabel}</Text>}
+                        {archetype && <Text style={ch.worldEventMeta}>Archetype {String(archetype)}</Text>}
+                        {metadata.totalSessions != null && <Text style={ch.worldEventMeta}>Field records {String(metadata.totalSessions)}</Text>}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={ch.worldEventEmpty}>
+                <Text style={ch.recordTitle}>No legend marks yet.</Text>
+                <Text style={ch.recordText}>Complete enough sessions for the Chronicle to name your combat identity.</Text>
+              </View>
+            )}
+          </View>
           <View style={ch.recordCard}>
             <Text style={ch.recordTitle}>Titles Earned</Text>
             {titles.length ? titles.map((title) => <Text key={title.id} style={ch.recordText}>{title.name} ({title.rarity})</Text>) : <Text style={ch.recordMeta}>No titles yet.</Text>}
@@ -1056,6 +1112,9 @@ const ch = StyleSheet.create({
   worldEventMetaGrid: { borderTopWidth: 1, borderTopColor: "#3b3328", marginTop: 10, paddingTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 8 },
   worldEventMeta: { color: "#8f887d", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.7, fontFamily: "Inter_700Bold" },
   worldEventEmpty: { borderWidth: 1, borderStyle: "dashed", borderColor: "#3b3328", backgroundColor: "#0c0b09", padding: 14, alignItems: "center", marginTop: 12 },
+  legendMarkList: { gap: 8, marginTop: 12 },
+  legendMarkCard: { borderWidth: 1, backgroundColor: "#0c0b09", padding: 12 },
+  legendMarkKicker: { color: "#9d8f80", fontSize: 9, textTransform: "uppercase", letterSpacing: 1.6, fontFamily: "Inter_700Bold", marginBottom: 4 },
   campaignPosition: { borderWidth: 1, borderColor: "#6b4d2f", backgroundColor: "#11100e", padding: 14 },
   campaignChapter: { borderWidth: 1, backgroundColor: "#11100e" },
   campaignChapterHeader: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
