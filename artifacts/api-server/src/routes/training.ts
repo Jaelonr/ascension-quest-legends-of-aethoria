@@ -80,7 +80,134 @@ function calculateRegionalGearGoldBonus(
 
 function styleLabel(style: string | null | undefined) {
   if (!style) return "Unknown";
-  return style.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const labels: Record<string, string> = {
+    strength: "Iron Vanguard",
+    striking: "Storm Duelist",
+    conditioning: "Wayfarer",
+    grappling: "Chainwarden",
+    recovery: "Verdant Guardian",
+    discipline: "Runesage",
+  };
+  return labels[style] ?? style.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+const STYLE_KEYS = ["strength", "striking", "conditioning", "grappling", "recovery", "discipline"] as const;
+type StyleKey = typeof STYLE_KEYS[number];
+type StyleScoreMap = Record<StyleKey, number>;
+
+function emptyStyleScores(): StyleScoreMap {
+  return { strength: 0, striking: 0, conditioning: 0, grappling: 0, recovery: 0, discipline: 0 };
+}
+
+function scoresFromIdentity(identity: typeof playerStyleIdentityTable.$inferSelect | undefined): StyleScoreMap {
+  if (!identity) return emptyStyleScores();
+  return {
+    strength: identity.strengthScore,
+    striking: identity.strikingScore,
+    conditioning: identity.conditioningScore,
+    grappling: identity.grapplingScore,
+    recovery: identity.recoveryScore,
+    discipline: identity.disciplineScore,
+  };
+}
+
+function addStyleScores(a: StyleScoreMap, b: StyleScoreMap): StyleScoreMap {
+  return {
+    strength: a.strength + b.strength,
+    striking: a.striking + b.striking,
+    conditioning: a.conditioning + b.conditioning,
+    grappling: a.grappling + b.grappling,
+    recovery: a.recovery + b.recovery,
+    discipline: a.discipline + b.discipline,
+  };
+}
+
+function dominantStyleFromScores(scores: StyleScoreMap): StyleKey | null {
+  const ranked = STYLE_KEYS
+    .map((key) => ({ key, score: scores[key] }))
+    .sort((a, b) => b.score - a.score);
+  return ranked[0] && ranked[0].score > 0 ? ranked[0].key : null;
+}
+
+async function recordStyleIdentityMilestones(input: {
+  playerId: number;
+  sessionId: number;
+  replayId: number | null;
+  sessionName: string;
+  previousDominantStyle: StyleKey | null;
+  dominantStyle: StyleKey | null;
+  previousHybridArchetype: string | null;
+  hybridArchetype: string | null;
+  totalSessions: number;
+}) {
+  if (input.dominantStyle && !input.previousDominantStyle) {
+    const label = styleLabel(input.dominantStyle);
+    await db.insert(worldEventsTable).values({
+      playerId: input.playerId,
+      worldKey: `style-identity:first:${input.dominantStyle}`,
+      title: `Combat Identity Emerges: ${label}`,
+      description: `${input.sessionName} gave the Chronicle enough evidence to name the adventurer's first dominant combat pattern: ${label}.`,
+      status: "recorded",
+      severity: "moderate",
+      reversible: false,
+      metadata: {
+        replayId: input.replayId,
+        sessionId: input.sessionId,
+        dominantStyle: input.dominantStyle,
+        totalSessions: input.totalSessions,
+      },
+    }).onConflictDoNothing();
+  }
+
+  if (input.dominantStyle && input.previousDominantStyle && input.dominantStyle !== input.previousDominantStyle) {
+    const previous = styleLabel(input.previousDominantStyle);
+    const next = styleLabel(input.dominantStyle);
+    await db.insert(worldEventsTable).values({
+      playerId: input.playerId,
+      worldKey: `style-identity:shift:${input.sessionId}`,
+      title: `Combat Identity Shift: ${next}`,
+      description: `The Chronicle records a shift from ${previous} toward ${next}. The player's real training has changed how Aethoria reads their fighting style.`,
+      status: "recorded",
+      severity: "moderate",
+      reversible: true,
+      metadata: {
+        replayId: input.replayId,
+        sessionId: input.sessionId,
+        previousDominantStyle: input.previousDominantStyle,
+        dominantStyle: input.dominantStyle,
+        totalSessions: input.totalSessions,
+      },
+    }).onConflictDoNothing();
+  }
+
+  if (input.hybridArchetype && input.hybridArchetype !== input.previousHybridArchetype) {
+    const key = input.hybridArchetype.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    await db.insert(worldEventsTable).values({
+      playerId: input.playerId,
+      worldKey: `style-archetype:${key}`,
+      title: `Archetype Formed: ${input.hybridArchetype}`,
+      description: `Repeated field records have begun forming the ${input.hybridArchetype}. This was earned through behavior, not chosen from a menu.`,
+      status: "recorded",
+      severity: "major",
+      reversible: false,
+      metadata: {
+        replayId: input.replayId,
+        sessionId: input.sessionId,
+        hybridArchetype: input.hybridArchetype,
+        dominantStyle: input.dominantStyle,
+        totalSessions: input.totalSessions,
+      },
+    }).onConflictDoNothing();
+
+    await db.insert(guildMasterMemoriesTable).values({
+      playerId: input.playerId,
+      kind: "style_identity",
+      sourceKey: `style-archetype:${key}`,
+      summary: `The adventurer's training has begun forming the ${input.hybridArchetype} archetype.`,
+      importance: 3,
+      occurredAt: new Date(),
+    }).onConflictDoNothing();
+  }
 }
 
 function selectRaidPressureFields(playerId: number, statuses = ["active"]) {
@@ -634,32 +761,50 @@ router.patch("/training/sessions/:id", async (req, res) => {
         const [existingIdentity] = await db.select()
           .from(playerStyleIdentityTable)
           .where(eq(playerStyleIdentityTable.playerId, player.id));
+        const previousScores = scoresFromIdentity(existingIdentity);
+        const nextScores = addStyleScores(previousScores, scores);
+        const previousDominantStyle = dominantStyleFromScores(previousScores);
+        const nextDominantStyle = dominantStyleFromScores(nextScores);
+        const previousHybridArchetype = existingIdentity?.hybridArchetype ?? null;
+        const nextTotalSessions = (existingIdentity?.totalSessions ?? 0) + 1;
 
         if (existingIdentity) {
           await db.update(playerStyleIdentityTable).set({
-            strengthScore: existingIdentity.strengthScore + scores.strength,
-            strikingScore: existingIdentity.strikingScore + scores.striking,
-            conditioningScore: existingIdentity.conditioningScore + scores.conditioning,
-            grapplingScore: existingIdentity.grapplingScore + scores.grappling,
-            recoveryScore: existingIdentity.recoveryScore + scores.recovery,
-            disciplineScore: existingIdentity.disciplineScore + scores.discipline,
-            totalSessions: existingIdentity.totalSessions + 1,
+            strengthScore: nextScores.strength,
+            strikingScore: nextScores.striking,
+            conditioningScore: nextScores.conditioning,
+            grapplingScore: nextScores.grappling,
+            recoveryScore: nextScores.recovery,
+            disciplineScore: nextScores.discipline,
+            totalSessions: nextTotalSessions,
             hybridArchetype: combatReplay.hybridArchetype,
             updatedAt: new Date(),
           }).where(eq(playerStyleIdentityTable.playerId, player.id));
         } else {
           await db.insert(playerStyleIdentityTable).values({
             playerId: player.id,
-            strengthScore: scores.strength,
-            strikingScore: scores.striking,
-            conditioningScore: scores.conditioning,
-            grapplingScore: scores.grappling,
-            recoveryScore: scores.recovery,
-            disciplineScore: scores.discipline,
-            totalSessions: 1,
+            strengthScore: nextScores.strength,
+            strikingScore: nextScores.striking,
+            conditioningScore: nextScores.conditioning,
+            grapplingScore: nextScores.grappling,
+            recoveryScore: nextScores.recovery,
+            disciplineScore: nextScores.discipline,
+            totalSessions: nextTotalSessions,
             hybridArchetype: combatReplay.hybridArchetype,
           });
         }
+
+        await recordStyleIdentityMilestones({
+          playerId: player.id,
+          replayId: savedReplay?.id ?? null,
+          sessionId: session.id,
+          sessionName: session.name,
+          previousDominantStyle,
+          dominantStyle: nextDominantStyle,
+          previousHybridArchetype,
+          hybridArchetype: combatReplay.hybridArchetype,
+          totalSessions: nextTotalSessions,
+        });
 
         await recordCombatChronicleMilestones({
           playerId: player.id,

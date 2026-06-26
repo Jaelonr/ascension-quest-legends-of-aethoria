@@ -505,6 +505,8 @@ function WorldEventRow({ event }: { event: any }) {
   const totalTasks = Number(metadata.totalTasks ?? metadata.total ?? 0);
   const hasProgress = Number.isFinite(completedTasks) && Number.isFinite(totalTasks) && totalTasks > 0;
   const styleBonus = metadata.styleMultiplier ? Number(metadata.styleMultiplier).toFixed(2) : null;
+  const dominantStyleLabel = metadata.dominantStyle ? STYLE_META[metadata.dominantStyle]?.label ?? metadata.dominantStyle : null;
+  const previousStyleLabel = metadata.previousDominantStyle ? STYLE_META[metadata.previousDominantStyle]?.label ?? metadata.previousDominantStyle : null;
 
   return (
     <div className={cn("border px-3 py-3", tone.border, tone.bg)}>
@@ -520,7 +522,7 @@ function WorldEventRow({ event }: { event: any }) {
         <div className="mt-3 grid gap-2 border-t border-[#3b3328] pt-3 text-[10px] uppercase tracking-wider text-[#8f887d] md:grid-cols-4">
           {hasProgress && <span>Raid tasks <b className="font-mono text-[#d8c4a5]">{completedTasks}/{totalTasks}</b></span>}
           {metadata.difficulty && <span>Difficulty <b className="text-[#d8c4a5]">{metadata.difficulty}</b></span>}
-          {metadata.dominantStyle && <span>Style <b className="text-[#d8c4a5]">{metadata.dominantStyle}</b></span>}
+          {dominantStyleLabel && <span>Style <b className="text-[#d8c4a5]">{previousStyleLabel ? `${previousStyleLabel} -> ${dominantStyleLabel}` : dominantStyleLabel}</b></span>}
           {styleBonus && <span>Pressure shift <b className="font-mono text-[#d8c4a5]">x{styleBonus}</b></span>}
         </div>
       )}

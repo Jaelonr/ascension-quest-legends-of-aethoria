@@ -732,6 +732,8 @@ export default function ChronicleScreen() {
                   const totalTasks = Number(metadata.totalTasks ?? metadata.total ?? 0);
                   const hasProgress = Number.isFinite(completedTasks) && Number.isFinite(totalTasks) && totalTasks > 0;
                   const styleBonus = metadata.styleMultiplier ? Number(metadata.styleMultiplier).toFixed(2) : null;
+                  const dominantStyleLabel = metadata.dominantStyle ? STYLE_META[metadata.dominantStyle]?.label ?? metadata.dominantStyle : null;
+                  const previousStyleLabel = metadata.previousDominantStyle ? STYLE_META[metadata.previousDominantStyle]?.label ?? metadata.previousDominantStyle : null;
                   return (
                     <View key={String(event.id ?? `${event.title}-${event.createdAt}`)} style={[ch.worldEventItem, { borderColor: tone.border, backgroundColor: tone.bg }]}>
                       <View style={ch.recordRow}>
@@ -746,7 +748,7 @@ export default function ChronicleScreen() {
                         <View style={ch.worldEventMetaGrid}>
                           {hasProgress && <Text style={ch.worldEventMeta}>Raid tasks {completedTasks}/{totalTasks}</Text>}
                           {metadata.difficulty && <Text style={ch.worldEventMeta}>Difficulty {metadata.difficulty}</Text>}
-                          {metadata.dominantStyle && <Text style={ch.worldEventMeta}>Style {metadata.dominantStyle}</Text>}
+                          {dominantStyleLabel && <Text style={ch.worldEventMeta}>Style {previousStyleLabel ? `${previousStyleLabel} -> ${dominantStyleLabel}` : dominantStyleLabel}</Text>}
                           {styleBonus && <Text style={ch.worldEventMeta}>Pressure x{styleBonus}</Text>}
                         </View>
                       )}
